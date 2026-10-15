@@ -4,7 +4,10 @@
 //! by name with `SymbolLookup`. The window and event-loop code moves here from `main.rs`
 //! as the FFM API grows; the sidecar binary then becomes a thin HTTP layer over it.
 
-use std::ffi::{CStr, c_char};
+pub mod action;
+
+use std::ffi::{CStr, CString, c_char};
+use std::sync::OnceLock;
 
 /// The library's version, a NUL-terminated string owned by the library (never freed by the caller).
 #[unsafe(no_mangle)]
@@ -16,6 +19,16 @@ const VERSION: &CStr = match CStr::from_bytes_with_nul(concat!(env!("CARGO_PKG_V
     Ok(version) => version,
     Err(_) => panic!("the crate version contains a NUL byte"),
 };
+
+/// Every action as `<group> <name> <code>` lines (see [`action::table`]), owned by the library.
+/// The Java side checks its enums against it.
+#[unsafe(no_mangle)]
+pub extern "C" fn wv_actions() -> *const c_char {
+    static TABLE: OnceLock<CString> = OnceLock::new();
+    TABLE
+        .get_or_init(|| CString::new(action::table()).expect("action names contain no NUL byte"))
+        .as_ptr()
+}
 
 #[cfg(test)]
 mod tests {
