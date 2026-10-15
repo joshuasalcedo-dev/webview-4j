@@ -23,11 +23,11 @@ function page({ ipc = false } = {}) {
   return { bridge: window.__webview4j, requests, posted, errors };
 }
 
-/** Frames as Rust sends a batch of emits (PROTOCOL.md §1). */
+/** Frames as Rust sends a batch of emits (PROTOCOL.md §1); an emit may carry its number, `seq`. */
 function frames(...emits) {
-  return Buffer.concat(emits.map(([topic, data]) => {
+  return Buffer.concat(emits.map(([topic, data, seq]) => {
     const payload = Buffer.from(JSON.stringify(data));
-    const block = Buffer.from('Content-Type: application/json\r\n\r\n');
+    const block = Buffer.from((seq ? `Seq: ${seq}\r\n` : '') + 'Content-Type: application/json\r\n\r\n');
     return Buffer.concat([Buffer.from(`MSG view.wv-1.emit.${topic} ${block.length} ${payload.length}\r\n`), block, payload]);
   }));
 }
@@ -103,7 +103,7 @@ test('polling stops when the window closes', async () => {
 test('the page cannot replace the bridge', () => {
   const { bridge } = page();
   assert.ok(Object.isFrozen(bridge));
-  assert.deepEqual(Object.keys(bridge).sort(), ['invoke', 'listen', 'settle']);
+  assert.deepEqual(Object.keys(bridge).sort(), ['deliver', 'invoke', 'listen', 'settle']);
 });
 
 // ---- UI actions: the webview's IPC ----
@@ -146,4 +146,41 @@ test('a command name that cannot be a subject is refused in the page', async () 
   const { bridge, posted, requests } = page({ ipc: true });
   await assert.rejects(bridge.invoke('users find'), (error) => error.name === 'InvokeError' && error.status === 400);
   assert.equal(posted.length + requests.length, 0);
+});
+
+// ---- pushes: small ones by deliver(...), large ones by the poll, in Java's order ----
+
+test('a small emit is delivered by the host at once', async () => {
+  const { bridge, requests } = page();
+  const seen = [];
+  bridge.listen('orders.updated', (data) => seen.push(data));
+  bridge.deliver(1, 'orders.updated', { id: 1 });
+  bridge.deliver(2, 'other', 'ignored');
+  bridge.deliver(3, 'orders.updated', { id: 2 });
+  assert.deepEqual(plain(seen), [{ id: 1 }, { id: 2 }]);
+  assert.equal(requests.length, 1, 'only the poll, for large emits');
+});
+
+test('emits arrive in the order Java sent them, whichever channel each took', async () => {
+  const { bridge, requests } = page();
+  const seen = [];
+  bridge.listen('feed', (data) => seen.push(data));
+  bridge.deliver(1, 'feed', 'one');
+  bridge.deliver(3, 'feed', 'three');   // sent after a large emit that is still on its way
+  assert.deepEqual(plain(seen), ['one'], 'three waits for two');
+  await tick();
+  requests[0].resolve(new Response(frames(['feed', 'two (large)', 2]), { status: 200 }));
+  await tick(); await tick();
+  assert.deepEqual(plain(seen), ['one', 'two (large)', 'three']);
+});
+
+test('a number that never comes is skipped after a moment', async () => {
+  const { bridge } = page();
+  const seen = [];
+  bridge.listen('feed', (data) => seen.push(data));
+  bridge.deliver(5, 'feed', 'five');
+  bridge.deliver(7, 'feed', 'seven');   // six was dropped
+  assert.deepEqual(plain(seen), ['five']);
+  await new Promise((resume) => setTimeout(resume, 150));
+  assert.deepEqual(plain(seen), ['five', 'seven']);
 });

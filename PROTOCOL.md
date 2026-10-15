@@ -155,7 +155,7 @@ carries is run as a script.
 |---|---|
 | `POST invoke/<…command>`, body: the arguments | `view.<view>.invoke.<…command>` to Java, body unread; Java's answer (§2.3) is the response, `Status` and bytes unchanged |
 | `POST calls/<call>` | the large answer to an IPC call (above), once |
-| `POST events` | held until Java emits; answered with the waiting `view.<view>.emit.<…topic>` messages as frames (§1.1), `Content-Type: application/x-webview4j-frames` |
+| `POST events` | held until Java emits a large push; answered with the waiting `view.<view>.emit.<…topic>` messages as frames (§1.1), each with a `Seq` header, `Content-Type: application/x-webview4j-frames` |
 
 - Both channels answer only origins the window allows: by default the origin of the URL it
   opened, or `null` for HTML it was given; `WindowOptions.origins(...)` sets the list. Over IPC a
@@ -163,8 +163,16 @@ carries is run as a script.
   as a failed fetch. Java never sees a refused call.
 - Arguments are sent as `text/plain` (a CORS "simple" request, so no preflight per call) and are
   JSON by the bridge's rule; the native side labels them `application/json` for Java.
-- Emits made before the page has polled once are dropped, as with no listeners. While the page
-  polls, up to 16 MiB of emits wait for it; beyond that an emit fails with `503`.
+- **Pushes** (`view.<view>.emit.<…topic>`) take the same split. One with at most 64 KiB of data is
+  run in the page as `window.__webview4j.deliver(<seq>, <topic>, <data>)`, written by the native
+  side as JSON (data that is not JSON is refused with `400`). The small pushes of one round of the
+  event loop go out together as one script, and before any call answer that follows them. A larger
+  push goes to the held `events` request.
+- Every push that goes out is numbered (`<seq>`, or the `Seq` header) in one sequence per window,
+  and the page hands them to listeners in that order, whichever channel each took. A number that
+  never arrives is skipped after 100 ms.
+- Large pushes made before the page has polled once are dropped, as with no listeners. While the
+  page polls, up to 16 MiB of them wait for it; beyond that a push fails with `503`.
 - When the window closes, the held poll is answered `410` and open calls `503`.
 
 ## 3. Headers

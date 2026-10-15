@@ -68,8 +68,28 @@ struct Instance {
     title: String,
     capture: Arc<Capture>,
     link: Arc<Mutex<bridge::Link>>,
+    /// Small pushes waiting to go out as one script: at the end of this round of the event loop,
+    /// before the next call answer, or once they add up to PUSH_BATCH.
+    pushes: Vec<String>,
+    pushes_size: usize,
     // Keep the context alive until after its webview has been dropped.
     context: Option<Box<WebContext>>,
+}
+
+/// Small pushes that have built up go out at this size, whatever else is going on.
+const PUSH_BATCH: usize = 1024 * 1024;
+
+impl Instance {
+    /// Runs the waiting pushes in the page, in the order they came, as one script.
+    fn flush_pushes(&mut self) {
+        if self.pushes.is_empty() {
+            return;
+        }
+        let script = self.pushes.join("\n");
+        self.pushes.clear();
+        self.pushes_size = 0;
+        settle(self, &script);
+    }
 }
 
 impl Drop for Instance {
@@ -123,6 +143,8 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
                     emit(&Message::new(format!("view.{id}.closed")));
                 }
             }
+            // This round's messages are handled: the pushes they made go out, one script per page.
+            Event::MainEventsCleared => state.views.values_mut().for_each(Instance::flush_pushes),
             _ => {}
         }
     }))
@@ -201,6 +223,7 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
             if let Ok(call) = call.parse::<u64>() {
                 let script = instance.link.lock().unwrap().answer(call, message.clone());
                 if let Some(script) = script {
+                    instance.flush_pushes(); // pushes sent before this answer arrive before it
                     settle(instance, &script);
                 }
             }
@@ -319,10 +342,21 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
             }
         }
         ["emit", topic @ ..] if !topic.is_empty() => {
-            // Passed on as a frame, payload unread: the page's poll reads it as JSON data.
+            // Small: a script, batched with the others of this round (fast); large: a frame for
+            // the page's poll, payload unread.
             let content_type = message.get("Content-Type").unwrap_or("application/json");
-            let frame = Message::new(message.subject.clone()).header("Content-Type", content_type).payload(payload.to_vec());
-            instance.link.lock().unwrap().emit(frame.encode())
+            let route = instance.link.lock().unwrap().emit(&topic.join("."), content_type, payload);
+            match route {
+                bridge::Emit::Script(script) => {
+                    instance.pushes_size += script.len();
+                    instance.pushes.push(script);
+                    if instance.pushes_size >= PUSH_BATCH {
+                        instance.flush_pushes();
+                    }
+                    Outcome::ok()
+                }
+                bridge::Emit::Done(outcome) => outcome,
+            }
         }
         _ => Outcome::error(404, format!("no subject '{}'", message.subject)),
     })
@@ -442,7 +476,8 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
     };
 
     state.ids_by_window.insert(window.id(), id.clone());
-    state.views.insert(id.clone(), Instance { window, webview, title: open.title, capture, link, context });
+    let instance = Instance { window, webview, title: open.title, capture, link, pushes: Vec::new(), pushes_size: 0, context };
+    state.views.insert(id.clone(), instance);
     Outcome::json(&json!({"view": id}))
 }
 

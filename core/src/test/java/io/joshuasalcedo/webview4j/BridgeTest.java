@@ -79,6 +79,14 @@ class BridgeTest {
             assertEquals("order 7 Grace", console.poll(15, SECONDS));
             assertEquals("order 8 Hopper", console.poll(15, SECONDS));
 
+            // a large push (custom protocol) then a small one (script) arrive in the order sent
+            view.eval("window.__webview4j.listen('feed', f => console.info('feed ' + f.n + ' ' + f.text.length))").join();
+            Thread.sleep(300);   // the page's poll, for large pushes, reaches Rust
+            view.emit("feed", Map.of("n", 1, "text", "z".repeat(100_000))).join();
+            view.emit("feed", Map.of("n", 2, "text", "small")).join();
+            assertEquals("feed 1 100000", console.poll(15, SECONDS));
+            assertEquals("feed 2 5", console.poll(15, SECONDS));
+
             // a window whose bridge only another origin may use: this page's calls are refused
             calls.clear();   // the "bad args" call above did reach users.find
             View locked = app.open(WindowOptions.html("<p>locked</p>").headless(true).origins("https://app.example")).join();

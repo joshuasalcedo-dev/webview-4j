@@ -2,8 +2,10 @@
 //   invoke(command, args) -> Promise   a call to a command Java registered with App.handle:
 //                                       small (UI actions) over the webview's IPC, settled by the
 //                                       host's settle(...); large (data) over the custom protocol
-//   listen(topic, handler) -> unlisten  receives View.emit, from a held POST <base>events
-//   settle(...)                         called by the host only, with values it wrote as JSON
+//   listen(topic, handler) -> unlisten  receives View.emit: small ones by deliver(...), large ones
+//                                       from a held POST <base>events, in the order Java sent them
+//   settle(...), deliver(...)           called by the host only, with values it wrote as JSON:
+//                                       the answer to a small call, and a small emit
 (() => {
   if (window.__webview4j) return;
   const BASE = '__WEBVIEW4J_BASE__';
@@ -114,7 +116,7 @@
       wait = 1000;
       if (response.status === 410) return;   // the window closed
       if (response.status !== 200) continue;
-      for (const message of frames(new Uint8Array(await response.arrayBuffer()))) deliver(message);
+      for (const message of frames(new Uint8Array(await response.arrayBuffer()))) fromPoll(message);
     }
   }
 
@@ -127,14 +129,21 @@
       while (end + 1 < bytes.length && !(bytes[end] === 13 && bytes[end + 1] === 10)) end++;
       const [verb, subject, headerLength, payloadLength] = decoder.decode(bytes.subarray(at, end)).split(' ');
       if (verb !== 'MSG') return;
-      const payloadStart = end + 2 + Number(headerLength);
+      const blockStart = end + 2;
+      const payloadStart = blockStart + Number(headerLength);
       const payloadEnd = payloadStart + Number(payloadLength);
-      yield { subject, payload: decoder.decode(bytes.subarray(payloadStart, payloadEnd)) };
+      const headers = {};
+      for (const line of decoder.decode(bytes.subarray(blockStart, payloadStart)).split('\r\n')) {
+        const colon = line.indexOf(':');
+        if (colon > 0) headers[line.slice(0, colon).toLowerCase()] = line.slice(colon + 1).trim();
+      }
+      yield { subject, headers, payload: decoder.decode(bytes.subarray(payloadStart, payloadEnd)) };
       at = payloadEnd;
     }
   }
 
-  function deliver({ subject, payload }) {
+  // A large emit, from the poll.
+  function fromPoll({ subject, headers, payload }) {
     const tokens = subject.split('.');   // view.<view>.emit.<topic...>
     if (tokens[0] !== 'view' || tokens[2] !== 'emit') return;
     const topic = tokens.slice(3).join('.');
@@ -145,6 +154,47 @@
       console.error('[webview4j-bridge] an emit on', topic, 'is not JSON', error);
       return;
     }
+    arrive(Number(headers.seq), topic, data);
+  }
+
+  // Called by the host with a small emit: its number, topic and data, written by the host as JSON.
+  function deliver(seq, topic, data) {
+    arrive(seq, topic, data);
+  }
+
+  // Emits are numbered by the host across both channels; hand them to listeners in that order.
+  // A number that never comes (dropped while the page reloaded) is skipped after GAP_MS.
+  const GAP_MS = 100;
+  const early = new Map();
+  let expected = 0;
+  let gapTimer = null;
+
+  function arrive(seq, topic, data) {
+    if (!Number.isInteger(seq) || seq < 1) return dispatch(topic, data);
+    if (expected === 0 || seq < expected) expected = seq;   // the first one seen, or the host started over
+    early.set(seq, [topic, data]);
+    drain();
+  }
+
+  function drain() {
+    while (early.has(expected)) {
+      const [topic, data] = early.get(expected);
+      early.delete(expected);
+      expected++;
+      dispatch(topic, data);
+    }
+    if (early.size > 0 && gapTimer === null) {
+      gapTimer = setTimeout(() => {
+        gapTimer = null;
+        if (early.size > 0) {
+          expected = Math.min(...early.keys());
+          drain();
+        }
+      }, GAP_MS);
+    }
+  }
+
+  function dispatch(topic, data) {
     for (const handler of Array.from(listeners.get(topic) || [])) {
       try {
         handler(data);
@@ -154,5 +204,5 @@
     }
   }
 
-  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, listen, settle }) });
+  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, listen, settle, deliver }) });
 })();

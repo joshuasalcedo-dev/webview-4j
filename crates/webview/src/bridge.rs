@@ -103,6 +103,16 @@ pub struct Link {
     poll: Option<(RequestAsyncResponder, String)>,
     queued: Vec<u8>,
     listening: bool,
+    /// The number of the last emit that went out, by either channel.
+    next_emit: u64,
+}
+
+/// Where an emit goes.
+pub enum Emit {
+    /// Small: run this script in the page now.
+    Script(String),
+    /// Large, or refused: handed to the custom protocol, with this outcome.
+    Done(Outcome),
 }
 
 impl Link {
@@ -116,6 +126,7 @@ impl Link {
             poll: None,
             queued: Vec::new(),
             listening: false,
+            next_emit: 0,
         }))
     }
 
@@ -242,21 +253,41 @@ impl Link {
         }
     }
 
-    /// Java's emit, already a frame: to the waiting poll, held for the next one, or dropped when
-    /// the page does not listen at all (like calling no listeners).
-    pub fn emit(&mut self, frame: Vec<u8>) -> Outcome {
-        if !self.listening {
-            return Outcome::ok();
+    /// Java's emit on `topic`. A small one becomes a script that delivers it now; a large one goes
+    /// to the waiting poll, waits for the next one, or is dropped when the page does not listen
+    /// (like calling no listeners). Every emit that goes out is numbered, so the page delivers them
+    /// in order whichever channel each took.
+    pub fn emit(&mut self, topic: &str, content_type: &str, payload: &[u8]) -> Emit {
+        if payload.len() <= FAST_LIMIT {
+            // Parsed and written out again, like an answer: never pasted into the script as received.
+            let data = match payload {
+                [] => Value::Null,
+                bytes => match serde_json::from_slice::<Value>(bytes) {
+                    Ok(data) => data,
+                    Err(_) => return Emit::Done(Outcome::error(400, "an emit's data must be JSON")),
+                },
+            };
+            self.next_emit += 1;
+            let (seq, topic) = (self.next_emit, Value::String(topic.to_string()));
+            return Emit::Script(format!("window.__webview4j && window.__webview4j.deliver({seq}, {topic}, {data});"));
         }
+        if !self.listening {
+            return Emit::Done(Outcome::ok());
+        }
+        let frame = Message::new(format!("view.{}.emit.{topic}", self.view))
+            .header("Seq", (self.next_emit + 1).to_string())
+            .header("Content-Type", content_type)
+            .payload(payload.to_vec())
+            .encode();
         if let Some((poll, origin)) = self.poll.take() {
             poll.respond(response(200, Some(&origin), "application/x-webview4j-frames", frame));
-            return Outcome::ok();
+        } else if self.queued.len() + frame.len() > MAX_QUEUED {
+            return Emit::Done(Outcome::error(503, "the page is not taking emits: too many are waiting"));
+        } else {
+            self.queued.extend_from_slice(&frame);
         }
-        if self.queued.len() + frame.len() > MAX_QUEUED {
-            return Outcome::error(503, "the page is not taking emits: too many are waiting");
-        }
-        self.queued.extend_from_slice(&frame);
-        Outcome::ok()
+        self.next_emit += 1;
+        Emit::Done(Outcome::ok())
     }
 
     /// The window is closing: nothing more will come.
@@ -367,6 +398,27 @@ mod tests {
             r#"window.__webview4j && window.__webview4j.settle(3, 200, null, "calls/3");"#
         );
         assert!(link.large.contains_key(&3));
+    }
+
+    #[test]
+    fn small_emits_are_scripts_large_ones_frames_numbered_in_one_sequence() {
+        let link = Link::new("wv-1", vec!["null".into()]);
+        let mut link = link.lock().unwrap();
+        let Emit::Script(first) = link.emit("orders.updated", "application/json", br#"{ "id" : 1 }"#) else { panic!("small") };
+        assert_eq!(first, r#"window.__webview4j && window.__webview4j.deliver(1, "orders.updated", {"id":1});"#);
+        let Emit::Done(not_json) = link.emit("x", "application/json", b"alert(1)") else { panic!() };
+        assert_eq!(not_json.status, 400, "never pasted into a script");
+
+        let big = vec![b'"'; 2].into_iter().chain(std::iter::repeat_n(b'x', FAST_LIMIT)).collect::<Vec<_>>();
+        let Emit::Done(dropped) = link.emit("files", "application/json", &big) else { panic!() };
+        assert_eq!(dropped.status, 200, "a page that never listened drops large emits");
+        link.listening = true;
+        let Emit::Done(queued) = link.emit("files", "application/json", &big) else { panic!() };
+        assert_eq!(queued.status, 200);
+        let frame = frame::decode(&link.queued).unwrap();
+        assert_eq!(frame.get("Seq"), Some("2"), "a dropped emit takes no number");
+        let Emit::Script(third) = link.emit("orders.updated", "application/json", b"2") else { panic!() };
+        assert!(third.contains("deliver(3,"), "{third}");
     }
 
     #[test]

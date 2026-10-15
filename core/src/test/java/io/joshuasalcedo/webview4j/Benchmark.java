@@ -96,6 +96,19 @@ class Benchmark {
             if (!"done".equals(console.poll(60, SECONDS))) throw new AssertionError("emits went missing");
             report("emit to the page, until all arrived", N / seconds(t), "emits/s");
 
+            // ---- Java -> page -> Java: one push at a time, the page answering on its console ----
+            view.eval("window.__webview4j.listen('ping', n => console.info('bench pong ' + n))").join();
+            for (int i = 0; i < 200; i++) {
+                view.emit("ping", i);
+                console.poll(10, SECONDS);
+            }
+            t = System.nanoTime();
+            for (int i = 0; i < 500; i++) {
+                view.emit("ping", i);
+                if (console.poll(10, SECONDS) == null) throw new AssertionError("a push went missing");
+            }
+            report("push to the page and its answer, one at a time", micros(t) / 500, "µs");
+
             // ---- page -> Java: events ----
             CountDownLatch arrived = new CountDownLatch(N);
             try (Subscription counting = view.subscribe(LogRecord.class, log -> {
