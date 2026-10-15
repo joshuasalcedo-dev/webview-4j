@@ -173,6 +173,54 @@ class WebViewProcessorTest {
     }
 
     @Test
+    void aControllerIsNamedAfterItsPathUnlessItSaysOtherwise() throws Exception {
+        Compiled compiled = compile("""
+                package app.names;
+                import io.joshuasalcedo.webview4j.annotation.*;
+                @WebViewController("/api/v1/order-items")
+                public class OrderItemController { @Get public String list() { return ""; } }
+                """, """
+                package app.names;
+                import io.joshuasalcedo.webview4j.annotation.*;
+                @WebViewController("/accounts/{account}")
+                public class AccountController { @Get public String one(@Path String account) { return account; } }
+                """, """
+                package app.names;
+                import io.joshuasalcedo.webview4j.annotation.*;
+                @WebViewController
+                public class ReportController { @Get("/reports") public String all() { return ""; } }
+                """, """
+                package app.names;
+                import io.joshuasalcedo.webview4j.annotation.*;
+                @WebViewController(value = "/users", name = "people")
+                public class UserController { @Get public String all() { return ""; } }
+                """);
+        assertTrue(compiled.ok(), compiled.errors().toString());
+        String client = Files.readString(compiled.typescript());
+        assertTrue(client.contains("export const orderItems = {"), "the last fixed segment, camelCase");
+        assertTrue(client.contains("export const accounts = {"), "placeholders are skipped");
+        assertTrue(client.contains("export const report = {"), "no path: the class name without Controller");
+        assertTrue(client.contains("export const people = {"), "name = ... wins");
+    }
+
+    @Test
+    void twoControllersWithTheSameNameAreACompileError() throws Exception {
+        Compiled compiled = compile("""
+                package app.clash;
+                import io.joshuasalcedo.webview4j.annotation.*;
+                @WebViewController("/users")
+                public class UserController { @Get public String all() { return ""; } }
+                """, """
+                package app.clash;
+                import io.joshuasalcedo.webview4j.annotation.*;
+                @WebViewController("/admin/users")
+                public class AdminUserController { @Get public String all() { return ""; } }
+                """);
+        assertFalse(compiled.ok());
+        assertTrue(String.join("\n", compiled.errors()).contains("two controllers are named 'users' in TypeScript"), compiled.errors().toString());
+    }
+
+    @Test
     void mistakesAreCompileErrors() throws Exception {
         Compiled compiled = compile("""
                 package app.bad;

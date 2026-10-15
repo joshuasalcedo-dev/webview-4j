@@ -80,6 +80,7 @@ class ControllerTest {
     @Test
     void theProcessorWroteTheTypeScriptClient() throws Exception {
         String client = Files.readString(Path.of("build/generated/webview4j/api.ts"));
+        assertTrue(client.contains("export const users = {"), "named after its path, /users");
         assertTrue(client.contains("export interface User {"), client);
         assertTrue(client.contains("export type Role = \"ADMIN\" | \"MEMBER\";"), client);
         assertTrue(client.contains("find(id: number): Promise<User> {"), client);

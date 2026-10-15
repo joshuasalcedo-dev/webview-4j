@@ -27,6 +27,10 @@ public @interface WebViewController {
     /** The path every route of this controller starts with, e.g. {@code "/users"}. */
     String value() default "";
 
-    /** The name of this controller in the TypeScript client; by default the class name without "Controller", e.g. {@code users} for UsersController. */
+    /**
+     * The name of this controller in the TypeScript client. By default the path's last fixed
+     * segment in camelCase ({@code "/users"} is {@code users}, {@code "/api/v1/order-items"} is
+     * {@code orderItems}), or, without a path, the class name without "Controller".
+     */
     String name() default "";
 }

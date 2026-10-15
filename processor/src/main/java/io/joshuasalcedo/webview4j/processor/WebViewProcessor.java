@@ -122,12 +122,7 @@ public final class WebViewProcessor extends AbstractProcessor {
         AnnotationMirror controller = annotation(type, "WebViewController");
         String base = string(controller, "value");
         String tsName = string(controller, "name");
-        if (tsName.isEmpty()) {
-            String simple = type.getSimpleName().toString();
-            String stem = simple.endsWith("Controller") && simple.length() > "Controller".length()
-                    ? simple.substring(0, simple.length() - "Controller".length()) : simple;
-            tsName = Character.toLowerCase(stem.charAt(0)) + stem.substring(1);
-        }
+        if (tsName.isEmpty()) tsName = defaultName(base, type);
         if (!SourceVersion.isIdentifier(tsName) || TS_RESERVED.contains(tsName)) {
             return error(type, "'" + tsName + "' cannot name this controller in TypeScript: set @WebViewController(name = ...)");
         }
@@ -207,6 +202,31 @@ public final class WebViewProcessor extends AbstractProcessor {
         if (async != null) result = async;
         if (result.getKind() != TypeKind.VOID && !named(result, "java.lang.Void") && !jsonType(result, method, new LinkedHashSet<>())) return null;
         return new RouteModel(method, httpMethod, pattern, params, result);
+    }
+
+    /**
+     * A controller's name in TypeScript when it does not set one: its path's last fixed segment in
+     * camelCase ({@code /api/v1/order-items} is {@code orderItems}), or, without a usable path,
+     * its class name without "Controller" ({@code UserController} is {@code user}).
+     */
+    static String defaultName(String base, TypeElement type) {
+        String[] segments = base.split("/");
+        for (int i = segments.length - 1; i >= 0; i--) {
+            String segment = segments[i];
+            if (segment.isEmpty() || segment.startsWith("{")) continue;
+            StringBuilder name = new StringBuilder();
+            for (String word : segment.split("[-_.~]+")) {
+                if (word.isEmpty()) continue;
+                name.append(name.isEmpty() ? Character.toLowerCase(word.charAt(0)) : Character.toUpperCase(word.charAt(0)))
+                        .append(word.substring(1));
+            }
+            if (SourceVersion.isIdentifier(name) && !TS_RESERVED.contains(name.toString())) return name.toString();
+            break;
+        }
+        String simple = type.getSimpleName().toString();
+        String stem = simple.endsWith("Controller") && simple.length() > "Controller".length()
+                ? simple.substring(0, simple.length() - "Controller".length()) : simple;
+        return Character.toLowerCase(stem.charAt(0)) + stem.substring(1);
     }
 
     private static String join(String base, String path) {

@@ -31,8 +31,8 @@ app.register(new UserController());
 ```
 
 ```ts
-import { user } from "./generated/api";   // written by the processor: -Awebview4j.typescript=<path>
-const found = await user.find(42);          // a User, typed from the Java record
+import { users } from "./generated/api";  // written by the processor: -Awebview4j.typescript=<path>
+const found = await users.find(42);         // a User, typed from the Java record; named after "/users"
 ```
 
 The generated client is built on `request(method, path, { query, body })` from this package,
