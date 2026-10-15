@@ -2,6 +2,7 @@ package io.joshuasalcedo.webview4j;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -92,6 +93,18 @@ public final class View {
     /** Closes the window; a {@link Closed} event follows. */
     public CompletableFuture<Void> close() {
         return done(WindowAction.CLOSE, null);
+    }
+
+    /**
+     * Sends {@code data} to the page's listeners of {@code topic}: {@code listen(topic, handler)}
+     * with {@code @webview4j/api}. {@code data} is anything JSON can carry, records included.
+     */
+    public CompletableFuture<Void> emit(String topic, Object data) {
+        Objects.requireNonNull(topic, "topic");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("topic", topic);
+        payload.put("data", data);
+        return done(WebViewAction.EMIT, payload);
     }
 
     // ---- what the page reports ----

@@ -1,0 +1,13 @@
+{
+  // Type declarations for dist/; bun build writes the JavaScript.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "allowImportingTsExtensions": false,
+    "outDir": "dist"
+  },
+  "include": ["index.ts"],
+  "exclude": ["*.test.ts", "dist", "node_modules"]
+}

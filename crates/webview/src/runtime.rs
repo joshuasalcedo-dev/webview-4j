@@ -8,6 +8,7 @@
 //! {"type":"ready"}                                   the loop runs; actions can be submitted
 //! {"type":"reply","request":42,"ok":true,...}        the answer to a submitted action
 //! {"type":"closed","view":"wv-1"}                    a window closed, by the user or an action
+//! {"type":"invoke","view":"wv-1","call":7,...}       the page called a command (bridge.rs)
 //! {"type":"log","source":"native",...}               a log record (see logging.rs)
 //! {"type":"api-call" | "click" | "dom-event" | "websocket" | "log",...}   page reports (inspector.rs)
 //! ```
@@ -28,9 +29,11 @@ use tao::window::{Window, WindowBuilder, WindowId};
 use wry::{WebContext, WebView, WebViewBuilder};
 
 use crate::action::{Action, InspectorAction, WebViewAction, WindowAction};
+use crate::bridge;
 use crate::inspector::{self, Capture};
 use crate::payload::{
-    self, BoundsBody, CaptureBody, CookieRecord, HtmlBody, OpenRequest, PositionBody, Reply, ScriptBody, SizeBody,
+    self, BoundsBody, CaptureBody, CookieRecord, EmitBody, HtmlBody, OpenRequest, PositionBody, Reply, ResolveBody,
+    ScriptBody, SizeBody,
     SocketBody, TitleBody, UrlBody, WebViewInfo,
 };
 
@@ -335,6 +338,14 @@ fn on_view(action: Action, id: &str, payload: &str, reply: &ReplyTo, state: &mut
             }
             Err(error) => error,
         },
+        Action::WebView(WebViewAction::Resolve) => match payload::parse::<ResolveBody>(payload) {
+            Ok(body) => result_reply(instance.webview.evaluate_script(&bridge::resolve_script(&body))),
+            Err(error) => error,
+        },
+        Action::WebView(WebViewAction::Emit) => match payload::parse::<EmitBody>(payload) {
+            Ok(body) => result_reply(instance.webview.evaluate_script(&bridge::emit_script(&body))),
+            Err(error) => error,
+        },
         Action::Inspector(InspectorAction::Capture) => match payload::parse::<CaptureBody>(payload) {
             Ok(body) => {
                 instance.capture.apply(body);
@@ -398,9 +409,11 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<Request>, stat
     let capture = Arc::new(Capture::new(open.capture));
     let (view_id, view_capture) = (id.clone(), Arc::clone(&capture));
     builder = builder
+        .with_initialization_script(bridge::script())
         .with_initialization_script(&inspector::initialization_script())
         .with_ipc_handler(move |request| {
-            if let Some(event) = inspector::event(request.body(), &view_id, &view_capture) {
+            let body = request.body();
+            if let Some(event) = bridge::event(body, &view_id).or_else(|| inspector::event(body, &view_id, &view_capture)) {
                 emit(event);
             }
         });

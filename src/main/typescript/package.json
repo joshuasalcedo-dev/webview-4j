@@ -1,0 +1,25 @@
+{
+  "name": "@webview4j/api",
+  "version": "0.1.0",
+  "description": "The page's side of a webview-4j app: invoke Java commands, listen to what Java emits.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "bun build ./index.ts --outdir dist --target browser && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}

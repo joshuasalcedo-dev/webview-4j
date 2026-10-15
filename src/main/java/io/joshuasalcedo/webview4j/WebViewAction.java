@@ -8,7 +8,9 @@ public enum WebViewAction implements Action {
     LOAD_HTML(201),
     EVAL(202),
     COOKIES(203),
-    WEBSOCKET_SEND(204);
+    WEBSOCKET_SEND(204),
+    RESOLVE(205),
+    EMIT(206);
 
     private final int code;
 

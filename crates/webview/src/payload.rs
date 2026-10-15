@@ -138,6 +138,26 @@ pub struct SocketBody {
     pub data: String,
 }
 
+/// Payload of `webview resolve`: settles a page's `invoke` call `call`, with `value` when `ok`,
+/// else rejected with `error`.
+#[derive(Deserialize)]
+pub struct ResolveBody {
+    pub call: u64,
+    pub ok: bool,
+    #[serde(default)]
+    pub value: Value,
+    #[serde(default)]
+    pub error: Option<String>,
+}
+
+/// Payload of `webview emit`: `data` for the page's listeners of `topic`.
+#[derive(Deserialize)]
+pub struct EmitBody {
+    pub topic: String,
+    #[serde(default)]
+    pub data: Value,
+}
+
 /// The answer to an action.
 pub enum Reply {
     Opened { id: String },

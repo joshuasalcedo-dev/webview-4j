@@ -19,6 +19,7 @@
 //! No panic crosses the boundary: each function catches it and answers with an error instead.
 
 pub mod action;
+mod bridge;
 mod inspector;
 mod logging;
 pub mod payload;

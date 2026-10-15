@@ -63,6 +63,8 @@ actions! {
         Eval = 202, "eval";
         Cookies = 203, "cookies";
         WebSocketSend = 204, "websocket-send";
+        Resolve = 205, "resolve";
+        Emit = 206, "emit";
     }
 }
 

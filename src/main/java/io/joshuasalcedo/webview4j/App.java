@@ -3,11 +3,14 @@ package io.joshuasalcedo.webview4j;
 import io.joshuasalcedo.webview4j.ffi.Native;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
@@ -45,6 +48,7 @@ public final class App implements AutoCloseable {
     private final Map<Long, Pending> pending = new ConcurrentHashMap<>();
     private final AtomicLong requests = new AtomicLong();
     private final List<Sub<?>> subscriptions = new CopyOnWriteArrayList<>();
+    private final Map<String, CommandHandler> commands = new ConcurrentHashMap<>();
     private final ExecutorService virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
     private final CompletableFuture<App> ready = new CompletableFuture<>();
     private final CompletableFuture<Integer> stopped = new CompletableFuture<>();
@@ -192,6 +196,79 @@ public final class App implements AutoCloseable {
         }
     }
 
+    // ---- commands the page invokes ----
+
+    /**
+     * Lets every page call {@code command}: {@code invoke("users.find", {id: 42})} with
+     * {@code @webview4j/api}. Pages can call only commands registered here. Closing the returned
+     * registration removes the command.
+     *
+     * @throws IllegalStateException if the command already has a handler
+     */
+    public Subscription handle(String command, CommandHandler handler) {
+        Objects.requireNonNull(command, "command");
+        Objects.requireNonNull(handler, "handler");
+        if (command.isEmpty()) throw new IllegalArgumentException("a command needs a name");
+        if (commands.putIfAbsent(command, handler) != null) {
+            throw new IllegalStateException("'" + command + "' already has a handler");
+        }
+        return new Subscription() {
+            @Override public boolean isActive() { return commands.get(command) == handler; }
+            @Override public void close()       { commands.remove(command, handler); }
+        };
+    }
+
+    /** Runs the command's handler on a virtual thread and settles the page's promise with the result. */
+    private void invoke(Map<String, Object> event) {
+        View view = view(Events.text(event, "view"));
+        long call = Events.number(event, "call");
+        String command = Events.text(event, "command");
+        CommandHandler handler = commands.get(command);
+        if (handler == null) {
+            settle(view, call, null, new WebViewException("no command '" + command + "'"));
+            return;
+        }
+        virtualThreads.execute(() -> {
+            Object result;
+            try {
+                result = handler.handle(new Invocation(view, command, event.get("args")));
+            } catch (Exception e) {
+                settle(view, call, null, e);
+                return;
+            }
+            if (result instanceof CompletionStage<?> stage) {
+                stage.whenComplete((value, error) -> settle(view, call, value,
+                        error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error));
+            } else {
+                settle(view, call, result, null);
+            }
+        });
+    }
+
+    private void settle(View view, long call, Object value, Throwable error) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("call", call);
+        if (error == null) {
+            try {
+                Json.write(value);   // fail here, with the reason, rather than in the page
+                payload.put("ok", true);
+                payload.put("value", value);
+            } catch (IllegalArgumentException notJson) {
+                error = notJson;
+            }
+        }
+        if (error != null) {
+            LOG.log(System.Logger.Level.DEBUG, "a command failed in " + view, error);
+            payload.put("ok", false);
+            payload.put("error", error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName());
+        }
+        submit(WebViewAction.RESOLVE, view.id(), payload).exceptionally(failed -> {
+            // The view may have closed meanwhile: nobody is waiting for the answer any more.
+            LOG.log(System.Logger.Level.DEBUG, "could not answer a call in " + view, failed);
+            return null;
+        });
+    }
+
     // ---- events ----
 
     /** Events of one kind from every view; {@code WebViewEvent.class} for all of them. */
@@ -223,6 +300,10 @@ public final class App implements AutoCloseable {
                 Map<String, Object> event = Json.object(json);
                 if ("reply".equals(event.get("type"))) {
                     reply(event);
+                    continue;
+                }
+                if ("invoke".equals(event.get("type"))) {
+                    invoke(event);
                     continue;
                 }
                 WebViewEvent typed = Events.from(event);

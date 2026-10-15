@@ -1,5 +1,7 @@
 package io.joshuasalcedo.webview4j;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -30,7 +32,7 @@ final class Json {
         throw new IllegalArgumentException("not a JSON object: " + text);
     }
 
-    /** Writes maps, iterables, strings, numbers, booleans, enums (by name) and null. */
+    /** Writes maps, iterables, records (as objects), strings, numbers, booleans, enums (by name) and null. */
     static String write(Object value) {
         StringBuilder out = new StringBuilder();
         write(value, out);
@@ -46,6 +48,7 @@ final class Json {
             case Float f when f.isNaN() || f.isInfinite() -> throw new IllegalArgumentException("JSON has no " + f);
             case Number n -> out.append(n);
             case Enum<?> e -> quote(e.name(), out);
+            case Record record -> write(components(record), out);
             case Map<?, ?> map -> {
                 out.append('{');
                 boolean first = true;
@@ -70,6 +73,21 @@ final class Json {
             }
             default -> throw new IllegalArgumentException("cannot write " + value.getClass().getName() + " as JSON");
         }
+    }
+
+    /** A record as an object of its components, in declaration order. */
+    private static Map<String, Object> components(Record record) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        for (RecordComponent component : record.getClass().getRecordComponents()) {
+            try {
+                Method accessor = component.getAccessor();
+                accessor.setAccessible(true);   // records nested in a non-public class
+                fields.put(component.getName(), accessor.invoke(record));
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                throw new IllegalArgumentException("cannot read " + record.getClass().getName() + "." + component.getName(), e);
+            }
+        }
+        return fields;
     }
 
     private static void quote(String s, StringBuilder out) {
