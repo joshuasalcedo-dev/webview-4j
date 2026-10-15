@@ -49,6 +49,7 @@ public final class App implements AutoCloseable {
     private final AtomicLong inboxes = new AtomicLong();
     private final List<Sub<?>> subscriptions = new CopyOnWriteArrayList<>();
     private final Map<String, CommandHandler> commands = new ConcurrentHashMap<>();
+    private final Router router = new Router();
     private final ExecutorService virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
     private final CompletableFuture<App> ready = new CompletableFuture<>();
     private final CompletableFuture<Integer> stopped = new CompletableFuture<>();
@@ -284,6 +285,113 @@ public final class App implements AutoCloseable {
         tell(Message.of(replyTo).with("Status", String.valueOf(status)).withText(message, "text/plain"));
     }
 
+    // ---- controllers: routes the page requests ----
+
+    /**
+     * Makes a {@code @WebViewController}'s routes answer the pages' requests, through the route
+     * table the webview-4j annotation processor generated for its class ({@code <Controller>_Routes}).
+     * In a named module, the controller's package must be readable by {@code io.joshuasalcedo.webview4j}
+     * (exported or opened to it); otherwise use {@link #register(Routes, Object)}.
+     *
+     * @throws IllegalArgumentException if no route table was generated for the controller's class
+     * @throws IllegalStateException if a route clashes with one already registered
+     */
+    @SuppressWarnings("unchecked")
+    public <T> App register(T controller) {
+        Objects.requireNonNull(controller, "controller");
+        Class<?> type = controller.getClass();
+        String generated = type.getPackageName().isEmpty() ? "" : type.getPackageName() + ".";
+        generated += type.getName().substring(generated.length()).replace('$', '_') + "_Routes";
+        Routes<T> routes;
+        try {
+            routes = (Routes<T>) Class.forName(generated, true, type.getClassLoader()).getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException | LinkageError e) {
+            throw new IllegalArgumentException("no generated " + generated + ": is " + type.getName()
+                    + " a @WebViewController, compiled with the webview-4j annotation processor?", e);
+        }
+        return register(routes, controller);
+    }
+
+    /** Makes these routes answer the pages' requests, calling {@code controller}. */
+    public <T> App register(Routes<T> routes, T controller) {
+        Objects.requireNonNull(routes, "routes");
+        if (!routes.controller().isInstance(controller)) {
+            throw new IllegalArgumentException(controller + " is not a " + routes.controller().getName());
+        }
+        for (Route route : routes.routes(controller)) router.add(route);
+        return this;
+    }
+
+    /** A page's request to a route (PROTOCOL.md §2.4): matched, run on a virtual thread, answered. */
+    private void request(String viewId, Message message) {
+        String replyTo = message.header("Reply-To");
+        if (replyTo == null) return;
+        HttpMethod method;
+        try {
+            method = HttpMethod.valueOf(String.valueOf(message.header("Method")));
+        } catch (IllegalArgumentException e) {
+            respond(replyTo, 405, "text/plain", "not a route method: " + message.header("Method"));
+            return;
+        }
+        String path = String.valueOf(message.header("Path"));
+        switch (router.match(method, path)) {
+            case Router.Match.NotFound notFound -> respond(replyTo, 404, "text/plain", "no route " + method + " " + path);
+            case Router.Match.NotAllowed notAllowed -> respond(replyTo, 405, "text/plain",
+                    method + " " + path + " is not allowed; it answers " + notAllowed.allowed());
+            case Router.Match.Found found -> {
+                RouteRequest request = new RouteRequest(view(viewId), method, path, found.pathParams(),
+                        Router.query(message.header("Query")), message.text());
+                virtualThreads.execute(() -> {
+                    Object result;
+                    try {
+                        result = found.handler().handle(request);
+                    } catch (Exception e) {
+                        respondFailure(replyTo, request, e);
+                        return;
+                    }
+                    if (result instanceof CompletionStage<?> stage) {
+                        stage.whenComplete((value, error) -> {
+                            if (error == null) respondValue(replyTo, request, value);
+                            else respondFailure(replyTo, request, error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error);
+                        });
+                    } else {
+                        respondValue(replyTo, request, result);
+                    }
+                });
+            }
+        }
+    }
+
+    private void respondValue(String replyTo, RouteRequest request, Object value) {
+        if (value == null) {
+            respond(replyTo, 204, "application/json", "");
+            return;
+        }
+        String json;
+        try {
+            json = Json.write(value);
+        } catch (IllegalArgumentException notJson) {
+            respondFailure(replyTo, request, new IllegalStateException(request.method() + " " + request.path() + " answered something that is not JSON: " + notJson.getMessage()));
+            return;
+        }
+        respond(replyTo, 200, "application/json", json);
+    }
+
+    private void respondFailure(String replyTo, RouteRequest request, Throwable error) {
+        int status = switch (error) {
+            case HttpException http -> http.status();
+            case IllegalArgumentException bad -> 400;
+            default -> 500;
+        };
+        if (status >= 500) LOG.log(System.Logger.Level.WARNING, request.method() + " " + request.path() + " failed", error);
+        String message = error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName();
+        respond(replyTo, status, "text/plain", message);
+    }
+
+    private void respond(String replyTo, int status, String contentType, String body) {
+        tell(Message.of(replyTo).with("Status", String.valueOf(status)).withText(body, contentType));
+    }
+
     // ---- events ----
 
     /** Events of one kind from every view; {@code WebViewEvent.class} for all of them. */
@@ -349,6 +457,8 @@ public final class App implements AutoCloseable {
             String kind = tokens[2];
             if (kind.equals("closed") && tokens.length == 3) {
                 publish(new Closed(view));
+            } else if (kind.equals("request") && tokens.length == 3) {
+                request(view, message);
             } else if (kind.equals("invoke") && tokens.length > 3) {
                 invoke(view, subject.substring(("view." + view + ".invoke.").length()), message);
             } else if (tokens.length == 3) {

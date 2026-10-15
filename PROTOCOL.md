@@ -120,6 +120,7 @@ answers each exactly once (§4).
 | `view.<view>.dom-event` | §5.5 | capture `domEvents` |
 | `view.<view>.websocket` | `{"socket":3,"url":"…","direction":"open|in|out|close","frame":"…"}` | capture `websocket` |
 | `view.<view>.invoke.<…command>` | the page's arguments, untouched | always on; header `Reply-To: view.<view>.call.<call>` |
+| `view.<view>.request` | the request body, untouched | a page's request to a controller route (§2.4); headers `Method`, `Path` (e.g. `/users/42`, still percent-encoded), `Query` (raw, may be empty), `Content-Type`, `Reply-To`; answered like a call, `204` for no content |
 | `_inbox.…` | a reply (§4) | |
 
 The `<view>` in a subject is set by the native side from the window the message came from. A page
@@ -155,6 +156,7 @@ carries is run as a script.
 |---|---|
 | `POST invoke/<…command>`, body: the arguments | `view.<view>.invoke.<…command>` to Java, body unread; Java's answer (§2.3) is the response, `Status` and bytes unchanged |
 | `POST calls/<call>` | the large answer to an IPC call (above), once |
+| `GET`, `POST`, `PUT`, `PATCH`, `DELETE` `api/<path>[?query]` | `view.<view>.request` to Java (§2.2), the body unread; Java's answer is the response. The routes are a `@WebViewController`'s, and the TypeScript client the annotation processor generates calls them |
 | `POST events` | held until Java emits a large push; answered with the waiting `view.<view>.emit.<…topic>` messages as frames (§1.1), each with a `Seq` header, `Content-Type: application/x-webview4j-frames` |
 
 - Both channels answer only origins the window allows: by default the origin of the URL it

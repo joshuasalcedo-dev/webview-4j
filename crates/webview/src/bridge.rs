@@ -170,6 +170,10 @@ impl Link {
             responder.respond(response(204, Some(&origin), "text/plain", Vec::new()));
             return None;
         }
+        if let Some(path) = request.uri().path().strip_prefix("/api/") {
+            let path = format!("/{path}");
+            return self.api_request(&request, path, origin, responder);
+        }
         if request.method() != "POST" {
             responder.respond(response(405, Some(&origin), "text/plain", b"POST only".to_vec()));
             return None;
@@ -219,6 +223,44 @@ impl Link {
         let call = self.next_call;
         let message = Message::new(subject)
             .header("Reply-To", format!("view.{}.call.{call}", self.view))
+            .header("Content-Type", content_type)
+            .payload(body.clone());
+        self.calls.insert(call, Waiting::Fetch(responder, origin));
+        Some(message)
+    }
+
+    /// A request to a controller route, `<METHOD> <base>api/<path>`: to Java as
+    /// `view.<view>.request` with `Method`, `Path` and `Query` headers, the body unread; Java's
+    /// answer is the response.
+    fn api_request(&mut self, request: &Request<Vec<u8>>, path: String, origin: String, responder: RequestAsyncResponder) -> Option<Message> {
+        let method = request.method().as_str().to_string();
+        if !matches!(method.as_str(), "GET" | "POST" | "PUT" | "PATCH" | "DELETE") {
+            responder.respond(response(405, Some(&origin), "text/plain", format!("{method} is not a route method").into_bytes()));
+            return None;
+        }
+        let body = request.body();
+        if body.len() as u64 > frame::MAX_PAYLOAD {
+            responder.respond(response(413, Some(&origin), "text/plain", b"the body is too large".to_vec()));
+            return None;
+        }
+        // Header values cannot hold line breaks; a URL's path and query never do.
+        let query = request.uri().query().unwrap_or("").to_string();
+        if path.contains(['\r', '\n']) || query.contains(['\r', '\n']) {
+            responder.respond(response(400, Some(&origin), "text/plain", b"bad request line".to_vec()));
+            return None;
+        }
+        let content_type = match request.headers().get(header::CONTENT_TYPE).and_then(|t| t.to_str().ok()) {
+            None => "application/json".to_string(),
+            Some(t) if t.starts_with("text/plain") => "application/json".to_string(),
+            Some(t) => t.to_string(),
+        };
+        self.next_call += 1;
+        let call = self.next_call;
+        let message = Message::new(format!("view.{}.request", self.view))
+            .header("Reply-To", format!("view.{}.call.{call}", self.view))
+            .header("Method", method)
+            .header("Path", path)
+            .header("Query", query)
             .header("Content-Type", content_type)
             .payload(body.clone());
         self.calls.insert(call, Waiting::Fetch(responder, origin));
@@ -320,7 +362,7 @@ fn response(status: u16, origin: Option<&str>, content_type: &str, body: Vec<u8>
     if let Some(origin) = origin {
         response = response
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin)
-            .header(header::ACCESS_CONTROL_ALLOW_METHODS, "POST")
+            .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, PATCH, DELETE")
             .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type");
     }
     response.body(body).expect("a valid response")

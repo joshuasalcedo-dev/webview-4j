@@ -48,6 +48,7 @@ final class Json {
             case Float f when f.isNaN() || f.isInfinite() -> throw new IllegalArgumentException("JSON has no " + f);
             case Number n -> out.append(n);
             case Enum<?> e -> quote(e.name(), out);
+            case java.util.Optional<?> optional -> write(optional.orElse(null), out);
             case Record record -> write(components(record), out);
             case Map<?, ?> map -> {
                 out.append('{');

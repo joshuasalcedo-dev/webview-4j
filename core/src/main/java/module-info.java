@@ -5,4 +5,5 @@
  */
 module io.joshuasalcedo.webview4j {
     exports io.joshuasalcedo.webview4j;
+    exports io.joshuasalcedo.webview4j.annotation;
 }

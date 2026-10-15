@@ -19,6 +19,12 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:6.0.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // The tests' own @WebViewController classes are compiled with the processor, as an app's would be.
+    testAnnotationProcessor(project(":processor"))
+}
+
+tasks.compileTestJava {
+    options.compilerArgs.add("-Awebview4j.typescript=" + layout.buildDirectory.file("generated/webview4j/api.ts").get().asFile.absolutePath)
 }
 
 // ---- the native library (crates/webview at the repository root) ----

@@ -1,4 +1,5 @@
-// What every module shares. The modules: core (the runtime). Each has its own build.gradle.kts.
+// What every module shares. The modules: core (the runtime) and processor (the annotation
+// processor, compile time only). Each has its own build.gradle.kts.
 
 subprojects {
     group = "io.joshuasalcedo"

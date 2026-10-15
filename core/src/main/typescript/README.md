@@ -16,6 +16,30 @@ app.handle("users.find", call -> users.find(call.number("id")));   // a value, a
 view.emit("orders.updated", order);
 ```
 
+## Controllers
+
+For data, Java declares routes with annotations, and the webview-4j annotation processor
+generates a typed client for them; the page never builds a request by hand:
+
+```java
+@WebViewController("/users")
+public class UserController {
+    @Get("/{id}") public User find(@Path long id) { ... }
+    @Post public CompletableFuture<User> create(@Body CreateUser body) { ... }
+}
+app.register(new UserController());
+```
+
+```ts
+import { user } from "./generated/api";   // written by the processor: -Awebview4j.typescript=<path>
+const found = await user.find(42);          // a User, typed from the Java record
+```
+
+The generated client is built on `request(method, path, { query, body })` from this package,
+which rejects with a `RequestError` (`method`, `path`, `status`) for an error status.
+
+## Notes
+
 - `invoke` rejects with an `InvokeError` (with the `command`) when the command is unknown, its
   arguments are wrong, or its handler throws.
 - Pages can call only commands registered with `App.handle`.

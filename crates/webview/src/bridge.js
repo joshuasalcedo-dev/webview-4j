@@ -2,6 +2,8 @@
 //   invoke(command, args) -> Promise   a call to a command Java registered with App.handle:
 //                                       small (UI actions) over the webview's IPC, settled by the
 //                                       host's settle(...); large (data) over the custom protocol
+//   request(method, path, query, body)  a route on a Java @WebViewController: data, over the custom
+//                                       protocol (<base>api/<path>); the generated client calls it
 //   listen(topic, handler) -> unlisten  receives View.emit: small ones by deliver(...), large ones
 //                                       from a held POST <base>events, in the order Java sent them
 //   settle(...), deliver(...)           called by the host only, with values it wrote as JSON:
@@ -82,6 +84,40 @@
     } else {
       call.reject(new InvokeError(call.command, status, String(value)));
     }
+  }
+
+  // A route on a Java controller (@WebViewController): data, over the custom protocol.
+  const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+
+  class RequestError extends Error {
+    constructor(method, path, status, message) {
+      super(message);
+      this.name = 'RequestError';
+      this.method = method;
+      this.path = path;
+      this.status = status;
+    }
+  }
+
+  async function request(method, path, query, body) {
+    if (!METHODS.has(method)) throw new TypeError('not a route method: ' + method);
+    if (typeof path !== 'string' || !path.startsWith('/')) throw new TypeError('a route path starts with /');
+    const search = [];
+    for (const [name, value] of Object.entries(query || {})) {
+      if (value === undefined || value === null) continue;
+      for (const item of Array.isArray(value) ? value : [value]) {
+        search.push(encodeURIComponent(name) + '=' + encodeURIComponent(String(item)));
+      }
+    }
+    const init = { method };
+    if (body !== undefined && method !== 'GET') {
+      init.body = JSON.stringify(body);
+      init.headers = { 'Content-Type': 'text/plain' };
+    }
+    const response = await fetch(BASE + 'api' + path + (search.length ? '?' + search.join('&') : ''), init);
+    const text = await response.text();
+    if (response.status >= 400) throw new RequestError(method, path, response.status, text);
+    return response.status === 204 || text === '' ? null : JSON.parse(text);
   }
 
   function listen(topic, handler) {
@@ -204,5 +240,5 @@
     }
   }
 
-  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, listen, settle, deliver }) });
+  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, request, listen, settle, deliver }) });
 })();

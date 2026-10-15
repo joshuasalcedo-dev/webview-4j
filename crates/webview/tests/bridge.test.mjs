@@ -103,7 +103,7 @@ test('polling stops when the window closes', async () => {
 test('the page cannot replace the bridge', () => {
   const { bridge } = page();
   assert.ok(Object.isFrozen(bridge));
-  assert.deepEqual(Object.keys(bridge).sort(), ['deliver', 'invoke', 'listen', 'settle']);
+  assert.deepEqual(Object.keys(bridge).sort(), ['deliver', 'invoke', 'listen', 'request', 'settle']);
 });
 
 // ---- UI actions: the webview's IPC ----
@@ -183,4 +183,35 @@ test('a number that never comes is skipped after a moment', async () => {
   assert.deepEqual(plain(seen), ['five']);
   await new Promise((resume) => setTimeout(resume, 150));
   assert.deepEqual(plain(seen), ['five', 'seven']);
+});
+
+// ---- routes on Java controllers: data, over the custom protocol ----
+
+test('request calls <base>api/<path> with the method, the query and a JSON body', async () => {
+  const { bridge, requests } = page({ ipc: true });
+  const created = bridge.request('POST', '/users', { tag: ['a', 'b c'], skip: null, page: 2 }, { name: 'Ada' });
+  await tick();
+  assert.equal(requests[0].url, BASE + 'api/users?tag=a&tag=b%20c&page=2', 'null query values are left out');
+  assert.equal(requests[0].init.method, 'POST');
+  assert.equal(requests[0].init.body, '{"name":"Ada"}');
+  requests[0].resolve(new Response('{"id":1,"name":"Ada"}', { status: 200 }));
+  assert.deepEqual(plain(await created), { id: 1, name: 'Ada' });
+
+  const gone = bridge.request('DELETE', '/users/1');
+  await tick();
+  assert.equal(requests[1].init.body, undefined);
+  requests[1].resolve(new Response(null, { status: 204 }));
+  assert.equal(await gone, null);
+});
+
+test('a route error rejects with a RequestError; a GET never sends a body', async () => {
+  const { bridge, requests } = page();
+  const missing = bridge.request('GET', '/users/9', undefined, { ignored: true });
+  await tick();
+  assert.equal(requests[0].init.body, undefined);
+  requests[0].resolve(new Response('no user 9', { status: 404 }));
+  await assert.rejects(missing, (error) => error.name === 'RequestError' && error.status === 404
+    && error.method === 'GET' && error.path === '/users/9' && error.message === 'no user 9');
+  await assert.rejects(bridge.request('TRACE', '/x'), (error) => error.name === 'TypeError');
+  await assert.rejects(bridge.request('GET', 'users'), (error) => error.name === 'TypeError');
 });
