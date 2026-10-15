@@ -3,6 +3,7 @@ package io.joshuasalcedo.webview4j;
 import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -28,6 +29,7 @@ public final class WindowOptions {
     private String initializationScript;
     private Path dataDirectory;
     private Set<Capture> capture;
+    private List<String> origins;
 
     private WindowOptions() {}
 
@@ -82,6 +84,22 @@ public final class WindowOptions {
         return this;
     }
 
+    /**
+     * The only origins whose pages may call {@link App#handle commands} and receive
+     * {@link View#emit emits}, e.g. {@code "https://app.example"} or {@code "http://localhost:5173"}.
+     * Unless given: the origin of the {@link #url url}, or {@code "null"} for {@link #html html}.
+     * Any other page the window navigates to gets {@code 403}.
+     */
+    public WindowOptions origins(String... origins) {
+        for (String origin : origins) {
+            if (!origin.equals("null") && !origin.matches("https?://[^/?#\\s]+")) {
+                throw new IllegalArgumentException("not an origin (scheme://host[:port], or null): " + origin);
+            }
+        }
+        this.origins = List.of(origins);
+        return this;
+    }
+
     /** The JSON payload of {@code app.open} (PROTOCOL.md §5.1). */
     Map<String, Object> toPayload() {
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -97,6 +115,7 @@ public final class WindowOptions {
         if (initializationScript != null) payload.put("initializationScript", initializationScript);
         if (dataDirectory != null) payload.put("dataDirectory", dataDirectory.toString());
         if (capture != null) payload.put("capture", switches(capture));
+        if (origins != null) payload.put("origins", origins);
         return payload;
     }
 

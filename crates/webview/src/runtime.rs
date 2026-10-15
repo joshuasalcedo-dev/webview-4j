@@ -17,7 +17,7 @@ use tao::window::{Window, WindowBuilder, WindowId};
 use wry::{WebContext, WebView, WebViewBuilder};
 
 use crate::bridge;
-use crate::frame::{self, Message};
+use crate::frame::Message;
 use crate::inspector::{self, Capture};
 use crate::payload::{self, BoundsBody, CaptureBody, CookieRecord, OpenRequest, Outcome, PositionBody, SizeBody, WebViewInfo};
 
@@ -60,8 +60,17 @@ struct Instance {
     window: Window,
     title: String,
     capture: Arc<Capture>,
+    link: Arc<Mutex<bridge::Link>>,
     // Keep the context alive until after its webview has been dropped.
     context: Option<Box<WebContext>>,
+}
+
+impl Drop for Instance {
+    /// However a window goes (close, the user, app.quit), the page's waiting requests are answered
+    /// while the webview still exists.
+    fn drop(&mut self) {
+        self.link.lock().unwrap().close();
+    }
 }
 
 #[derive(Default)]
@@ -172,7 +181,10 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
     };
     Some(match rest {
         ["call", call] => {
-            answer_call(instance, call, message);
+            // Java's answer to the page's call: the waiting fetch gets it, status and bytes unread.
+            if let Ok(call) = call.parse::<u64>() {
+                instance.link.lock().unwrap().answer(call, message.clone());
+            }
             return None;
         }
         ["navigate"] => match payload::text(payload) {
@@ -287,25 +299,14 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
                 Err(error) => error,
             }
         }
-        ["emit", topic @ ..] if !topic.is_empty() => match payload::value(payload) {
-            Ok(data) => result(instance.webview.evaluate_script(&bridge::emit_script(&topic.join("."), &data))),
-            Err(error) => error,
-        },
+        ["emit", topic @ ..] if !topic.is_empty() => {
+            // Passed on as a frame, payload unread: the page's poll reads it as JSON data.
+            let content_type = message.get("Content-Type").unwrap_or("application/json");
+            let frame = Message::new(message.subject.clone()).header("Content-Type", content_type).payload(payload.to_vec());
+            instance.link.lock().unwrap().emit(frame.encode())
+        }
         _ => Outcome::error(404, format!("no subject '{}'", message.subject)),
     })
-}
-
-/// Java's answer to the page's call `call`: a `Status`, and the value or what went wrong.
-fn answer_call(instance: &Instance, call: &str, message: &Message) {
-    let Ok(call) = call.parse::<u64>() else { return };
-    let answer = match message.get("Status") {
-        Some("200") => match payload::value(&message.payload) {
-            Ok(value) => bridge::resolve_script(call, Ok(&value)),
-            Err(_) => bridge::resolve_script(call, Err("the command's answer is not JSON")),
-        },
-        _ => bridge::resolve_script(call, Err(&String::from_utf8_lossy(&message.payload))),
-    };
-    let _ = instance.webview.evaluate_script(&answer);
 }
 
 /// The page script that sends a text frame on the inspector's socket number `socket`.
@@ -319,25 +320,9 @@ fn send_script(socket: u64, data: &str) -> String {
     )
 }
 
-/// What a page sends over IPC: a call of a Java command, or an inspector report.
+/// What a page sends over IPC: only inspector reports. Calls go through the bridge (bridge.rs).
 fn from_page(raw: &str, view: &str, capture: &Capture) {
-    if let Some(invoke) = bridge::invoke(raw) {
-        let subject = format!("view.{view}.invoke.{}", invoke.command);
-        if !frame::valid_subject(&subject) {
-            // Answer the page through the loop, as Java would: the command name cannot be a subject.
-            let _ = send(
-                Message::new(format!("view.{view}.call.{}", invoke.call))
-                    .header("Status", "400")
-                    .payload(format!("'{}' is not a valid command name", invoke.command)),
-            );
-            return;
-        }
-        emit(
-            &Message::new(subject)
-                .header("Reply-To", format!("view.{view}.call.{}", invoke.call))
-                .payload(invoke.args.to_string()),
-        );
-    } else if let Some((kind, report)) = inspector::event(raw, capture) {
+    if let Some((kind, report)) = inspector::event(raw, capture) {
         emit(&Message::new(format!("view.{view}.{kind}")).payload(report.to_string()));
     }
 }
@@ -379,10 +364,22 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<Message>, stat
     .with_devtools(open.devtools);
     let capture = Arc::new(Capture::new(open.capture));
     let (view_id, view_capture) = (id.clone(), Arc::clone(&capture));
-    builder = builder
-        .with_initialization_script(bridge::script())
+    let origins = open.origins.clone().unwrap_or_else(|| match &open.url {
+        Some(url) => bridge::origin_of(url).into_iter().collect(),
+        None => vec!["null".to_string()],
+    });
+    let link = bridge::Link::new(&id, origins);
+    let page_link = Arc::clone(&link);
+    builder = https_scheme(builder)
+        .with_initialization_script(&bridge::script())
         .with_initialization_script(&inspector::initialization_script())
-        .with_ipc_handler(move |request| from_page(request.body(), &view_id, &view_capture));
+        .with_ipc_handler(move |request| from_page(request.body(), &view_id, &view_capture))
+        .with_asynchronous_custom_protocol(bridge::SCHEME.into(), move |_, request, responder| {
+            let call = page_link.lock().unwrap().request(request, responder);
+            if let Some(call) = call {
+                emit(&call);
+            }
+        });
     if let Some(script) = &open.initialization_script {
         builder = builder.with_initialization_script(script);
     }
@@ -398,8 +395,21 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<Message>, stat
     };
 
     state.ids_by_window.insert(window.id(), id.clone());
-    state.views.insert(id.clone(), Instance { window, webview, title: open.title, capture, context });
+    state.views.insert(id.clone(), Instance { window, webview, title: open.title, capture, link, context });
     Outcome::json(&json!({"view": id}))
+}
+
+/// Windows maps the custom protocol onto `http(s)://webview4j.localhost`: https, so a secure page
+/// never makes an insecure request to it.
+#[cfg(target_os = "windows")]
+fn https_scheme(builder: WebViewBuilder) -> WebViewBuilder {
+    use wry::WebViewBuilderExtWindows;
+    builder.with_https_scheme(true)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn https_scheme(builder: WebViewBuilder) -> WebViewBuilder {
+    builder
 }
 
 #[cfg(target_os = "windows")]

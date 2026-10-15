@@ -23,13 +23,17 @@ declare global {
   }
 }
 
-/** A command Java refused or failed: unknown, bad arguments, or its handler threw. */
+/**
+ * A command Java refused or failed. `status` says how: 400 bad arguments, 404 no such command,
+ * 500 its handler failed, 503 the window closed.
+ */
 export class InvokeError extends Error {
   override readonly name = "InvokeError";
 
   constructor(
     readonly command: string,
     message: string,
+    readonly status: number,
   ) {
     super(message);
   }
@@ -49,12 +53,16 @@ function bridge(): Bridge {
 /**
  * Calls the Java command registered as `command`, passing `args` (anything JSON can carry).
  * Resolves with what the handler returned; rejects with an {@link InvokeError} when it fails.
+ * A page whose origin the window does not allow gets a plain network error instead: the browser
+ * hides why it was refused.
  */
 export async function invoke<T = unknown>(command: string, args?: unknown): Promise<T> {
   try {
     return (await bridge().invoke(command, args)) as T;
   } catch (error) {
-    if (error instanceof Error && error.name === "InvokeError") throw new InvokeError(command, error.message);
+    if (error instanceof Error && error.name === "InvokeError") {
+      throw new InvokeError(command, error.message, (error as Error & { status?: number }).status ?? 0);
+    }
     throw error;
   }
 }

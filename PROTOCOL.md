@@ -10,8 +10,9 @@ middle reads. Each side implements this document on its own; the fixtures in
 > `@webview4j/api`. This document is for the implementations (`crates/webview` in Rust, the
 > package-private `Message`/`Native`/`App` internals in Java), and for anyone writing another one.
 >
-> Status: implemented between Java and the native side (FFM). The page still reaches the native
-> side over the webview's IPC and is answered through scripts; it moves to these frames in step 3.
+> Status: implemented between Java and the native side (FFM), and between the page and the native
+> side over the `webview4j` custom protocol (§2.4). Inspector reports still come over the webview's
+> IPC: they only report, they cannot call anything.
 
 ## 1. Messages
 
@@ -131,6 +132,26 @@ A page's `invoke("users.find", {id: 42})` arrives as `view.wv-1.invoke.users.fin
 header: `200` and the value, or an error status and a `text/plain` message. The native side
 delivers it to the page, which settles its promise. The page's arguments and Java's answer pass
 through the native side unread.
+
+### 2.4 The page's side
+
+The page reaches the native side through the `webview4j` custom protocol: `https://webview4j.localhost/`
+on Windows and Android, `webview4j://localhost/` elsewhere. Nothing outside the webview can reach
+it, and nothing it carries is ever run as a script.
+
+| Request | Becomes |
+|---|---|
+| `POST invoke/<…command>`, body: the arguments | `view.<view>.invoke.<…command>` to Java, body unread; Java's answer (§2.3) is the response, `Status` and bytes unchanged |
+| `POST events` | held until Java emits; answered with the waiting `view.<view>.emit.<…topic>` messages as frames (§1.1), `Content-Type: application/x-webview4j-frames` |
+
+- Every request must carry an `Origin` the window allows: by default the origin of the URL it
+  opened, or `null` for HTML it was given; `WindowOptions.origins(...)` sets the list. Others get
+  `403`, which the browser hides from the page as a failed fetch.
+- Arguments are sent as `text/plain` (a CORS "simple" request, so no preflight per call) and are
+  JSON by the bridge's rule; the native side labels them `application/json` for Java.
+- Emits made before the page has polled once are dropped, as with no listeners. While the page
+  polls, up to 16 MiB of emits wait for it; beyond that an emit fails with `503`.
+- When the window closes, the held poll is answered `410` and open calls `503`.
 
 ## 3. Headers
 

@@ -70,9 +70,26 @@ class BridgeTest {
             assertEquals("bad args failed InvokeError: users.find: argument 'id' must be a whole number",
                     console.poll(15, SECONDS));
 
+            // emits before anyone listens are dropped, like calling no listeners
+            view.emit("orders.updated", new User(6, "Before")).join();
             view.eval("window.__webview4j.listen('orders.updated', o => console.info('order ' + o.id + ' ' + o.name))").join();
+            Thread.sleep(300);   // let the page's first poll reach Rust
             view.emit("orders.updated", new User(7, "Grace")).join();
+            view.emit("orders.updated", new User(8, "Hopper")).join();
             assertEquals("order 7 Grace", console.poll(15, SECONDS));
+            assertEquals("order 8 Hopper", console.poll(15, SECONDS));
+
+            // a window whose bridge only another origin may use: this page's calls are refused
+            calls.clear();   // the "bad args" call above did reach users.find
+            View locked = app.open(WindowOptions.html("<p>locked</p>").headless(true).origins("https://app.example")).join();
+            locked.eval(call("locked", "window.__webview4j.invoke('users.find', {id: 1})")).join();
+            // The browser hides a refusal from a page whose origin is not allowed: it reads as a failed fetch.
+            assertEquals("locked failed TypeError: Failed to fetch", console.poll(15, SECONDS));
+            assertTrue(calls.isEmpty(), "Java never saw the refused call");
+
+            // a command name that cannot be a subject never reaches Java
+            view.eval(call("bad name", "window.__webview4j.invoke('users find')")).join();
+            assertEquals("bad name failed InvokeError: 'users%20find' is not a valid command name", console.poll(15, SECONDS));
         }
     }
 }

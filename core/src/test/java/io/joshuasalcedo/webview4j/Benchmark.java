@@ -88,6 +88,7 @@ class Benchmark {
             // ---- Java -> page: emit ----
             view.eval("window.__got = 0; window.__webview4j.listen('bench', () => { if (++window.__got === %d) console.info('bench done'); })"
                     .formatted(N)).join();
+            Thread.sleep(500);   // emits before the page's first poll arrives are dropped, as with no listeners
             t = System.nanoTime();
             List<CompletableFuture<Void>> emits = new ArrayList<>();
             for (int i = 0; i < N; i++) emits.add(view.emit("bench", Map.of("i", i)));

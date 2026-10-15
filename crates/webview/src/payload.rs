@@ -38,6 +38,10 @@ pub struct OpenRequest {
     /// What the inspector reports from the start; only the console unless given.
     #[serde(default)]
     pub capture: Option<CaptureBody>,
+    /// The origins whose pages may use the bridge (`invoke`, `listen`), e.g. `https://app.example`.
+    /// Unless given: the origin of `url`, or `null` (an opaque origin) for `html`.
+    #[serde(default)]
+    pub origins: Option<Vec<String>>,
 }
 
 fn default_title() -> String {
