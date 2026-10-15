@@ -83,13 +83,23 @@ class BridgeTest {
             calls.clear();   // the "bad args" call above did reach users.find
             View locked = app.open(WindowOptions.html("<p>locked</p>").headless(true).origins("https://app.example")).join();
             locked.eval(call("locked", "window.__webview4j.invoke('users.find', {id: 1})")).join();
-            // The browser hides a refusal from a page whose origin is not allowed: it reads as a failed fetch.
-            assertEquals("locked failed TypeError: Failed to fetch", console.poll(15, SECONDS));
+            assertEquals("locked failed InvokeError: this page's origin may not use the bridge", console.poll(15, SECONDS));
+            // Data from that page (a call too large for IPC) is refused too, hidden by the browser as a failed fetch.
+            locked.eval(call("locked data", "window.__webview4j.invoke('users.find', {blob: 'x'.repeat(70000)})")).join();
+            assertEquals("locked data failed TypeError: Failed to fetch", console.poll(15, SECONDS));
             assertTrue(calls.isEmpty(), "Java never saw the refused call");
 
             // a command name that cannot be a subject never reaches Java
             view.eval(call("bad name", "window.__webview4j.invoke('users find')")).join();
-            assertEquals("bad name failed InvokeError: 'users%20find' is not a valid command name", console.poll(15, SECONDS));
+            assertEquals("bad name failed InvokeError: 'users find' is not a valid command name", console.poll(15, SECONDS));
+
+            // data both ways: a large argument goes over the custom protocol, a large answer is fetched
+            view.eval(call("big", "window.__webview4j.invoke('users.find', {id: 9, padding: 'x'.repeat(70000)})"
+                    + ".then(u => u)")).join();
+            assertEquals("big ok {\"id\":9,\"name\":\"Ada\"}", console.poll(15, SECONDS));
+            app.handle("files.read", call -> "y".repeat(100_000));
+            view.eval("window.__webview4j.invoke('files.read').then(text => console.info('read ' + text.length))").join();
+            assertEquals("read 100000", console.poll(15, SECONDS), "a small call with a large answer: settled, then fetched");
         }
     }
 }

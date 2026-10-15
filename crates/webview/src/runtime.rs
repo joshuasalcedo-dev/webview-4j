@@ -28,8 +28,15 @@ pub type MessageCallback = extern "C" fn(*const u8, usize);
 /// The protocol version, sent on `app.ready`.
 pub const PROTOCOL: &str = "1";
 
+/// What reaches the event loop: a protocol message, or (internal, never from Java) a script that
+/// refuses a page's call.
+pub enum ToLoop {
+    Message(Message),
+    Refuse { view: String, script: String },
+}
+
 /// Set while the loop runs: how other threads reach it.
-static PROXY: Mutex<Option<EventLoopProxy<Message>>> = Mutex::new(None);
+static PROXY: Mutex<Option<EventLoopProxy<ToLoop>>> = Mutex::new(None);
 
 /// Set while the loop runs: where messages go.
 static ON_MESSAGE: Mutex<Option<MessageCallback>> = Mutex::new(None);
@@ -52,7 +59,7 @@ pub enum NotSent {
 /// Hands a message to the event loop and returns at once. Callable from any thread.
 pub fn send(message: Message) -> Result<(), NotSent> {
     let proxy = PROXY.lock().unwrap().clone().ok_or(NotSent::NotRunning)?;
-    proxy.send_event(message).map_err(|_| NotSent::NotRunning)
+    proxy.send_event(ToLoop::Message(message)).map_err(|_| NotSent::NotRunning)
 }
 
 struct Instance {
@@ -87,7 +94,7 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
     if proxy.is_some() {
         return Err("the event loop is already running".into());
     }
-    let mut builder = EventLoopBuilder::<Message>::with_user_event();
+    let mut builder = EventLoopBuilder::<ToLoop>::with_user_event();
     any_thread(&mut builder);
     let mut event_loop = builder.build();
     *proxy = Some(event_loop.create_proxy());
@@ -101,7 +108,15 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
         *control_flow = ControlFlow::Wait;
         match event {
             Event::NewEvents(StartCause::Init) => emit(&Message::new("app.ready").header("Protocol", PROTOCOL)),
-            Event::UserEvent(message) => handle(message, target, &mut state, control_flow),
+            Event::UserEvent(ToLoop::Message(message)) => handle(message, target, &mut state, control_flow),
+            Event::UserEvent(ToLoop::Refuse { view, script }) => {
+                // A refusal says nothing but "refused": it goes to whatever page asked.
+                if let Some(instance) = state.views.get(&view) {
+                    if let Err(error) = instance.webview.evaluate_script(&script) {
+                        log::warn!("could not answer the page: {error}");
+                    }
+                }
+            }
             Event::WindowEvent { window_id, event: WindowEvent::CloseRequested, .. } => {
                 if let Some(id) = state.ids_by_window.remove(&window_id) {
                     state.views.remove(&id);
@@ -135,7 +150,7 @@ impl ReplyTo {
     }
 }
 
-fn handle(message: Message, target: &EventLoopWindowTarget<Message>, state: &mut State, control_flow: &mut ControlFlow) {
+fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut State, control_flow: &mut ControlFlow) {
     let reply = ReplyTo(message.get("Reply-To").map(str::to_owned));
     let subject = message.subject.clone();
     let tokens: Vec<&str> = subject.split('.').collect();
@@ -181,9 +196,13 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
     };
     Some(match rest {
         ["call", call] => {
-            // Java's answer to the page's call: the waiting fetch gets it, status and bytes unread.
+            // Java's answer to the page's call: to the waiting fetch, status and bytes unread, or
+            // settled by script for a call that came over IPC.
             if let Ok(call) = call.parse::<u64>() {
-                instance.link.lock().unwrap().answer(call, message.clone());
+                let script = instance.link.lock().unwrap().answer(call, message.clone());
+                if let Some(script) = script {
+                    settle(instance, &script);
+                }
             }
             return None;
         }
@@ -320,10 +339,37 @@ fn send_script(socket: u64, data: &str) -> String {
     )
 }
 
-/// What a page sends over IPC: only inspector reports. Calls go through the bridge (bridge.rs).
-fn from_page(raw: &str, view: &str, capture: &Capture) {
-    if let Some((kind, report)) = inspector::event(raw, capture) {
+/// What a page sends over IPC: a small call (a frame, bridge.rs), or an inspector report.
+fn from_page(request: &wry::http::Request<String>, view: &str, capture: &Capture, link: &Mutex<bridge::Link>) {
+    let raw = request.body();
+    if raw.starts_with("MSG ") {
+        let page_url = request.uri().to_string();
+        let outcome = link.lock().unwrap().from_ipc(raw, &page_url);
+        match outcome {
+            bridge::FromPage::Java(call) => emit(&call),
+            // Run by the loop, which owns the webview; this handler only borrows the page.
+            bridge::FromPage::Page(script) => refuse_later(view, script),
+            bridge::FromPage::Nothing => {}
+        }
+    } else if let Some((kind, report)) = inspector::event(raw, capture) {
         emit(&Message::new(format!("view.{view}.{kind}")).payload(report.to_string()));
+    }
+}
+
+fn refuse_later(view: &str, script: String) {
+    if let Some(proxy) = PROXY.lock().unwrap().clone() {
+        let _ = proxy.send_event(ToLoop::Refuse { view: view.to_string(), script });
+    }
+}
+
+/// Runs a settle script (bridge::settle_script) in the page: only while the page showing is one
+/// the bridge allows, so an answer never reaches a page the window navigated to since.
+fn settle(instance: &Instance, script: &str) {
+    let page = instance.webview.url().unwrap_or_default();
+    if instance.link.lock().unwrap().allows(&bridge::page_origin(&page)) {
+        if let Err(error) = instance.webview.evaluate_script(script) {
+            log::warn!("could not answer the page: {error}");
+        }
     }
 }
 
@@ -340,7 +386,7 @@ fn list(state: &State) -> Vec<WebViewInfo> {
         .collect()
 }
 
-fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<Message>, state: &mut State) -> Outcome {
+fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state: &mut State) -> Outcome {
     if let Some(path) = &open.data_directory {
         if !path.is_absolute() {
             return Outcome::error(400, "dataDirectory must be absolute");
@@ -370,10 +416,11 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<Message>, stat
     });
     let link = bridge::Link::new(&id, origins);
     let page_link = Arc::clone(&link);
+    let ipc_link = Arc::clone(&link);
     builder = https_scheme(builder)
         .with_initialization_script(&bridge::script())
         .with_initialization_script(&inspector::initialization_script())
-        .with_ipc_handler(move |request| from_page(request.body(), &view_id, &view_capture))
+        .with_ipc_handler(move |request| from_page(&request, &view_id, &view_capture, &ipc_link))
         .with_asynchronous_custom_protocol(bridge::SCHEME.into(), move |_, request, responder| {
             let call = page_link.lock().unwrap().request(request, responder);
             if let Some(call) = call {
@@ -413,20 +460,20 @@ fn https_scheme(builder: WebViewBuilder) -> WebViewBuilder {
 }
 
 #[cfg(target_os = "windows")]
-fn any_thread(builder: &mut EventLoopBuilder<Message>) {
+fn any_thread(builder: &mut EventLoopBuilder<ToLoop>) {
     use tao::platform::windows::EventLoopBuilderExtWindows;
     builder.with_any_thread(true);
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "ios", target_os = "android")))]
-fn any_thread(builder: &mut EventLoopBuilder<Message>) {
+fn any_thread(builder: &mut EventLoopBuilder<ToLoop>) {
     use tao::platform::unix::EventLoopBuilderExtUnix;
     builder.with_any_thread(true);
 }
 
 /// macOS: the loop must run on the process's first thread; there is no opting out.
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
-fn any_thread(_builder: &mut EventLoopBuilder<Message>) {}
+fn any_thread(_builder: &mut EventLoopBuilder<ToLoop>) {}
 
 #[cfg(any(target_os = "windows", target_os = "macos", target_os = "ios", target_os = "android"))]
 fn build_webview(builder: WebViewBuilder, window: &Window) -> wry::Result<WebView> {

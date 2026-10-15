@@ -15,7 +15,8 @@ function installBridge() {
   const fetch = (url: string, init: RequestInit) =>
     new Promise<Response>((answer) => requests.push({ url, body: init.body, answer }));
   const script = readFileSync(new URL("../../../../crates/webview/src/bridge.js", import.meta.url), "utf8")
-    .replace("__WEBVIEW4J_BASE__", BASE);
+    .replace("__WEBVIEW4J_BASE__", BASE)
+    .replace("__WEBVIEW4J_FAST_LIMIT__", "65536");
   new Function("window", "fetch", script)(page, fetch);
   return requests;
 }

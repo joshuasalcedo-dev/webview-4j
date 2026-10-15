@@ -5,17 +5,22 @@ import vm from 'node:vm';
 
 const BASE = 'https://webview4j.localhost/';
 
-/** A page with the bridge, whose fetches wait in `requests` until the test answers them. */
-function page() {
+/**
+ * A page with the bridge, whose fetches wait in `requests` until the test answers them. With
+ * `ipc`, the page has the webview's IPC and its posts land in `posted`.
+ */
+function page({ ipc = false } = {}) {
   const requests = [];
+  const posted = [];
   const fetch = (url, init) => new Promise((resolve, reject) => requests.push({ url, init, resolve, reject }));
-  const window = {};
+  const window = ipc ? { ipc: { postMessage: (text) => posted.push(text) } } : {};
   const errors = [];
-  const context = { window, fetch, Response, TextDecoder, Uint8Array, setTimeout, console: { error: (...a) => errors.push(a) } };
-  const source = readFileSync(new URL('../src/bridge.js', import.meta.url), 'utf8').replace('__WEBVIEW4J_BASE__', BASE);
+  const context = { window, fetch, Response, TextDecoder, TextEncoder, Uint8Array, setTimeout, console: { error: (...a) => errors.push(a) } };
+  const source = readFileSync(new URL('../src/bridge.js', import.meta.url), 'utf8')
+    .replace('__WEBVIEW4J_BASE__', BASE).replace('__WEBVIEW4J_FAST_LIMIT__', '65536');
   vm.runInNewContext(source, context);
   vm.runInNewContext(source, context);   // installing twice must change nothing
-  return { bridge: window.__webview4j, requests, errors };
+  return { bridge: window.__webview4j, requests, posted, errors };
 }
 
 /** Frames as Rust sends a batch of emits (PROTOCOL.md §1). */
@@ -95,8 +100,50 @@ test('polling stops when the window closes', async () => {
   assert.equal(requests.length, 1);
 });
 
-test('the page cannot replace the bridge, and it runs nothing it is sent', () => {
+test('the page cannot replace the bridge', () => {
   const { bridge } = page();
   assert.ok(Object.isFrozen(bridge));
-  assert.deepEqual(Object.keys(bridge).sort(), ['invoke', 'listen'], 'no resolve or emit for the host to call');
+  assert.deepEqual(Object.keys(bridge).sort(), ['invoke', 'listen', 'settle']);
+});
+
+// ---- UI actions: the webview's IPC ----
+
+test('a small call goes over IPC as one frame and is settled by the host', async () => {
+  const { bridge, requests, posted } = page({ ipc: true });
+  const found = bridge.invoke('users.find', { id: 42, name: 'é' });
+  assert.equal(requests.length, 0, 'no fetch for a UI action');
+  const body = '{"id":42,"name":"é"}';
+  assert.equal(posted[0], `MSG invoke.users.find 11 ${Buffer.byteLength(body)}\r\nCall: 1\r\n\r\n${body}`, 'lengths in bytes');
+  bridge.settle(1, 200, { name: 'Ada' }, null);
+  bridge.settle(1, 200, 'again', null);   // a call settles once
+  assert.deepEqual(plain(await found), { name: 'Ada' });
+
+  const failing = bridge.invoke('users.delete');
+  bridge.settle(2, 404, "no command 'users.delete'", null);
+  await assert.rejects(failing, (error) => error.name === 'InvokeError' && error.status === 404
+    && error.command === 'users.delete' && error.message === "no command 'users.delete'");
+});
+
+test('a large answer is fetched where the host says', async () => {
+  const { bridge, requests } = page({ ipc: true });
+  const read = bridge.invoke('files.read');
+  bridge.settle(1, 200, null, 'calls/1');
+  await tick();
+  assert.equal(requests[0].url, BASE + 'calls/1');
+  requests[0].resolve(new Response('"lots of data"', { status: 200 }));
+  assert.equal(await read, 'lots of data');
+});
+
+test('large arguments are data: they go over the custom protocol, not IPC', async () => {
+  const { bridge, requests, posted } = page({ ipc: true });
+  bridge.invoke('files.write', { text: 'x'.repeat(70000) });
+  await tick();
+  assert.equal(posted.length, 0);
+  assert.equal(requests[0].url, BASE + 'invoke/files.write');
+});
+
+test('a command name that cannot be a subject is refused in the page', async () => {
+  const { bridge, posted, requests } = page({ ipc: true });
+  await assert.rejects(bridge.invoke('users find'), (error) => error.name === 'InvokeError' && error.status === 400);
+  assert.equal(posted.length + requests.length, 0);
 });

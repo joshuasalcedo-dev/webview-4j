@@ -1,12 +1,18 @@
-// The page's bridge to Java, as window.__webview4j, over the webview4j custom protocol.
-// @webview4j/api wraps it with types.
-//   invoke(command, args) -> Promise   POST <base>invoke/<command>: Java's App.handle answers
+// The page's bridge to Java, as window.__webview4j. @webview4j/api wraps it with types.
+//   invoke(command, args) -> Promise   a call to a command Java registered with App.handle:
+//                                       small (UI actions) over the webview's IPC, settled by the
+//                                       host's settle(...); large (data) over the custom protocol
 //   listen(topic, handler) -> unlisten  receives View.emit, from a held POST <base>events
-// Nothing here runs code it is sent: answers and emits are data, read as JSON.
+//   settle(...)                         called by the host only, with values it wrote as JSON
 (() => {
   if (window.__webview4j) return;
   const BASE = '__WEBVIEW4J_BASE__';
+  const FAST_LIMIT = __WEBVIEW4J_FAST_LIMIT__;
+  const COMMAND = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
+  const encoder = new TextEncoder();
   const listeners = new Map();
+  const pending = new Map();
+  let nextCall = 0;
   let polling = false;
 
   class InvokeError extends Error {
@@ -20,15 +26,60 @@
 
   async function invoke(command, args) {
     if (typeof command !== 'string' || !command) throw new TypeError('invoke needs a command name');
+    if (!COMMAND.test(command)) throw new InvokeError(command, 400, `'${command}' is not a valid command name`);
+    const body = JSON.stringify(args === undefined ? null : args);
+    // Every character is at least a byte: a long string is data without measuring its bytes.
+    if (body.length > FAST_LIMIT || !(window.ipc && typeof window.ipc.postMessage === 'function')) return viaFetch(command, body);
+    const size = encoder.encode(body).length;
+    return size <= FAST_LIMIT ? viaIpc(command, body, size) : viaFetch(command, body);
+  }
+
+  // A UI action: one frame over IPC (PROTOCOL.md §1), answered by the host's settle(...).
+  function viaIpc(command, body, size) {
+    const id = ++nextCall;
+    return new Promise((resolve, reject) => {
+      pending.set(id, { command, resolve, reject });
+      const block = 'Call: ' + id + '\r\n\r\n';
+      try {
+        window.ipc.postMessage('MSG invoke.' + command + ' ' + block.length + ' ' + size + '\r\n' + block + body);
+      } catch (error) {
+        pending.delete(id);
+        reject(error);
+      }
+    });
+  }
+
+  // Data: the custom protocol, arguments and answer as bytes.
+  async function viaFetch(command, body) {
     const response = await fetch(BASE + 'invoke/' + command, {
       method: 'POST',
       // text/plain keeps this a "simple" request: no CORS preflight per call.
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(args === undefined ? null : args),
+      body,
     });
-    const text = await response.text();
-    if (response.status !== 200) throw new InvokeError(command, response.status, text);
+    return answer(command, response.status, await response.text());
+  }
+
+  function answer(command, status, text) {
+    if (status !== 200) throw new InvokeError(command, status, text);
     return text === '' ? null : JSON.parse(text);
+  }
+
+  // Called by the host: call `id` answered with `status` and `value`, or, for an answer too large
+  // for a script, where to fetch it.
+  function settle(id, status, value, fetchPath) {
+    const call = pending.get(id);
+    if (!call) return;
+    pending.delete(id);
+    if (fetchPath) {
+      fetch(BASE + fetchPath, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '' })
+        .then(async (response) => answer(call.command, response.status, await response.text()))
+        .then(call.resolve, call.reject);
+    } else if (status === 200) {
+      call.resolve(value);
+    } else {
+      call.reject(new InvokeError(call.command, status, String(value)));
+    }
   }
 
   function listen(topic, handler) {
@@ -103,5 +154,5 @@
     }
   }
 
-  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, listen }) });
+  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, listen, settle }) });
 })();

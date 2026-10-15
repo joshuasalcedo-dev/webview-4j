@@ -135,18 +135,32 @@ through the native side unread.
 
 ### 2.4 The page's side
 
-The page reaches the native side through the `webview4j` custom protocol: `https://webview4j.localhost/`
-on Windows and Android, `webview4j://localhost/` elsewhere. Nothing outside the webview can reach
-it, and nothing it carries is ever run as a script.
+UI actions take the fast channel, data takes the custom protocol. A call is a UI action when its
+arguments are at most 64 KiB; the page decides, Java does not see the difference.
+
+**UI actions: the webview's IPC.** The page posts one frame, `MSG invoke.<…command>` with a `Call`
+header (the page's own number for the call). The native side checks the page's origin, sends Java
+`view.<view>.invoke.<…command>`, and settles the call with Java's answer by running
+`window.__webview4j.settle(<call>, <status>, <value>, <fetch>)` in the page. Everything in that
+script is written by the native side as JSON (the status as a number, the value parsed and written
+out again), never pasted in as received; an answer that is not JSON settles as `500`. An answer over
+64 KiB is settled with `<fetch>` = `calls/<call>` instead, and the page fetches it (below). A
+settle script only runs while the page showing is one the window allows.
+
+**Data: the `webview4j` custom protocol**, `https://webview4j.localhost/` on Windows and Android,
+`webview4j://localhost/` elsewhere. Nothing outside the webview can reach it, and nothing it
+carries is run as a script.
 
 | Request | Becomes |
 |---|---|
 | `POST invoke/<…command>`, body: the arguments | `view.<view>.invoke.<…command>` to Java, body unread; Java's answer (§2.3) is the response, `Status` and bytes unchanged |
+| `POST calls/<call>` | the large answer to an IPC call (above), once |
 | `POST events` | held until Java emits; answered with the waiting `view.<view>.emit.<…topic>` messages as frames (§1.1), `Content-Type: application/x-webview4j-frames` |
 
-- Every request must carry an `Origin` the window allows: by default the origin of the URL it
-  opened, or `null` for HTML it was given; `WindowOptions.origins(...)` sets the list. Others get
-  `403`, which the browser hides from the page as a failed fetch.
+- Both channels answer only origins the window allows: by default the origin of the URL it
+  opened, or `null` for HTML it was given; `WindowOptions.origins(...)` sets the list. Over IPC a
+  refused call settles as `403`; over the custom protocol the browser hides the `403` from the page
+  as a failed fetch. Java never sees a refused call.
 - Arguments are sent as `text/plain` (a CORS "simple" request, so no preflight per call) and are
   JSON by the bridge's rule; the native side labels them `application/json` for Java.
 - Emits made before the page has polled once are dropped, as with no listeners. While the page
