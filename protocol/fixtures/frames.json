@@ -1,0 +1,249 @@
+{
+  "description": "Frames and what they decode to, or the error kind they must raise (PROTOCOL.md §1.2 says in which order to check). \"frame\" is the frame as UTF-8 text; \"frameBase64\" its bytes when not text. Headers are [name, value] pairs in order.",
+  "decode": [
+    {
+      "name": "empty message",
+      "frame": "MSG app.list 2 0\r\n\r\n",
+      "expect": {
+        "subject": "app.list",
+        "headers": [],
+        "payload": ""
+      }
+    },
+    {
+      "name": "headers and a text payload",
+      "frame": "MSG view.wv-1.eval 54 5\r\nReply-To: _inbox.42\r\nContent-Type: text/javascript\r\n\r\n1 + 1",
+      "expect": {
+        "subject": "view.wv-1.eval",
+        "headers": [
+          [
+            "Reply-To",
+            "_inbox.42"
+          ],
+          [
+            "Content-Type",
+            "text/javascript"
+          ]
+        ],
+        "payload": "1 + 1"
+      }
+    },
+    {
+      "name": "a reply",
+      "frame": "MSG _inbox.42 15 1\r\nStatus: 200\r\n\r\n2",
+      "expect": {
+        "subject": "_inbox.42",
+        "headers": [
+          [
+            "Status",
+            "200"
+          ]
+        ],
+        "payload": "2"
+      }
+    },
+    {
+      "name": "a call from the page, with a tail subject",
+      "frame": "MSG view.wv-1.invoke.users.find 30 9\r\nReply-To: view.wv-1.call.7\r\n\r\n{\"id\":42}",
+      "expect": {
+        "subject": "view.wv-1.invoke.users.find",
+        "headers": [
+          [
+            "Reply-To",
+            "view.wv-1.call.7"
+          ]
+        ],
+        "payload": "{\"id\":42}"
+      }
+    },
+    {
+      "name": "lengths count bytes, not characters",
+      "frame": "MSG view.wv-1.title 28 17\r\nContent-Type: text/plain\r\n\r\nhéllo ✓ 世界",
+      "expect": {
+        "subject": "view.wv-1.title",
+        "headers": [
+          [
+            "Content-Type",
+            "text/plain"
+          ]
+        ],
+        "payload": "héllo ✓ 世界"
+      }
+    },
+    {
+      "name": "a payload that looks like a frame is still just payload",
+      "frame": "MSG view.wv-1.load-html 2 24\r\n\r\nx\r\nMSG app.quit 2 0\r\n\r\ny",
+      "expect": {
+        "subject": "view.wv-1.load-html",
+        "headers": [],
+        "payload": "x\r\nMSG app.quit 2 0\r\n\r\ny"
+      }
+    },
+    {
+      "name": "binary payload, zero bytes included",
+      "frameBase64": "TVNHIHZpZXcud3YtMS5lbWl0LmltYWdlIDQyIDcNCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtDQoNCgABAv8ADQo=",
+      "expect": {
+        "subject": "view.wv-1.emit.image",
+        "headers": [
+          [
+            "Content-Type",
+            "application/octet-stream"
+          ]
+        ],
+        "payloadBase64": "AAEC/wANCg=="
+      }
+    },
+    {
+      "name": "a name may repeat; order is kept",
+      "frame": "MSG app.list 26 0\r\nX-Trace: a\r\nx-trace: b\r\n\r\n",
+      "expect": {
+        "subject": "app.list",
+        "headers": [
+          [
+            "X-Trace",
+            "a"
+          ],
+          [
+            "x-trace",
+            "b"
+          ]
+        ],
+        "payload": ""
+      }
+    },
+    {
+      "name": "spaces around a header value are trimmed",
+      "frame": "MSG _inbox.1 19 0\r\nStatus:   404  \r\n\r\n",
+      "expect": {
+        "subject": "_inbox.1",
+        "headers": [
+          [
+            "Status",
+            "404"
+          ]
+        ],
+        "payload": ""
+      }
+    }
+  ],
+  "encode": [
+    {
+      "name": "encoding is exact",
+      "subject": "view.wv-1.eval",
+      "headers": [
+        [
+          "Reply-To",
+          "_inbox.42"
+        ],
+        [
+          "Content-Type",
+          "text/javascript"
+        ]
+      ],
+      "payload": "1 + 1",
+      "frame": "MSG view.wv-1.eval 54 5\r\nReply-To: _inbox.42\r\nContent-Type: text/javascript\r\n\r\n1 + 1"
+    },
+    {
+      "name": "no headers still ends the block",
+      "subject": "app.list",
+      "headers": [],
+      "payload": "",
+      "frame": "MSG app.list 2 0\r\n\r\n"
+    }
+  ],
+  "errors": [
+    {
+      "name": "not MSG",
+      "frame": "PUB app.list 2 0\r\n\r\n",
+      "error": "bad-line"
+    },
+    {
+      "name": "the line must end in CRLF",
+      "frame": "MSG app.list 2 0\n\r\n",
+      "error": "bad-line"
+    },
+    {
+      "name": "single spaces only",
+      "frame": "MSG  app.list 2 0\r\n\r\n",
+      "error": "bad-line"
+    },
+    {
+      "name": "two lengths, not one",
+      "frame": "MSG app.list 2\r\n\r\n",
+      "error": "bad-line"
+    },
+    {
+      "name": "a bad subject",
+      "frame": "MSG view..eval 2 0\r\n\r\n",
+      "error": "bad-subject"
+    },
+    {
+      "name": "a subject over 256 bytes",
+      "frame": "MSG aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 2 0\r\n\r\n",
+      "error": "too-large"
+    },
+    {
+      "name": "no leading zeros",
+      "frame": "MSG app.list 02 0\r\n\r\n",
+      "error": "bad-length"
+    },
+    {
+      "name": "no signs",
+      "frame": "MSG app.list 2 -0\r\n\r\n",
+      "error": "bad-length"
+    },
+    {
+      "name": "a header block is at least its final CRLF",
+      "frame": "MSG app.list 0 0\r\n",
+      "error": "bad-length"
+    },
+    {
+      "name": "a header block over 64 KiB",
+      "note": "refused from the line alone, before reading the rest",
+      "frame": "MSG app.list 65537 0\r\n\r\n",
+      "error": "too-large"
+    },
+    {
+      "name": "a payload over 64 MiB",
+      "note": "refused from the line alone, before reading the rest",
+      "frame": "MSG app.list 2 67108865\r\n\r\n",
+      "error": "too-large"
+    },
+    {
+      "name": "the payload is shorter than stated",
+      "frame": "MSG app.list 2 5\r\n\r\nabc",
+      "error": "truncated"
+    },
+    {
+      "name": "bytes after the payload",
+      "note": "over FFM a frame is exactly one buffer",
+      "frame": "MSG app.list 2 0\r\n\r\nextra",
+      "error": "bad-length"
+    },
+    {
+      "name": "the header block does not end in an empty line",
+      "frame": "MSG app.list 6 0\r\nA: b\r\n",
+      "error": "bad-header"
+    },
+    {
+      "name": "a header line without a colon",
+      "frame": "MSG app.list 12 0\r\nNo colon\r\n\r\n",
+      "error": "bad-header"
+    },
+    {
+      "name": "a header name with a space",
+      "frame": "MSG app.list 15 0\r\nReply To: x\r\n\r\n",
+      "error": "bad-header"
+    },
+    {
+      "name": "a bare LF inside a header block",
+      "frame": "MSG app.list 13 0\r\nA: b\nc: d\r\n\r\n",
+      "error": "bad-header"
+    },
+    {
+      "name": "an empty header name",
+      "frame": "MSG app.list 7 0\r\n: x\r\n\r\n",
+      "error": "bad-header"
+    }
+  ]
+}

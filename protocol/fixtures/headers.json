@@ -1,0 +1,66 @@
+{
+  "description": "Header blocks (as UTF-8 text) and the pairs they decode to, or are refused as \"bad-header\".",
+  "valid": [
+    {
+      "block": "\r\n",
+      "headers": []
+    },
+    {
+      "block": "Reply-To: _inbox.1\r\n\r\n",
+      "headers": [
+        [
+          "Reply-To",
+          "_inbox.1"
+        ]
+      ]
+    },
+    {
+      "block": "Content-Type:text/plain\r\n\r\n",
+      "headers": [
+        [
+          "Content-Type",
+          "text/plain"
+        ]
+      ],
+      "note": "no space after the colon is fine"
+    },
+    {
+      "block": "X-Note: a: b\r\n\r\n",
+      "headers": [
+        [
+          "X-Note",
+          "a: b"
+        ]
+      ],
+      "note": "the first colon splits"
+    },
+    {
+      "block": "X-Text: 世界\r\n\r\n",
+      "headers": [
+        [
+          "X-Text",
+          "世界"
+        ]
+      ]
+    },
+    {
+      "block": "X-Empty:\r\n\r\n",
+      "headers": [
+        [
+          "X-Empty",
+          ""
+        ]
+      ]
+    }
+  ],
+  "invalid": [
+    "",
+    "A: b\r\n",
+    "A: b\r\nB\r\n\r\n",
+    "A b: c\r\n\r\n",
+    "A_b: c\r\n\r\n",
+    ": c\r\n\r\n",
+    "A: b\nB: c\r\n\r\n",
+    "A: b\rB: c\r\n\r\n"
+  ]
+}

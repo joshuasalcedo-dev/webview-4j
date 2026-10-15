@@ -1,0 +1,236 @@
+# webview-4j protocol, version 1
+
+How Java, the native side (Rust) and, from step 3, the page talk to each other. It is modelled on
+[NATS](https://docs.nats.io/reference/reference-protocols/nats-protocol): a message is a
+**subject** to route on, **headers** to describe it, and a **payload** of bytes that nobody in the
+middle reads. Each side implements this document on its own; the fixtures in
+[`protocol/fixtures`](protocol/fixtures) are the conformance tests every implementation runs.
+
+> Status: draft for review. Nothing implements it yet; today's FFM link (action codes and JSON
+> replies) is replaced by it in step 2.
+
+## 1. Messages
+
+A message has:
+
+| Part | What it is |
+|---|---|
+| subject | where it goes, e.g. `view.wv-1.eval` (§2) |
+| headers | name/value pairs, e.g. `Reply-To: _inbox.42` (§3) |
+| payload | bytes, possibly empty, described by `Content-Type`; passed on unread by anyone routing it |
+
+### 1.1 Encoding
+
+One encoding, the same over FFM today and over any later transport (a socket, the page):
+
+```
+MSG <subject> <header-length> <payload-length>\r\n
+<header block>
+<payload>
+```
+
+- The first line is ASCII: `MSG`, the subject, then two decimal lengths in bytes, single spaces
+  between them, ending in `\r\n`.
+- The **header block** is zero or more `Name: value\r\n` lines followed by one empty `\r\n` line.
+  `header-length` counts the whole block including that final `\r\n`, so it is at least 2.
+- The **payload** is exactly `payload-length` bytes, then the frame ends: no trailing `\r\n`.
+  Over FFM a frame is one buffer of exactly this size; a stream transport reads frames back to back.
+- Lengths have no sign, no leading zeros (except `0` itself) and fit in a signed 64-bit integer.
+
+An empty message to a subject:
+
+```
+MSG app.list 2 0\r\n
+\r\n
+```
+
+### 1.2 Decoding order
+
+So that every implementation names the same error for the same bad frame, check in this order and
+stop at the first failure:
+
+1. The first line, up to the first `\r\n` (at most 300 bytes), is exactly
+   `MSG <subject> <header-length> <payload-length>`: `bad-line`.
+2. The subject is at most 256 bytes (`too-large`) and valid (§2): `bad-subject`.
+3. Both lengths are plain decimals, and `header-length` is at least 2: `bad-length`.
+4. The lengths are within the limits (§1.3): `too-large`. Decided from the line alone, before
+   reading or buffering the rest.
+5. What follows the line is exactly `header-length + payload-length` bytes: fewer is `truncated`,
+   more is `bad-length`.
+6. The header block is well formed (§3) and ends in an empty line: `bad-header`.
+
+### 1.3 Limits
+
+| Limit | Value | Over it |
+|---|---|---|
+| subject | 256 bytes | the frame is refused |
+| header block | 64 KiB | the frame is refused |
+| payload | 64 MiB | the frame is refused, or answered `413` (§4) |
+
+A refused frame is never half-processed: the receiver drops it and, if it can tell who sent it
+(§4), answers with `400` or `413`.
+
+## 2. Subjects
+
+- Tokens separated by `.`. A token is one or more of `A-Z a-z 0-9 - _`. No empty tokens, no
+  whitespace, no other characters. Case-sensitive.
+- Some subjects end in a **tail** of several tokens that is one value, e.g. the command in
+  `view.wv-1.invoke.users.find` is `users.find`. Tails are marked `<…tail>` below.
+- `_inbox.<n>` subjects are reply addresses a sender makes up (§4); they carry only replies.
+
+### 2.1 From Java to the native side
+
+| Subject | Payload | Reply |
+|---|---|---|
+| `app.open` | `application/json`: window options (§5.1) | `200`, `{"view":"wv-1"}` |
+| `app.list` | none | `200`, a list of views (§5.2) |
+| `app.quit` | none | `200`, then every window closes and the loop ends |
+| `view.<view>.navigate` | `text/plain`: the URL | `200` |
+| `view.<view>.load-html` | `text/html`: the page | `200` |
+| `view.<view>.eval` | `text/javascript`: a script | `200`, `application/json`: its value |
+| `view.<view>.cookies` | `text/plain`: the URL | `200`, a list of cookies (§5.3) |
+| `view.<view>.title` | `text/plain`: the title | `200` |
+| `view.<view>.size` | `{"width":800,"height":600}` logical pixels | `200` |
+| `view.<view>.position` | `{"x":10,"y":10}` logical pixels | `200` |
+| `view.<view>.bounds` | `{"x":0,"y":0,"width":800,"height":600}` physical pixels | `200` |
+| `view.<view>.show` / `hide` / `focus` / `close` | none | `200` |
+| `view.<view>.capture` | `{"api":true,"clicks":false,...}`, keys left out keep their setting (§5.4) | `200` |
+| `view.<view>.websocket.<socket>.send` | `text/plain`: one text frame | `200`, or `404` if the socket is unknown or not open |
+| `view.<view>.emit.<…topic>` | `application/json`: the data | `200` once handed to the page |
+| `view.<view>.call.<call>` | the answer to a page's call (§2.3) | none |
+
+Every message from Java except `view.<view>.call.<call>` carries `Reply-To`; the native side
+answers each exactly once (§4).
+
+### 2.2 From the native side to Java
+
+| Subject | Payload | Notes |
+|---|---|---|
+| `app.ready` | none | first message; header `Protocol: 1` |
+| `app.log` | `{"level":"warn","target":"wry::…","message":"…"}` | native log records; may arrive from any thread |
+| `view.<view>.closed` | none | the window closed, by the user or `close` |
+| `view.<view>.log` | `{"level":"warn","message":"…"}` | the page's console and uncaught errors (capture `console`) |
+| `view.<view>.api-call` | §5.5 | capture `api` |
+| `view.<view>.click` | §5.5 | capture `clicks` |
+| `view.<view>.dom-event` | §5.5 | capture `domEvents` |
+| `view.<view>.websocket` | `{"socket":3,"url":"…","direction":"open|in|out|close","frame":"…"}` | capture `websocket` |
+| `view.<view>.invoke.<…command>` | the page's arguments, untouched | always on; header `Reply-To: view.<view>.call.<call>` |
+| `_inbox.…` | a reply (§4) | |
+
+The `<view>` in a subject is set by the native side from the window the message came from. A page
+can never choose it.
+
+### 2.3 Calls from the page
+
+A page's `invoke("users.find", {id: 42})` arrives as `view.wv-1.invoke.users.find` with
+`Reply-To: view.wv-1.call.7`. Java answers by sending a message to that subject, with a `Status`
+header: `200` and the value, or an error status and a `text/plain` message. The native side
+delivers it to the page, which settles its promise. The page's arguments and Java's answer pass
+through the native side unread.
+
+## 3. Headers
+
+- `Name: value` lines. Names are one or more of `A-Z a-z 0-9 -`, compared without regard to case.
+  Values are UTF-8 without `\r` or `\n`; spaces around the value are trimmed.
+- A name may appear more than once; receivers that expect one value take the first.
+
+| Header | Meaning |
+|---|---|
+| `Reply-To` | the subject to answer on (§4) |
+| `Status` | on replies and call answers: an HTTP status code (§4) |
+| `Content-Type` | what the payload is; `application/json` when left out |
+| `Protocol` | on `app.ready`: the protocol version, `1` |
+
+Unknown headers are ignored and passed on.
+
+## 4. Replies and errors
+
+A reply is a message sent to the `Reply-To` subject of the message it answers, with a `Status`
+header. Its payload is the result (`200`), or a `text/plain` message saying what went wrong.
+Senders pick their own `_inbox.<n>` subjects and match replies by them.
+
+| Status | When |
+|---|---|
+| `200` | done |
+| `400` | the payload or subject is malformed, e.g. `size` without `height` |
+| `404` | no such view, socket or subject |
+| `413` | the payload is over a limit |
+| `500` | it failed on the native side, e.g. the webview refused a URL |
+| `503` | the event loop is stopping |
+
+Every message that has `Reply-To` gets exactly one reply, unless the loop stops first; then the
+sender fails what is still waiting.
+
+## 5. Payloads
+
+JSON payloads are objects with `camelCase` keys. Receivers reject unknown keys in what they are
+sent (`400`), so a typo fails loudly instead of being half-understood.
+
+### 5.1 Window options (`app.open`)
+
+| Key | Type | Default |
+|---|---|---|
+| `url` | string | |
+| `html` | string, used when there is no `url` | |
+| `title` | string | `"WebView"` |
+| `width`, `height` | number, logical pixels | `1024`, `768` |
+| `resizable`, `decorations` | boolean | `true` |
+| `devtools`, `headless` | boolean | `false` |
+| `initializationScript` | string | |
+| `dataDirectory` | absolute path | |
+| `ownerWindow` | integer, native handle (Windows) | |
+| `capture` | §5.4 | console only |
+
+### 5.2 Views (`app.list`)
+
+`[{"view":"wv-1","title":"…","url":"…","dataDirectory":"…" or null}]`
+
+### 5.3 Cookies (`view.<view>.cookies`)
+
+`[{"name":"…","value":"…","domain":"…","path":"…","httpOnly":true,"secure":true}]`. Values are
+credentials: implementations must not log them.
+
+### 5.4 Capture switches
+
+`{"api":bool,"clicks":bool,"domEvents":bool,"websocket":bool,"console":bool}`. Only `console` is
+on unless set.
+
+### 5.5 Page reports
+
+As the inspector scripts write them, minus any `viewId` or `sessionKey` the page claims:
+
+- `api-call`: `method`, `url`, `status`, `durationMs`, `requestBody`, `responseBody`,
+  `requestHeaders`, `responseHeaders`, `cookies`
+- `click`: `selector`, `targetSelector`, `tag`, `text`, `x`, `y`, `button`, and what describes the
+  element (`id`, `classes`, `role`, `ariaLabel`, `href`, `title`, `dataAttrs`)
+- `dom-event`: `kind` (`click`, `hover`, `input`, `keyDown`, …), `element` (a snapshot), `x`, `y`,
+  `button`, `key`
+
+## 6. The FFM transport
+
+```c
+int32_t wv_run(void (*on_message)(const uint8_t *frame, size_t length));
+int32_t wv_send(const uint8_t *frame, size_t length);
+const char *wv_version(void);
+```
+
+- `wv_run` runs the event loop on the calling thread and calls `on_message` with each frame from
+  the native side; the buffer is valid only during the call. Returns when the loop ends, with its
+  exit code; `-1` if a loop already runs.
+- `wv_send` hands one frame to the loop from any thread and returns at once: `0` taken, `1` no loop
+  is running, `2` the frame is malformed or over a limit. Everything else, including errors about
+  what the frame asks for, comes back as a reply.
+- `wv_quit`, `wv_call`, `wv_submit`, `wv_actions` and `wv_free` go away: `app.quit` and replies
+  replace them.
+
+## 7. Conformance
+
+[`protocol/fixtures`](protocol/fixtures) holds the cases every implementation must pass:
+
+- `frames.json`: frames and what they decode to, or the error they must raise, and frames
+  implementations must encode exactly.
+- `subjects.json`: valid and invalid subjects.
+- `headers.json`: valid and invalid header blocks.
+
+Error kinds are names, not messages: `bad-line`, `bad-subject`, `bad-header`, `bad-length`,
+`truncated`, `too-large`.
