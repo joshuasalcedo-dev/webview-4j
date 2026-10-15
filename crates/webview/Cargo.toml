@@ -1,12 +1,22 @@
 [package]
 name = "webview"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+
+# webview4j.dll / libwebview4j.so / libwebview4j.dylib: loaded by the Java library through FFM.
+[lib]
+name = "webview4j"
+crate-type = ["cdylib", "rlib"]
+
+# The HTTP sidecar the swaswa Java client talks to, kept while the FFM API replaces it.
+[[bin]]
+name = "webview"
+path = "src/main.rs"
 
 [dependencies]
 inspector = { path = "../inspector" }
 tao = "0.36.0"
 wry = "0.56.0"
 tiny_http = "0.12"
-serde = { version = "1", features = ["derive"] }
+serde = { workspace = true }
 serde_json = "1"
