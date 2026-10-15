@@ -70,4 +70,7 @@ sourceSets.main {
 tasks.test {
     useJUnitPlatform()
     jvmArgs("--enable-native-access=ALL-UNNAMED")
+    // -Pbenchmark runs Benchmark too: ./gradlew test --tests '*Benchmark' -Pbenchmark
+    systemProperty("benchmark", providers.gradleProperty("benchmark").isPresent)
+    inputs.property("benchmark", providers.gradleProperty("benchmark").isPresent)
 }
