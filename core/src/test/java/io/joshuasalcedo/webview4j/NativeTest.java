@@ -1,4 +1,4 @@
-package io.joshuasalcedo.webview4j.ffi;
+package io.joshuasalcedo.webview4j;
 
 import static org.junit.jupiter.api.Assertions.*;
 

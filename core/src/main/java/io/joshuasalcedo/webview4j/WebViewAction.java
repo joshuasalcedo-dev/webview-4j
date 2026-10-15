@@ -3,7 +3,7 @@ package io.joshuasalcedo.webview4j;
 import java.util.Optional;
 
 /** The page inside a window: what it shows and what runs in it. Codes 2xx. */
-public enum WebViewAction implements Action {
+enum WebViewAction implements Action {
     NAVIGATE(200),
     LOAD_HTML(201),
     EVAL(202),
@@ -21,7 +21,7 @@ public enum WebViewAction implements Action {
     @Override public String group() { return "webview"; }
     @Override public int code()     { return code; }
 
-    public static Optional<WebViewAction> fromCode(int code) {
+    static Optional<WebViewAction> fromCode(int code) {
         for (WebViewAction action : values()) {
             if (action.code == code) return Optional.of(action);
         }

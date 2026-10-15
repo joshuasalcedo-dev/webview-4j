@@ -1,10 +1,8 @@
-package io.joshuasalcedo.webview4j.ffi;
+package io.joshuasalcedo.webview4j;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.joshuasalcedo.webview4j.WebViewAction;
-import io.joshuasalcedo.webview4j.WindowAction;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;

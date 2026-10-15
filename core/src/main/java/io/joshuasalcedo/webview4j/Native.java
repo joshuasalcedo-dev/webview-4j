@@ -1,6 +1,5 @@
-package io.joshuasalcedo.webview4j.ffi;
+package io.joshuasalcedo.webview4j;
 
-import io.joshuasalcedo.webview4j.Action;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -18,7 +17,7 @@ import java.util.function.Consumer;
  * <p>{@link #run} blocks a thread with the event loop; {@link #call} is made from any other thread
  * and blocks until the loop answers. Replies and events are JSON.
  */
-public final class Native {
+final class Native {
 
     private Native() {}
 
@@ -42,7 +41,7 @@ public final class Native {
     private static volatile Consumer<String> listener;
 
     /** The native library's version, e.g. {@code 0.1.0}. */
-    public static String version() {
+    static String version() {
         try {
             return string((MemorySegment) WV_VERSION.invokeExact());
         } catch (Throwable e) {
@@ -51,7 +50,7 @@ public final class Native {
     }
 
     /** Every action the library knows, as {@code <group> <name> <code>} lines. */
-    public static String actions() {
+    static String actions() {
         try {
             return string((MemorySegment) WV_ACTIONS.invokeExact());
         } catch (Throwable e) {
@@ -67,7 +66,7 @@ public final class Native {
      *
      * @throws IllegalStateException if an event loop is already running
      */
-    public static int run(Consumer<String> onEvent) {
+    static int run(Consumer<String> onEvent) {
         listener = onEvent;
         try {
             int code = (int) WV_RUN.invokeExact(ON_EVENT);
@@ -87,7 +86,7 @@ public final class Native {
      * taken: the reply arrives as the event {@code {"type":"reply","request":<request>,...}}.
      * Otherwise returns the JSON error. {@code view} and {@code payload} may be null.
      */
-    public static String submit(Action action, String view, String payload, long request) {
+    static String submit(Action action, String view, String payload, long request) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment refused = (MemorySegment) WV_SUBMIT.invokeExact(
                     action.code(), cString(arena, view), cString(arena, payload), request);
@@ -106,7 +105,7 @@ public final class Native {
      * Performs an action and returns its JSON reply: {@code {"ok":true,...}} or
      * {@code {"ok":false,"error":"..."}}. {@code view} and {@code payload} may be null.
      */
-    public static String call(Action action, String view, String payload) {
+    static String call(Action action, String view, String payload) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment reply = (MemorySegment) WV_CALL.invokeExact(
                     action.code(), cString(arena, view), cString(arena, payload));
@@ -121,7 +120,7 @@ public final class Native {
     }
 
     /** Closes every window and makes {@link #run} return. False if no loop is running. */
-    public static boolean quit() {
+    static boolean quit() {
         try {
             return (boolean) WV_QUIT.invokeExact();
         } catch (Throwable e) {

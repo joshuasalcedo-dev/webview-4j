@@ -8,7 +8,7 @@ function installBridge() {
   const posted: { event: string; payload: { id: number; command: string; args: unknown } }[] = [];
   const page = { ipc: { postMessage: (raw: string) => posted.push(JSON.parse(raw)) } } as unknown as Window;
   (globalThis as { window?: Window }).window = page;
-  const script = readFileSync(new URL("../../../crates/webview/src/bridge.js", import.meta.url), "utf8");
+  const script = readFileSync(new URL("../../../../crates/webview/src/bridge.js", import.meta.url), "utf8");
   new Function("window", script)(page);
   const host = page.__webview4j as unknown as {
     resolve(id: number, ok: boolean, value: unknown): void;

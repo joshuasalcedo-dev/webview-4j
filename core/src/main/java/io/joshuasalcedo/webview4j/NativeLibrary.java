@@ -1,4 +1,4 @@
-package io.joshuasalcedo.webview4j.ffi;
+package io.joshuasalcedo.webview4j;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,7 +21,7 @@ import java.util.Locale;
  *
  * <p>{@code -Dwebview4j.library=<path>} loads that file instead, e.g. a fresh {@code cargo build}.
  */
-public final class NativeLibrary {
+final class NativeLibrary {
 
     static final String NAME = "webview4j";
 
@@ -32,12 +32,12 @@ public final class NativeLibrary {
     }
 
     /** The library's exported functions; loads it on first use. */
-    public static SymbolLookup lookup() {
+    static SymbolLookup lookup() {
         return Holder.LOOKUP;
     }
 
     /** This machine as the jar names it, e.g. {@code windows-x64}, {@code macos-aarch64}. */
-    public static String platform() {
+    static String platform() {
         String name = System.getProperty("os.name").toLowerCase(Locale.ROOT);
         String os = name.startsWith("windows") ? "windows" : name.startsWith("mac") ? "macos" : "linux";
         String arch = switch (System.getProperty("os.arch")) {

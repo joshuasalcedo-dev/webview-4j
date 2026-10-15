@@ -7,7 +7,7 @@ import java.util.Locale;
  * {@link WebViewAction} and {@link InspectorAction}; their codes match
  * {@code crates/webview/src/action.rs}, and FFM passes an action as its code.
  */
-public sealed interface Action permits WindowAction, WebViewAction, InspectorAction {
+sealed interface Action permits WindowAction, WebViewAction, InspectorAction {
 
     /** The group, e.g. {@code window}. */
     String group();

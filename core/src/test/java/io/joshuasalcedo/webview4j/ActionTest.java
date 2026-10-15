@@ -2,7 +2,6 @@ package io.joshuasalcedo.webview4j;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.joshuasalcedo.webview4j.ffi.Native;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;

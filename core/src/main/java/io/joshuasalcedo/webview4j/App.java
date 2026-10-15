@@ -1,6 +1,5 @@
 package io.joshuasalcedo.webview4j;
 
-import io.joshuasalcedo.webview4j.ffi.Native;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -151,9 +150,11 @@ public final class App implements AutoCloseable {
 
     /**
      * Any action, with a JSON-able payload (maps, lists, strings, numbers, booleans); the future
-     * gets the reply object. The typed methods on {@code App} and {@link View} are built on this.
+     * gets the reply object. Package-private on purpose: raw actions could answer a page's call
+     * with forged data ({@code RESOLVE}) or run unchecked scripts. The typed methods on
+     * {@code App} and {@link View} are the API, and are built on this.
      */
-    public CompletableFuture<Map<String, Object>> submit(Action action, String view, Map<String, ?> payload) {
+    CompletableFuture<Map<String, Object>> submit(Action action, String view, Map<String, ?> payload) {
         Objects.requireNonNull(action, "action");
         long request = requests.incrementAndGet();
         CompletableFuture<Map<String, Object>> reply = new CompletableFuture<>();
