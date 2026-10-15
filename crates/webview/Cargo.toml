@@ -1,0 +1,12 @@
+[package]
+name = "webview"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+inspector = { path = "../inspector" }
+tao = "0.36.0"
+wry = "0.56.0"
+tiny_http = "0.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

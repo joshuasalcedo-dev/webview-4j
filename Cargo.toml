@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["native"]
+members = ["native", "crates/*"]
 
 [workspace.package]
 edition = "2024"
@@ -10,3 +10,6 @@ version = "0.1.0"
 lto = true
 codegen-units = 1
 strip = true
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
