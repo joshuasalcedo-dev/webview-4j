@@ -3,18 +3,24 @@ package io.joshuasalcedo.webview4j;
 import java.util.Locale;
 import java.util.Map;
 
-/** Turns the native side's event JSON into {@link WebViewEvent}s. */
+/** Turns the native side's messages (PROTOCOL.md §2.2) into {@link WebViewEvent}s. */
 final class Events {
 
     private Events() {}
 
-    /** The event, or null for a type this version does not know (replies are handled elsewhere). */
+    /** A native log record, from {@code app.log}. */
+    static LogRecord nativeLog(Map<String, Object> json) {
+        return new LogRecord(LogRecord.Source.NATIVE, null, constant(LogRecord.Level.class, json, "level"),
+                text(json, "target"), text(json, "message"));
+    }
+
+    /**
+     * A report from view {@code view}, from {@code view.<view>.<kind>}; null for a kind this
+     * version does not know.
+     */
     @SuppressWarnings("unchecked")
-    static WebViewEvent from(Map<String, Object> json) {
-        String view = text(json, "view");
-        return switch (String.valueOf(json.get("type"))) {
-            case "ready" -> new Ready();
-            case "closed" -> new Closed(view);
+    static WebViewEvent fromView(String view, String kind, Map<String, Object> json) {
+        return switch (kind) {
             case "api-call" -> new ApiCall(view, text(json, "method"), text(json, "url"),
                     (int) number(json, "status"), number(json, "durationMs"),
                     text(json, "requestBody"), text(json, "responseBody"), json);
@@ -27,8 +33,8 @@ final class Events {
             }
             case "websocket" -> new WebSocketFrame(view, number(json, "socket"), text(json, "url"),
                     constant(WebSocketFrame.Direction.class, json, "direction"), text(json, "frame"));
-            case "log" -> new LogRecord(constant(LogRecord.Source.class, json, "source"), view,
-                    constant(LogRecord.Level.class, json, "level"), text(json, "target"), text(json, "message"));
+            case "log" -> new LogRecord(LogRecord.Source.PAGE, view, constant(LogRecord.Level.class, json, "level"),
+                    null, text(json, "message"));
             default -> null;
         };
     }

@@ -1,9 +1,10 @@
-//! Forwards the native side's `log` records (this crate, Tao, Wry) to Java as events:
-//! `{"type":"log","source":"native","level":"warn","target":"wry::...","message":"..."}`.
+//! Forwards the native side's `log` records (this crate, Tao, Wry) to Java as `app.log`
+//! messages: `{"level":"warn","target":"wry::...","message":"..."}` (PROTOCOL.md §2.2).
 
 use log::{LevelFilter, Log, Metadata, Record};
 use serde_json::json;
 
+use crate::frame::Message;
 use crate::runtime;
 
 struct Forward;
@@ -15,13 +16,12 @@ impl Log for Forward {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            runtime::emit(json!({
-                "type": "log",
-                "source": "native",
+            let record = json!({
                 "level": record.level().as_str().to_ascii_lowercase(),
                 "target": record.target(),
                 "message": record.args().to_string(),
-            }));
+            });
+            runtime::emit(&Message::new("app.log").payload(record.to_string()));
         }
     }
 

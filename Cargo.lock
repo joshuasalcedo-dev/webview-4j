@@ -2904,6 +2904,7 @@ dependencies = [
 name = "webview"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "inspector",
  "log",
  "serde",

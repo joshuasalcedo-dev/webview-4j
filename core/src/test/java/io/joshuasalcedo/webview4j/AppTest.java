@@ -80,7 +80,12 @@ class AppTest {
             // failures are failed futures
             CompletionException bad = assertThrows(CompletionException.class, () -> app.view("wv-404").show().join());
             assertInstanceOf(WebViewException.class, bad.getCause());
-            assertTrue(bad.getCause().getMessage().contains("no webview with id 'wv-404'"));
+            assertTrue(bad.getCause().getMessage().contains("no view 'wv-404'"), bad.getCause().getMessage());
+
+            // names that would change a message's subject never get that far
+            assertThrows(IllegalArgumentException.class, () -> app.view("wv-1.close"));
+            assertThrows(IllegalArgumentException.class, () -> view.emit("orders..updated", 1));
+            assertThrows(IllegalArgumentException.class, () -> app.handle("users find", call -> null));
 
             assertEquals(1, app.views().join().size());
             view.close().join();

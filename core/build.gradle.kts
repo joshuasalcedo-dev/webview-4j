@@ -74,4 +74,8 @@ tasks.test {
     // -Pbenchmark runs Benchmark too: ./gradlew :core:test --tests '*Benchmark' -Pbenchmark
     systemProperty("benchmark", providers.gradleProperty("benchmark").isPresent)
     inputs.property("benchmark", providers.gradleProperty("benchmark").isPresent)
+    // The protocol's conformance fixtures, shared with the Rust tests.
+    val fixtures = rootProject.file("protocol/fixtures")
+    systemProperty("webview4j.fixtures", fixtures.absolutePath)
+    inputs.dir(fixtures)
 }

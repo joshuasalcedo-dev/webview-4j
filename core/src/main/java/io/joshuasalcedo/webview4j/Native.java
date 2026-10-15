@@ -8,68 +8,64 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
- * The functions {@code crates/webview/src/lib.rs} exports, one downcall handle each.
- * Handles are static constants, which keeps them visible to GraalVM native-image.
- *
- * <p>{@link #run} blocks a thread with the event loop; {@link #call} is made from any other thread
- * and blocks until the loop answers. Replies and events are JSON.
+ * The native library's three functions (PROTOCOL.md §6), one downcall handle each. Handles are
+ * static constants, which keeps them visible to GraalVM native-image. Frames go in through
+ * {@link #send} and come out on the consumer {@link #run} was given.
  */
 final class Native {
 
     private Native() {}
 
+    /** {@link #send}: the frame was taken. */
+    static final int SENT = 0;
+    /** {@link #send}: no event loop is running. */
+    static final int NOT_RUNNING = 1;
+    /** {@link #send}: the frame is malformed or over a limit. */
+    static final int MALFORMED = 2;
+
     private static final Linker LINKER = Linker.nativeLinker();
 
     private static final MethodHandle WV_VERSION = downcall("wv_version", FunctionDescriptor.of(ValueLayout.ADDRESS));
-    private static final MethodHandle WV_ACTIONS = downcall("wv_actions", FunctionDescriptor.of(ValueLayout.ADDRESS));
     private static final MethodHandle WV_RUN = downcall("wv_run",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-    private static final MethodHandle WV_CALL = downcall("wv_call",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-    private static final MethodHandle WV_SUBMIT = downcall("wv_submit", FunctionDescriptor.of(ValueLayout.ADDRESS,
-            ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
-    private static final MethodHandle WV_QUIT = downcall("wv_quit", FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN));
-    private static final MethodHandle WV_FREE = downcall("wv_free", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+    private static final MethodHandle WV_SEND = downcall("wv_send",
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
 
-    /** The C function pointer the loop calls with each event: {@link #onEvent}. */
-    private static final MemorySegment ON_EVENT = upcall();
+    /** The C function pointer the loop calls with each frame: {@link #onMessage}. */
+    private static final MemorySegment ON_MESSAGE = upcall();
 
-    /** Where {@link #onEvent} hands events while {@link #run} runs. */
-    private static volatile Consumer<String> listener;
+    /** Where {@link #onMessage} hands frames while {@link #run} runs. */
+    private static volatile Consumer<byte[]> listener;
+
+    /** True while a thread is inside {@link #run}. */
+    private static final AtomicBoolean RUNNING = new AtomicBoolean();
 
     /** The native library's version, e.g. {@code 0.1.0}. */
     static String version() {
         try {
-            return string((MemorySegment) WV_VERSION.invokeExact());
+            return ((MemorySegment) WV_VERSION.invokeExact()).reinterpret(Long.MAX_VALUE).getString(0);
         } catch (Throwable e) {
             throw new IllegalStateException("wv_version failed", e);
         }
     }
 
-    /** Every action the library knows, as {@code <group> <name> <code>} lines. */
-    static String actions() {
-        try {
-            return string((MemorySegment) WV_ACTIONS.invokeExact());
-        } catch (Throwable e) {
-            throw new IllegalStateException("wv_actions failed", e);
-        }
-    }
-
     /**
-     * Runs the event loop on this thread until {@link #quit}; on macOS this must be the main thread.
-     * {@code onEvent} gets every event as JSON ({@code {"type":"ready"}} first) on this thread: it must
-     * return quickly and must not call {@link #call}, which would wait on itself. Returns the loop's
-     * exit code.
+     * Runs the event loop on this thread until {@code app.quit}; on macOS this must be the main
+     * thread. {@code onMessage} gets every frame, mostly on this thread: it must return quickly.
+     * Returns the loop's exit code.
      *
      * @throws IllegalStateException if an event loop is already running
      */
-    static int run(Consumer<String> onEvent) {
-        listener = onEvent;
+    static int run(Consumer<byte[]> onMessage) {
+        // Refused before the listener is touched: a second run must not take the first one's frames.
+        if (!RUNNING.compareAndSet(false, true)) throw new IllegalStateException("the event loop is already running");
+        listener = onMessage;
         try {
-            int code = (int) WV_RUN.invokeExact(ON_EVENT);
+            int code = (int) WV_RUN.invokeExact(ON_MESSAGE);
             if (code == -1) throw new IllegalStateException("the event loop is already running, or it failed");
             return code;
         } catch (IllegalStateException e) {
@@ -78,61 +74,26 @@ final class Native {
             throw new IllegalStateException("wv_run failed", e);
         } finally {
             listener = null;
+            RUNNING.set(false);
         }
     }
 
-    /**
-     * Hands an action to the event loop and returns at once, from any thread. Returns null when
-     * taken: the reply arrives as the event {@code {"type":"reply","request":<request>,...}}.
-     * Otherwise returns the JSON error. {@code view} and {@code payload} may be null.
-     */
-    static String submit(Action action, String view, String payload, long request) {
+    /** Hands one frame to the loop, from any thread: {@link #SENT}, {@link #NOT_RUNNING} or {@link #MALFORMED}. */
+    static int send(byte[] frame) {
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment refused = (MemorySegment) WV_SUBMIT.invokeExact(
-                    action.code(), cString(arena, view), cString(arena, payload), request);
-            if (refused.equals(MemorySegment.NULL)) return null;
-            try {
-                return string(refused);
-            } finally {
-                WV_FREE.invokeExact(refused);
-            }
+            MemorySegment bytes = arena.allocate(Math.max(frame.length, 1));
+            MemorySegment.copy(frame, 0, bytes, ValueLayout.JAVA_BYTE, 0, frame.length);
+            return (int) WV_SEND.invokeExact(bytes, (long) frame.length);
         } catch (Throwable e) {
-            throw new IllegalStateException("wv_submit " + action.group() + " " + action.wireName() + " failed", e);
-        }
-    }
-
-    /**
-     * Performs an action and returns its JSON reply: {@code {"ok":true,...}} or
-     * {@code {"ok":false,"error":"..."}}. {@code view} and {@code payload} may be null.
-     */
-    static String call(Action action, String view, String payload) {
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment reply = (MemorySegment) WV_CALL.invokeExact(
-                    action.code(), cString(arena, view), cString(arena, payload));
-            try {
-                return string(reply);
-            } finally {
-                WV_FREE.invokeExact(reply);
-            }
-        } catch (Throwable e) {
-            throw new IllegalStateException("wv_call " + action.group() + " " + action.wireName() + " failed", e);
-        }
-    }
-
-    /** Closes every window and makes {@link #run} return. False if no loop is running. */
-    static boolean quit() {
-        try {
-            return (boolean) WV_QUIT.invokeExact();
-        } catch (Throwable e) {
-            throw new IllegalStateException("wv_quit failed", e);
+            throw new IllegalStateException("wv_send failed", e);
         }
     }
 
     /** Called by the native loop. An exception escaping an upcall kills the JVM, so none may. */
-    private static void onEvent(MemorySegment json) {
+    private static void onMessage(MemorySegment frame, long length) {
         try {
-            Consumer<String> consumer = listener;
-            if (consumer != null) consumer.accept(string(json));
+            Consumer<byte[]> consumer = listener;
+            if (consumer != null) consumer.accept(frame.reinterpret(length).toArray(ValueLayout.JAVA_BYTE));
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -144,20 +105,11 @@ final class Native {
 
     private static MemorySegment upcall() {
         try {
-            MethodHandle target = MethodHandles.lookup().findStatic(Native.class, "onEvent",
-                    MethodType.methodType(void.class, MemorySegment.class));
-            return LINKER.upcallStub(target, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS), Arena.global());
+            MethodHandle target = MethodHandles.lookup().findStatic(Native.class, "onMessage",
+                    MethodType.methodType(void.class, MemorySegment.class, long.class));
+            return LINKER.upcallStub(target, FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG), Arena.global());
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    private static MemorySegment cString(Arena arena, String value) {
-        return value == null ? MemorySegment.NULL : arena.allocateFrom(value);
-    }
-
-    /** A NUL-terminated UTF-8 string from the library, copied into Java. */
-    private static String string(MemorySegment pointer) {
-        return pointer.reinterpret(Long.MAX_VALUE).getString(0);
     }
 }

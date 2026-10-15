@@ -5,7 +5,7 @@
 use std::sync::atomic::{AtomicU8, Ordering};
 
 use ::inspector::{config::WebInspectorConfg, script};
-use serde_json::{Map, Value, json};
+use serde_json::{Map, Value};
 
 use crate::payload::CaptureBody;
 
@@ -69,16 +69,17 @@ pub fn initialization_script() -> String {
     format!("{}\n{inspector}\n{}", include_str!("console.js"), include_str!("dom.js"))
 }
 
-/// The event a page message from view `view` becomes, if it is well formed and switched on:
+/// The report a page message becomes, if it is well formed and switched on: its kind, the last
+/// token of its subject `view.<view>.<kind>` (PROTOCOL.md §2.2), and its JSON payload.
 ///
 /// ```text
-/// {"type":"api-call","view":"wv-1","method","url","status","durationMs",...}
-/// {"type":"click","view":"wv-1","selector","tag","text",...}
-/// {"type":"dom-event","view":"wv-1","kind":"hover","element":{...},...}
-/// {"type":"websocket","view":"wv-1","socket":3,"url","direction":"open|in|out|close","frame"}
-/// {"type":"log","source":"page","view":"wv-1","level":"warn","message":"..."}
+/// api-call    {"method","url","status","durationMs",...}
+/// click       {"selector","tag","text",...}
+/// dom-event   {"kind":"hover","element":{...},...}
+/// websocket   {"socket":3,"url","direction":"open|in|out|close","frame"}
+/// log         {"level":"warn","message":"..."}
 /// ```
-pub fn event(raw: &str, view: &str, capture: &Capture) -> Option<Value> {
+pub fn event(raw: &str, capture: &Capture) -> Option<(&'static str, Value)> {
     let envelope: Value = serde_json::from_str(raw).ok()?;
     let mut payload: Map<String, Value> = envelope.get("payload")?.as_object()?.clone();
     // The page may not name the view or session it came from: the host knows.
@@ -116,19 +117,17 @@ pub fn event(raw: &str, view: &str, capture: &Capture) -> Option<Value> {
             if !has_str(&payload, "level") || !has_str(&payload, "message") {
                 return None;
             }
-            payload.insert("source".into(), json!("page"));
             "log"
         }
         _ => return None,
     };
-    payload.insert("type".into(), json!(kind));
-    payload.insert("view".into(), json!(view));
-    Some(Value::Object(payload))
+    Some((kind, Value::Object(payload)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     fn all() -> Capture {
         let capture = Capture::new(None);
@@ -143,34 +142,32 @@ mod tests {
     }
 
     #[test]
-    fn api_calls_carry_the_host_view_not_the_page_claim() {
-        let event = event(
-            r#"{"event":"api-call","payload":{"viewId":"spoofed","method":"GET","url":"https://example.com/api","status":200,"durationMs":5}}"#,
-            "wv-1",
+    fn api_calls_drop_what_the_page_claims_about_its_view() {
+        let (kind, payload) = event(
+            r#"{"event":"api-call","payload":{"viewId":"spoofed","sessionKey":"x","method":"GET","url":"https://example.com/api","status":200,"durationMs":5}}"#,
             &all(),
         )
         .unwrap();
-        assert_eq!(event["type"], "api-call");
-        assert_eq!(event["view"], "wv-1");
-        assert_eq!(event["status"], 200);
-        assert!(event.get("viewId").is_none());
+        assert_eq!(kind, "api-call");
+        assert_eq!(payload["status"], 200);
+        assert!(payload.get("viewId").is_none() && payload.get("sessionKey").is_none());
     }
 
     #[test]
     fn dom_events_keep_their_type_as_kind() {
-        let event = event(r#"{"event":"dom-event","payload":{"type":"hover","element":{"tag":"a"}}}"#, "wv-1", &all()).unwrap();
-        assert_eq!(event["type"], "dom-event");
-        assert_eq!(event["kind"], "hover");
+        let (kind, payload) = event(r#"{"event":"dom-event","payload":{"type":"hover","element":{"tag":"a"}}}"#, &all()).unwrap();
+        assert_eq!(kind, "dom-event");
+        assert_eq!(payload["kind"], "hover");
     }
 
     #[test]
     fn switched_off_and_malformed_reports_are_dropped() {
         let console_only = Capture::new(None);
-        assert!(event(r##"{"event":"click","payload":{"selector":"#a"}}"##, "wv-1", &console_only).is_none());
-        let log = event(r#"{"event":"console","payload":{"level":"warn","message":"hi"}}"#, "wv-1", &console_only).unwrap();
-        assert_eq!(log, json!({"type": "log", "source": "page", "view": "wv-1", "level": "warn", "message": "hi"}));
+        assert!(event(r##"{"event":"click","payload":{"selector":"#a"}}"##, &console_only).is_none());
+        let log = event(r#"{"event":"console","payload":{"level":"warn","message":"hi"}}"#, &console_only).unwrap();
+        assert_eq!(log, ("log", json!({"level": "warn", "message": "hi"})));
         for raw in ["invalid", r#"{"event":"api-call","payload":{}}"#, r#"{"event":"ws","payload":{"frame":"x"}}"#] {
-            assert!(event(raw, "wv-1", &all()).is_none(), "{raw}");
+            assert!(event(raw, &all()).is_none(), "{raw}");
         }
     }
 

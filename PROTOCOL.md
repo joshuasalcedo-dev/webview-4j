@@ -6,8 +6,12 @@ How Java, the native side (Rust) and, from step 3, the page talk to each other. 
 middle reads. Each side implements this document on its own; the fixtures in
 [`protocol/fixtures`](protocol/fixtures) are the conformance tests every implementation runs.
 
-> Status: draft for review. Nothing implements it yet; today's FFM link (action codes and JSON
-> replies) is replaced by it in step 2.
+> **Internal.** Apps never see any of this: Java apps use `App` and `View`, pages use
+> `@webview4j/api`. This document is for the implementations (`crates/webview` in Rust, the
+> package-private `Message`/`Native`/`App` internals in Java), and for anyone writing another one.
+>
+> Status: implemented between Java and the native side (FFM). The page still reaches the native
+> side over the webview's IPC and is answered through scripts; it moves to these frames in step 3.
 
 ## 1. Messages
 
@@ -49,7 +53,7 @@ MSG app.list 2 0\r\n
 So that every implementation names the same error for the same bad frame, check in this order and
 stop at the first failure:
 
-1. The first line, up to the first `\r\n` (at most 300 bytes), is exactly
+1. The first line, up to the first `\r\n` (at most 300 bytes), is printable ASCII and exactly
    `MSG <subject> <header-length> <payload-length>`: `bad-line`.
 2. The subject is at most 256 bytes (`too-large`) and valid (§2): `bad-subject`.
 3. Both lengths are plain decimals, and `header-length` is at least 2: `bad-length`.

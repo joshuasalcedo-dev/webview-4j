@@ -82,7 +82,7 @@ public final class WindowOptions {
         return this;
     }
 
-    /** The JSON payload of {@link WindowAction#OPEN}. */
+    /** The JSON payload of {@code app.open} (PROTOCOL.md §5.1). */
     Map<String, Object> toPayload() {
         Map<String, Object> payload = new LinkedHashMap<>();
         if (url != null) payload.put("url", url);
