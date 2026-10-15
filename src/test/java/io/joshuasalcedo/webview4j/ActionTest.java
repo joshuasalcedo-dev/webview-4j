@@ -39,7 +39,8 @@ class ActionTest {
     void codesRoundTripWithinTheirGroup() {
         assertEquals(WindowAction.SET_TITLE, WindowAction.fromCode(102).orElseThrow());
         assertEquals(WebViewAction.LOAD_HTML, WebViewAction.fromCode(201).orElseThrow());
-        assertEquals(InspectorAction.DOM_EVENTS, InspectorAction.fromCode(301).orElseThrow());
+        assertEquals(InspectorAction.CAPTURE, InspectorAction.fromCode(300).orElseThrow());
+        assertEquals("websocket-send", WebViewAction.WEBSOCKET_SEND.wireName());
         assertTrue(WindowAction.fromCode(200).isEmpty());
         assertEquals("set-title", WindowAction.SET_TITLE.wireName());
     }

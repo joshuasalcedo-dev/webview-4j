@@ -5,7 +5,11 @@
 //! ```text
 //! wv_run(on_event)              runs the event loop on this thread until wv_quit; returns its exit code,
 //!                               or -1 if it is already running. Events arrive as JSON on the loop thread.
-//! wv_call(action, view, json)   performs an action (see action.rs) from any other thread; returns the
+//! wv_submit(action, view, json, request)
+//!                               hands an action (see action.rs) to the loop and returns at once: NULL when
+//!                               taken, its reply arriving later as a {"type":"reply","request":...} event,
+//!                               or a JSON error to free with wv_free. Callable from any thread.
+//! wv_call(action, view, json)   performs an action from any thread but the loop's and waits; returns the
 //!                               JSON reply, which the caller frees with wv_free.
 //! wv_quit()                     closes every window and makes wv_run return.
 //! wv_free(string)               frees a string wv_call returned.
@@ -16,6 +20,7 @@
 
 pub mod action;
 mod inspector;
+mod logging;
 pub mod payload;
 pub mod runtime;
 
@@ -36,28 +41,52 @@ pub extern "C" fn wv_run(on_event: Option<runtime::EventCallback>) -> i32 {
     }
 }
 
-/// Performs `action` (a code from action.rs) on view `view` (NULL for none) with the JSON
-/// `payload` (NULL for none). Returns the JSON reply; free it with [`wv_free`].
+/// Hands `action` (a code from action.rs) on view `view` (NULL for none) with the JSON `payload`
+/// (NULL for none) to the event loop. Returns NULL when taken: the reply arrives as the event
+/// `{"type":"reply","request":<request>,...}`. Otherwise returns the JSON error; free it with
+/// [`wv_free`].
+///
+/// # Safety
+/// `view` and `payload` are NULL or NUL-terminated strings valid for the duration of the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn wv_submit(action: u32, view: *const c_char, payload: *const c_char, request: u64) -> *mut c_char {
+    let refused = panic::catch_unwind(AssertUnwindSafe(|| {
+        let (action, view, payload) = unsafe { arguments(action, view, payload) }?;
+        runtime::submit(action, view, payload, runtime::ReplyTo::Event(request))
+    }))
+    .unwrap_or_else(|_| Err(Reply::Error("the action panicked".into())));
+    match refused {
+        Ok(()) => std::ptr::null_mut(),
+        Err(error) => into_c(&error),
+    }
+}
+
+/// Performs `action` on view `view` with the JSON `payload` and waits for the reply, which it
+/// returns; free it with [`wv_free`]. Not from the event loop thread: that answers with an error.
 ///
 /// # Safety
 /// `view` and `payload` are NULL or NUL-terminated strings valid for the duration of the call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn wv_call(action: u32, view: *const c_char, payload: *const c_char) -> *mut c_char {
-    let reply = panic::catch_unwind(AssertUnwindSafe(|| {
-        let Some(action) = Action::from_code(action) else {
-            return Reply::Error(format!("no action with code {action}"));
-        };
-        let view = match unsafe { string(view) } {
-            Ok(view) => view,
-            Err(error) => return error,
-        };
-        let payload = match unsafe { string(payload) } {
-            Ok(payload) => payload.unwrap_or_default(),
-            Err(error) => return error,
-        };
-        runtime::call(action, view, payload)
+    let reply = panic::catch_unwind(AssertUnwindSafe(|| match unsafe { arguments(action, view, payload) } {
+        Ok((action, view, payload)) => runtime::call(action, view, payload),
+        Err(error) => error,
     }))
     .unwrap_or_else(|_| Reply::Error("the action panicked".into()));
+    into_c(&reply)
+}
+
+/// The C arguments of an action as Rust values.
+unsafe fn arguments(action: u32, view: *const c_char, payload: *const c_char) -> Result<(Action, Option<String>, String), Reply> {
+    let Some(action) = Action::from_code(action) else {
+        return Err(Reply::Error(format!("no action with code {action}")));
+    };
+    let view = unsafe { string(view) }?;
+    let payload = unsafe { string(payload) }?.unwrap_or_default();
+    Ok((action, view, payload))
+}
+
+fn into_c(reply: &Reply) -> *mut c_char {
     CString::new(reply.to_json()).expect("JSON has no NUL byte").into_raw()
 }
 
@@ -140,10 +169,10 @@ mod tests {
         assert!(call(999, None, None).contains("no action with code 999"));
         assert!(call(101, None, None).contains("not running"));
         assert!(!wv_quit());
-    }
-
-    #[test]
-    fn inspector_actions_need_no_event_loop() {
-        assert_eq!(call(300, None, None), r#"{"calls":[],"ok":true}"#);
+        unsafe {
+            let refused = wv_submit(101, std::ptr::null(), std::ptr::null(), 7);
+            assert!(CStr::from_ptr(refused).to_str().unwrap().contains("not running"));
+            wv_free(refused);
+        }
     }
 }

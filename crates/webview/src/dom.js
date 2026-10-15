@@ -1,5 +1,5 @@
 (() => {
-  if (window.__SWASWA_DOM__) return;
+  if (window.__WEBVIEW4J_DOM__) return;
   const eventStyles = ['color', 'background-color', 'border-color', 'display', 'visibility',
     'opacity', 'font-family', 'font-size', 'font-weight', 'width', 'height'];
   function selector(element) {
@@ -37,7 +37,7 @@
       return { ok: true, elements: elements.map(element => snapshot(element, true)) };
     } catch (error) { return { ok: false, error: String(error) }; }
   }
-  Object.defineProperty(window, '__SWASWA_DOM__', { value: { query, snapshot } });
+  Object.defineProperty(window, '__WEBVIEW4J_DOM__', { value: { query, snapshot } });
   for (const [nativeType, type] of Object.entries({ click: 'click', dblclick: 'doubleClick',
     pointerover: 'hover', pointerout: 'hoverEnd', input: 'input', change: 'change',
     focusin: 'focus', focusout: 'blur', keydown: 'keyDown', keyup: 'keyUp', contextmenu: 'contextMenu' })) {

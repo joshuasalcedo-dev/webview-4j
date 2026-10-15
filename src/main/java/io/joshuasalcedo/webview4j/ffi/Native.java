@@ -30,6 +30,8 @@ public final class Native {
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     private static final MethodHandle WV_CALL = downcall("wv_call",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+    private static final MethodHandle WV_SUBMIT = downcall("wv_submit", FunctionDescriptor.of(ValueLayout.ADDRESS,
+            ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
     private static final MethodHandle WV_QUIT = downcall("wv_quit", FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN));
     private static final MethodHandle WV_FREE = downcall("wv_free", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
 
@@ -77,6 +79,26 @@ public final class Native {
             throw new IllegalStateException("wv_run failed", e);
         } finally {
             listener = null;
+        }
+    }
+
+    /**
+     * Hands an action to the event loop and returns at once, from any thread. Returns null when
+     * taken: the reply arrives as the event {@code {"type":"reply","request":<request>,...}}.
+     * Otherwise returns the JSON error. {@code view} and {@code payload} may be null.
+     */
+    public static String submit(Action action, String view, String payload, long request) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment refused = (MemorySegment) WV_SUBMIT.invokeExact(
+                    action.code(), cString(arena, view), cString(arena, payload), request);
+            if (refused.equals(MemorySegment.NULL)) return null;
+            try {
+                return string(refused);
+            } finally {
+                WV_FREE.invokeExact(refused);
+            }
+        } catch (Throwable e) {
+            throw new IllegalStateException("wv_submit " + action.group() + " " + action.wireName() + " failed", e);
         }
     }
 

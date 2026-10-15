@@ -62,14 +62,14 @@ actions! {
         LoadHtml = 201, "load-html";
         Eval = 202, "eval";
         Cookies = 203, "cookies";
+        WebSocketSend = 204, "websocket-send";
     }
 }
 
 actions! {
-    /// What the inspector captured from the page: its API calls and DOM events.
+    /// What the inspector reports from the page: API calls, clicks, DOM events, WebSocket frames, console.
     InspectorAction, "inspector" {
-        ApiCalls = 300, "api-calls";
-        DomEvents = 301, "dom-events";
+        Capture = 300, "capture";
     }
 }
 

@@ -3,7 +3,6 @@ package io.joshuasalcedo.webview4j.ffi;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.joshuasalcedo.webview4j.InspectorAction;
 import io.joshuasalcedo.webview4j.WebViewAction;
 import io.joshuasalcedo.webview4j.WindowAction;
 import java.util.concurrent.BlockingQueue;
@@ -51,7 +50,6 @@ class EventLoopTest {
         assertTrue(Native.call(WindowAction.LIST, null, null).contains("\"title\":\"Renamed\""));
         assertTrue(Native.call(WindowAction.SET_TITLE, view, "{}").contains("invalid payload"));
         assertTrue(Native.call(WindowAction.HIDE, null, null).contains("needs a view id"));
-        assertTrue(Native.call(InspectorAction.API_CALLS, null, null).startsWith("{\""));
 
         assertEquals("{\"ok\":true}", Native.call(WindowAction.CLOSE, view, null));
         assertTrue(Native.call(WindowAction.SHOW, view, null).contains("no webview with id"));

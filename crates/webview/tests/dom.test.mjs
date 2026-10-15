@@ -36,13 +36,13 @@ test('click and hover events carry element snapshots and pointer coordinates', (
 
 test('queries return full styles and report invalid or missing selectors', () => {
   const { window } = page();
-  const result = window.__SWASWA_DOM__.query('#submit', true);
+  const result = window.__WEBVIEW4J_DOM__.query('#submit', true);
   assert.equal(result.ok, true);
   assert.equal(result.elements[0].styles['background-color'], 'rgb(4, 5, 6)');
   assert.equal(result.elements[0].bounds.width, 100);
-  assert.equal(window.__SWASWA_DOM__.query('.missing', true).elements.length, 0);
-  assert.equal(window.__SWASWA_DOM__.query('[', true).ok, false);
-  assert.equal(window.__SWASWA_DOM__.query('button', false).elements.length, 1);
+  assert.equal(window.__WEBVIEW4J_DOM__.query('.missing', true).elements.length, 0);
+  assert.equal(window.__WEBVIEW4J_DOM__.query('[', true).ok, false);
+  assert.equal(window.__WEBVIEW4J_DOM__.query('button', false).elements.length, 1);
 });
 
 test('password input does not include the typed value or key', () => {

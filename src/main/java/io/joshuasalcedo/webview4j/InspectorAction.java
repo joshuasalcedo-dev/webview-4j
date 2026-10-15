@@ -2,10 +2,9 @@ package io.joshuasalcedo.webview4j;
 
 import java.util.Optional;
 
-/** What the inspector captured from the page: its API calls and DOM events. Codes 3xx. */
+/** What the inspector reports from the page: API calls, clicks, DOM events, WebSocket frames, console. Codes 3xx. */
 public enum InspectorAction implements Action {
-    API_CALLS(300),
-    DOM_EVENTS(301);
+    CAPTURE(300);
 
     private final int code;
 

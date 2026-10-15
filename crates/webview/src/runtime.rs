@@ -1,14 +1,25 @@
 //! The event loop and everything done on it. Tao and Wry objects may only be touched on the
-//! thread running the loop, so [`call`] (any other thread) sends the action through an
-//! [`EventLoopProxy`] and waits for the reply; [`run`] blocks its thread until [`quit`].
+//! thread running the loop, so [`submit`] and [`call`] (any other thread) send the action through
+//! an [`EventLoopProxy`]; [`run`] blocks its thread until [`quit`].
+//!
+//! Everything the loop reports goes through one callback, as JSON:
+//!
+//! ```text
+//! {"type":"ready"}                                   the loop runs; actions can be submitted
+//! {"type":"reply","request":42,"ok":true,...}        the answer to a submitted action
+//! {"type":"closed","view":"wv-1"}                    a window closed, by the user or an action
+//! {"type":"log","source":"native",...}               a log record (see logging.rs)
+//! {"type":"api-call" | "click" | "dom-event" | "websocket" | "log",...}   page reports (inspector.rs)
+//! ```
 
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::ffi::{CString, c_char};
-use std::sync::Mutex;
 use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use serde_json::{Value, json};
 use tao::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
 use tao::event::{Event, StartCause, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
@@ -17,40 +28,68 @@ use tao::window::{Window, WindowBuilder, WindowId};
 use wry::{WebContext, WebView, WebViewBuilder};
 
 use crate::action::{Action, InspectorAction, WebViewAction, WindowAction};
-use crate::inspector;
+use crate::inspector::{self, Capture};
 use crate::payload::{
-    self, ApiCallRecord, BoundsBody, CookieRecord, HtmlBody, OpenRequest, PositionBody, Reply, ScriptBody, SizeBody,
-    TitleBody, UrlBody, WebViewInfo,
+    self, BoundsBody, CaptureBody, CookieRecord, HtmlBody, OpenRequest, PositionBody, Reply, ScriptBody, SizeBody,
+    SocketBody, TitleBody, UrlBody, WebViewInfo,
 };
 
-/// Receives each event as a NUL-terminated JSON string, on the event loop thread. The string is
-/// only valid during the call. Must not block, and must not call [`call`] (it would wait on itself).
+/// Receives each event as a NUL-terminated JSON string, valid only during the call. Mostly called
+/// on the event loop thread (log records may come from any thread): it must return quickly and
+/// must not call [`call`], which would wait on itself.
 pub type EventCallback = extern "C" fn(*const c_char);
 
 /// How long [`call`] waits for the event loop to answer.
 const REPLY_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Where an action's reply goes: back to a waiting [`call`], or out as a `reply` event.
+#[derive(Clone)]
+pub enum ReplyTo {
+    Caller(Sender<Reply>),
+    Event(u64),
+}
+
+impl ReplyTo {
+    fn send(&self, reply: Reply) {
+        match self {
+            ReplyTo::Caller(sender) => {
+                let _ = sender.send(reply);
+            }
+            ReplyTo::Event(request) => emit(reply.to_event(*request)),
+        }
+    }
+}
+
 /// What other threads send to the event loop.
 pub enum Request {
-    Call { action: Action, view: Option<String>, payload: String, reply: Sender<Reply> },
+    Call { action: Action, view: Option<String>, payload: String, reply: ReplyTo },
     Quit,
 }
 
 /// Set while the loop runs: how other threads reach it.
 static PROXY: Mutex<Option<EventLoopProxy<Request>>> = Mutex::new(None);
 
-/// What the inspector captured, drained by the inspector actions.
-pub(crate) static API_CALLS: Mutex<Vec<ApiCallRecord>> = Mutex::new(Vec::new());
-pub(crate) static DOM_EVENTS: Mutex<Vec<ApiCallRecord>> = Mutex::new(Vec::new());
+/// Set while the loop runs: where events go.
+static ON_EVENT: Mutex<Option<EventCallback>> = Mutex::new(None);
 
 thread_local! {
     static ON_EVENT_LOOP: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Sends an event to the callback [`run`] was given; dropped when no loop runs.
+pub(crate) fn emit(event: Value) {
+    let callback = *ON_EVENT.lock().unwrap();
+    if let Some(callback) = callback {
+        let json = CString::new(event.to_string()).expect("JSON has no NUL byte");
+        callback(json.as_ptr());
+    }
 }
 
 struct Instance {
     webview: WebView,
     window: Window,
     title: String,
+    capture: Arc<Capture>,
     // Keep the context alive until after its webview has been dropped.
     context: Option<Box<WebContext>>,
 }
@@ -63,7 +102,7 @@ struct State {
 }
 
 /// Runs the event loop on this thread until [`quit`]; returns its exit code. On macOS this must
-/// be the process's first thread. Emits `{"type":"ready"}` once [`call`] can be used.
+/// be the process's first thread. Emits `{"type":"ready"}` once actions can be submitted.
 pub fn run(on_event: Option<EventCallback>) -> Result<i32, String> {
     let mut proxy = PROXY.lock().unwrap();
     if proxy.is_some() {
@@ -73,20 +112,16 @@ pub fn run(on_event: Option<EventCallback>) -> Result<i32, String> {
     any_thread(&mut builder);
     let mut event_loop = builder.build();
     *proxy = Some(event_loop.create_proxy());
+    *ON_EVENT.lock().unwrap() = on_event;
     drop(proxy);
+    crate::logging::install();
 
     let _running = Running::enter();
-    let emit = move |event: serde_json::Value| {
-        if let Some(callback) = on_event {
-            let json = CString::new(event.to_string()).expect("JSON has no NUL byte");
-            callback(json.as_ptr());
-        }
-    };
     let mut state = State::default();
     Ok(event_loop.run_return(move |event, target, control_flow| {
         *control_flow = ControlFlow::Wait;
         match event {
-            Event::NewEvents(StartCause::Init) => emit(serde_json::json!({"type": "ready"})),
+            Event::NewEvents(StartCause::Init) => emit(json!({"type": "ready"})),
             Event::UserEvent(Request::Call { action, view, payload, reply }) => {
                 handle(action, view, &payload, reply, target, &mut state)
             }
@@ -99,7 +134,7 @@ pub fn run(on_event: Option<EventCallback>) -> Result<i32, String> {
             Event::WindowEvent { window_id, event: WindowEvent::CloseRequested, .. } => {
                 if let Some(id) = state.ids_by_window.remove(&window_id) {
                     state.views.remove(&id);
-                    emit(serde_json::json!({"type": "closed", "id": id}));
+                    emit(json!({"type": "closed", "view": id}));
                 }
             }
             _ => {}
@@ -107,8 +142,8 @@ pub fn run(on_event: Option<EventCallback>) -> Result<i32, String> {
     }))
 }
 
-/// Marks this thread as the event loop's while the loop runs, and clears the proxy after it,
-/// even if the loop unwinds.
+/// Marks this thread as the event loop's while the loop runs, and afterwards clears the proxy
+/// and the callback, even if the loop unwinds.
 struct Running;
 
 impl Running {
@@ -122,7 +157,19 @@ impl Drop for Running {
     fn drop(&mut self) {
         ON_EVENT_LOOP.set(false);
         *PROXY.lock().unwrap() = None;
+        *ON_EVENT.lock().unwrap() = None;
     }
+}
+
+/// Hands an action to the event loop and returns at once; the reply goes to `reply`.
+/// Callable from any thread, the loop's own included. Err when no loop takes it.
+pub fn submit(action: Action, view: Option<String>, payload: String, reply: ReplyTo) -> Result<(), Reply> {
+    let Some(proxy) = PROXY.lock().unwrap().clone() else {
+        return Err(Reply::Error("the event loop is not running".into()));
+    };
+    proxy
+        .send_event(Request::Call { action, view, payload, reply })
+        .map_err(|_| Reply::Error("the event loop is gone".into()))
 }
 
 /// Performs an action and waits for its reply. Callable from any thread but the event loop's.
@@ -130,22 +177,9 @@ pub fn call(action: Action, view: Option<String>, payload: String) -> Reply {
     if ON_EVENT_LOOP.get() {
         return Reply::Error("actions cannot be called from the event loop thread (inside an event callback)".into());
     }
-    match action {
-        // The inspector's queues need no window: drained right here.
-        Action::Inspector(InspectorAction::ApiCalls) => {
-            return Reply::ApiCalls(std::mem::take(&mut *API_CALLS.lock().unwrap()));
-        }
-        Action::Inspector(InspectorAction::DomEvents) => {
-            return Reply::DomEvents(std::mem::take(&mut *DOM_EVENTS.lock().unwrap()));
-        }
-        _ => {}
-    }
-    let Some(proxy) = PROXY.lock().unwrap().clone() else {
-        return Reply::Error("the event loop is not running".into());
-    };
-    let (reply, receiver) = mpsc::channel();
-    if proxy.send_event(Request::Call { action, view, payload, reply }).is_err() {
-        return Reply::Error("the event loop is gone".into());
+    let (sender, receiver) = mpsc::channel();
+    if let Err(error) = submit(action, view, payload, ReplyTo::Caller(sender)) {
+        return error;
     }
     receiver
         .recv_timeout(REPLY_TIMEOUT)
@@ -164,7 +198,7 @@ fn handle(
     action: Action,
     view: Option<String>,
     payload: &str,
-    reply: Sender<Reply>,
+    reply: ReplyTo,
     target: &EventLoopWindowTarget<Request>,
     state: &mut State,
 ) {
@@ -174,28 +208,27 @@ fn handle(
             Err(error) => error,
         },
         Action::Window(WindowAction::List) => Reply::WebViews(list(state)),
-        Action::Inspector(_) => Reply::Error("inspector actions are answered off the event loop".into()),
         _ => {
             let Some(id) = view else {
-                let _ = reply.send(Reply::Error("this action needs a view id".into()));
-                return;
+                return reply.send(Reply::Error("this action needs a view id".into()));
             };
             match on_view(action, &id, payload, &reply, state) {
                 Some(response) => response,
-                None => return, // eval: its callback delivers the reply
+                None => return, // answered later, by a script callback
             }
         }
     };
-    let _ = reply.send(response);
+    reply.send(response);
 }
 
-/// An action on one open view. None when the reply comes later (eval).
-fn on_view(action: Action, id: &str, payload: &str, reply: &Sender<Reply>, state: &mut State) -> Option<Reply> {
+/// An action on one open view. None when a script callback replies later (eval, websocket-send).
+fn on_view(action: Action, id: &str, payload: &str, reply: &ReplyTo, state: &mut State) -> Option<Reply> {
     if action == Action::Window(WindowAction::Close) {
         return Some(match state.views.remove(id) {
             Some(instance) => {
                 state.ids_by_window.remove(&instance.window.id());
                 drop(instance); // dropping the window closes it
+                emit(json!({"type": "closed", "view": id}));
                 Reply::Ok
             }
             None => not_found(id),
@@ -257,9 +290,10 @@ fn on_view(action: Action, id: &str, payload: &str, reply: &Sender<Reply>, state
         Action::WebView(WebViewAction::Eval) => match payload::parse::<ScriptBody>(payload) {
             Ok(body) => {
                 let later = reply.clone();
-                match instance.webview.evaluate_script_with_callback(&body.script, move |value| {
-                    let _ = later.send(Reply::EvalResult(value));
-                }) {
+                match instance
+                    .webview
+                    .evaluate_script_with_callback(&body.script, move |value| later.send(Reply::EvalResult(value)))
+                {
                     Ok(()) => return None,
                     Err(e) => Reply::Error(e.to_string()),
                 }
@@ -285,10 +319,45 @@ fn on_view(action: Action, id: &str, payload: &str, reply: &Sender<Reply>, state
             },
             Err(error) => error,
         },
-        Action::Window(WindowAction::Open | WindowAction::List | WindowAction::Close) | Action::Inspector(_) => {
+        Action::WebView(WebViewAction::WebSocketSend) => match payload::parse::<SocketBody>(payload) {
+            Ok(body) => {
+                let later = reply.clone();
+                match instance.webview.evaluate_script_with_callback(&send_script(&body), move |result| {
+                    // The script answers null when sent, or why it could not send.
+                    later.send(match serde_json::from_str::<Value>(&result) {
+                        Ok(Value::String(error)) => Reply::Error(error),
+                        _ => Reply::Ok,
+                    })
+                }) {
+                    Ok(()) => return None,
+                    Err(e) => Reply::Error(e.to_string()),
+                }
+            }
+            Err(error) => error,
+        },
+        Action::Inspector(InspectorAction::Capture) => match payload::parse::<CaptureBody>(payload) {
+            Ok(body) => {
+                instance.capture.apply(body);
+                Reply::Ok
+            }
+            Err(error) => error,
+        },
+        Action::Window(WindowAction::Open | WindowAction::List | WindowAction::Close) => {
             unreachable!("handled before a view is looked up")
         }
     })
+}
+
+/// The page script that sends a text frame on the inspector's socket number `socket`.
+fn send_script(body: &SocketBody) -> String {
+    let socket = body.socket;
+    let data = Value::String(body.data.clone());
+    format!(
+        "(() => {{ const ws = window.__WEB_INSPECTOR_SOCKETS__ && window.__WEB_INSPECTOR_SOCKETS__.get({socket}); \
+         if (!ws) return 'no open socket {socket}'; \
+         if (ws.readyState !== 1) return 'socket {socket} is not open'; \
+         ws.send({data}); return null; }})()"
+    )
 }
 
 fn list(state: &State) -> Vec<WebViewInfo> {
@@ -326,12 +395,14 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<Request>, stat
         None => WebViewBuilder::new(),
     }
     .with_devtools(open.devtools);
-    let view_id = id.clone();
+    let capture = Arc::new(Capture::new(open.capture));
+    let (view_id, view_capture) = (id.clone(), Arc::clone(&capture));
     builder = builder
         .with_initialization_script(&inspector::initialization_script())
         .with_ipc_handler(move |request| {
-            inspector::capture(request.body(), &view_id, &API_CALLS);
-            inspector::capture_dom(request.body(), &view_id, &DOM_EVENTS);
+            if let Some(event) = inspector::event(request.body(), &view_id, &view_capture) {
+                emit(event);
+            }
         });
     if let Some(script) = &open.initialization_script {
         builder = builder.with_initialization_script(script);
@@ -348,7 +419,7 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<Request>, stat
     };
 
     state.ids_by_window.insert(window.id(), id.clone());
-    state.views.insert(id.clone(), Instance { window, webview, title: open.title, context });
+    state.views.insert(id.clone(), Instance { window, webview, title: open.title, capture, context });
     Reply::Opened { id }
 }
 
