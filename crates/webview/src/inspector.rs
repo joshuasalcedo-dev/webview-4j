@@ -1,8 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use ::inspector::{config::WebInspectorConfg, script};
 
-use crate::api::ApiCallRecord;
+use crate::payload::ApiCallRecord;
 
 pub fn initialization_script() -> String {
     let api_script = script::render(&WebInspectorConfg {
@@ -19,7 +19,7 @@ pub fn initialization_script() -> String {
     format!("{api_script}\n{}", include_str!("dom.js"))
 }
 
-pub fn capture_dom(raw: &str, view_id: &str, events: &Arc<Mutex<Vec<ApiCallRecord>>>) {
+pub fn capture_dom(raw: &str, view_id: &str, events: &Mutex<Vec<ApiCallRecord>>) {
     let Ok(envelope) = serde_json::from_str::<serde_json::Value>(raw) else {
         return;
     };
@@ -42,7 +42,7 @@ pub fn capture_dom(raw: &str, view_id: &str, events: &Arc<Mutex<Vec<ApiCallRecor
     });
 }
 
-pub fn capture(raw: &str, view_id: &str, calls: &Arc<Mutex<Vec<ApiCallRecord>>>) {
+pub fn capture(raw: &str, view_id: &str, calls: &Mutex<Vec<ApiCallRecord>>) {
     let Ok(envelope) = serde_json::from_str::<serde_json::Value>(raw) else {
         return;
     };
@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn accepts_api_calls_and_preserves_host_view_identity() {
-        let calls = Arc::new(Mutex::new(Vec::new()));
+        let calls = Mutex::new(Vec::new());
         capture(
             r#"{"event":"api-call","payload":{"viewId":"spoofed","method":"GET","url":"https://example.com/api","status":200,"durationMs":5}}"#,
             "wv-1",
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn ignores_malformed_and_unrelated_events() {
-        let calls = Arc::new(Mutex::new(Vec::new()));
+        let calls = Mutex::new(Vec::new());
         for raw in [
             "invalid",
             r#"{"event":"click","payload":{}}"#,

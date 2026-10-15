@@ -73,6 +73,23 @@ actions! {
     }
 }
 
+/// Any action, whichever group it is in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Action {
+    Window(WindowAction),
+    WebView(WebViewAction),
+    Inspector(InspectorAction),
+}
+
+impl Action {
+    pub fn from_code(code: u32) -> Option<Self> {
+        WindowAction::from_code(code)
+            .map(Action::Window)
+            .or_else(|| WebViewAction::from_code(code).map(Action::WebView))
+            .or_else(|| InspectorAction::from_code(code).map(Action::Inspector))
+    }
+}
+
 /// Every action as `<group> <name> <code>` lines, for the other side to check itself against.
 pub fn table() -> String {
     let mut lines = Vec::new();
@@ -105,6 +122,8 @@ mod tests {
             assert_eq!(InspectorAction::from_code(action.code()), Some(*action));
         }
         assert_eq!(WindowAction::from_code(200), None);
+        assert_eq!(Action::from_code(202), Some(Action::WebView(WebViewAction::Eval)));
+        assert_eq!(Action::from_code(999), None);
     }
 
     #[test]
