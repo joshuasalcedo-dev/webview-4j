@@ -38,6 +38,17 @@ class AppTest {
             assertEquals(2L, view.eval("1 + 1").join());
             assertEquals(List.of("a", true), view.eval("['a', true]").join());
 
+            // every action is metered: its frames both ways and its round trip, by its name
+            Metrics metrics = app.metrics();
+            assertTrue(metrics.framesOut() >= 3 && metrics.framesIn() >= 3, metrics.toString());
+            assertTrue(metrics.bytesOut() > 0 && metrics.bytesIn() > 0, metrics.toString());
+            Metrics.Timing evals = metrics.byAction().stream()
+                    .filter(t -> t.name().equals("view.eval")).findFirst().orElseThrow();
+            assertEquals(2, evals.count());
+            assertTrue(evals.averageMillis() > 0 && evals.maxMillis() >= evals.p95Millis(), evals.toString());
+            assertEquals(1, metrics.byAction().stream()
+                    .filter(t -> t.name().equals("app.open")).findFirst().orElseThrow().count());
+
             // the console arrives as a page log record, on a subscriber thread, never the loop's
             view.eval("console.warn('careful', {n: 1})").join();
             LogRecord warning = next(events, LogRecord.class, log -> log.source() == LogRecord.Source.PAGE);

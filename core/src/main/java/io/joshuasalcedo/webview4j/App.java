@@ -53,10 +53,11 @@ public final class App implements AutoCloseable {
     private final ExecutorService virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
     private final CompletableFuture<App> ready = new CompletableFuture<>();
     private final CompletableFuture<Integer> stopped = new CompletableFuture<>();
+    private final Meter meter = new Meter();
     private volatile int exitCode;
 
-    /** A request waiting for its reply: what it asked, for error messages. */
-    private record Pending(String subject, CompletableFuture<Message> reply) {}
+    /** A request waiting for its reply: what it asked, for error messages, and when, for its timing. */
+    private record Pending(String subject, long sentAt, CompletableFuture<Message> reply) {}
 
     private App() {
         Thread.ofVirtual().name("webview4j-dispatcher").start(this::dispatch);
@@ -164,10 +165,10 @@ public final class App implements AutoCloseable {
     CompletableFuture<Message> request(Message message) {
         String inbox = "_inbox." + inboxes.incrementAndGet();
         CompletableFuture<Message> reply = new CompletableFuture<>();
-        pending.put(inbox, new Pending(message.subject(), reply));   // before sending: the reply may beat us back
+        pending.put(inbox, new Pending(message.subject(), System.nanoTime(), reply));   // before sending: the reply may beat us back
         int sent;
         try {
-            sent = Native.send(message.with("Reply-To", inbox).encode());
+            sent = send(message.with("Reply-To", inbox).encode());
         } catch (RuntimeException e) {
             pending.remove(inbox);
             reply.completeExceptionally(e);
@@ -181,9 +182,24 @@ public final class App implements AutoCloseable {
         return reply;
     }
 
+    /** Sends one encoded frame to the native side, counted. */
+    private int send(byte[] frame) {
+        int sent = Native.send(frame);
+        if (sent == Native.SENT) meter.frameOut(frame.length);
+        return sent;
+    }
+
+    /**
+     * What the app has done since it started: frames both ways, how long actions and the pages'
+     * calls took. Cheap to call often, e.g. each second for a dashboard.
+     */
+    public Metrics metrics() {
+        return meter.snapshot();
+    }
+
     /** Sends a message nobody answers, e.g. the answer to a page's call. */
     private void tell(Message message) {
-        int sent = Native.send(message.encode());
+        int sent = send(message.encode());
         if (sent != Native.SENT) LOG.log(System.Logger.Level.DEBUG, "could not send " + message.subject() + ": " + sent);
     }
 
@@ -194,7 +210,7 @@ public final class App implements AutoCloseable {
 
     /** Closes every window and stops the event loop; {@link #whenStopped()} completes after. False if it is not running. */
     public boolean quit() {
-        return Native.send(Message.of("app.quit").encode()) == Native.SENT;
+        return send(Message.of("app.quit").encode()) == Native.SENT;
     }
 
     /** Completes with the loop's exit code once it has stopped and every pending action has failed. */
@@ -250,19 +266,24 @@ public final class App implements AutoCloseable {
             answer(view, replyTo, null, new WebViewException("no command '" + command + "'"));
             return;
         }
+        long received = System.nanoTime();
         virtualThreads.execute(() -> {
             Object result;
             try {
                 result = handler.handle(new Invocation(view, command, call.json()));
             } catch (Exception e) {
                 answer(view, replyTo, null, e);
+                meter.pageCall(System.nanoTime() - received);
                 return;
             }
             if (result instanceof CompletionStage<?> stage) {
-                stage.whenComplete((value, error) -> answer(view, replyTo, value,
-                        error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error));
+                stage.whenComplete((value, error) -> {
+                    answer(view, replyTo, value, error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error);
+                    meter.pageCall(System.nanoTime() - received);
+                });
             } else {
                 answer(view, replyTo, result, null);
+                meter.pageCall(System.nanoTime() - received);
             }
         });
     }
@@ -341,21 +362,25 @@ public final class App implements AutoCloseable {
             case Router.Match.Found found -> {
                 RouteRequest request = new RouteRequest(view(viewId), method, path, found.pathParams(),
                         Router.query(message.header("Query")), message.text());
+                long received = System.nanoTime();
                 virtualThreads.execute(() -> {
                     Object result;
                     try {
                         result = found.handler().handle(request);
                     } catch (Exception e) {
                         respondFailure(replyTo, request, e);
+                        meter.pageCall(System.nanoTime() - received);
                         return;
                     }
                     if (result instanceof CompletionStage<?> stage) {
                         stage.whenComplete((value, error) -> {
                             if (error == null) respondValue(replyTo, request, value);
                             else respondFailure(replyTo, request, error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error);
+                            meter.pageCall(System.nanoTime() - received);
                         });
                     } else {
                         respondValue(replyTo, request, result);
+                        meter.pageCall(System.nanoTime() - received);
                     }
                 });
             }
@@ -420,7 +445,9 @@ public final class App implements AutoCloseable {
             }
             Message message;
             try {
-                message = Message.decode((byte[]) next);
+                byte[] frame = (byte[]) next;
+                meter.frameIn(frame.length);
+                message = Message.decode(frame);
             } catch (Message.FrameException e) {
                 LOG.log(System.Logger.Level.WARNING, "dropped a frame the native side sent: " + e.kind());
                 continue;
@@ -475,6 +502,7 @@ public final class App implements AutoCloseable {
     private void reply(String inbox, Message reply) {
         Pending waiting = pending.remove(inbox);
         if (waiting == null) return;
+        meter.action(waiting.subject(), System.nanoTime() - waiting.sentAt());
         if ("200".equals(reply.header("Status"))) {
             virtualThreads.execute(() -> waiting.reply().complete(reply));
         } else {

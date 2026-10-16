@@ -1,3 +1,3 @@
 rootProject.name = "webview-4j"
 
-include("core", "processor")
+include("core", "processor", "devtools")
