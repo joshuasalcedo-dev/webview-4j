@@ -50,6 +50,7 @@ public final class App implements AutoCloseable {
     private final List<Sub<?>> subscriptions = new CopyOnWriteArrayList<>();
     private final Map<String, CommandHandler> commands = new ConcurrentHashMap<>();
     private final Router router = new Router();
+    private final Assets assets = new Assets();
     private final ExecutorService virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
     private final CompletableFuture<App> ready = new CompletableFuture<>();
     private final CompletableFuture<Integer> stopped = new CompletableFuture<>();
@@ -128,6 +129,8 @@ public final class App implements AutoCloseable {
 
     /** Opens a window; the future completes once it exists. */
     public CompletableFuture<View> open(WindowOptions options) {
+        // Before the window exists: its page asks for its files as soon as it loads.
+        if (options.assets() != null) assets.serve(options.assets(), options.assetLoader());
         return request(Message.of("app.open").withJson(options.toPayload()))
                 .thenApply(reply -> new View(this, Events.text(object(reply), "view")));
     }
@@ -387,6 +390,23 @@ public final class App implements AutoCloseable {
         }
     }
 
+    /** A page's request for one of the app's files (PROTOCOL.md §2.4): read on a virtual thread, sent. */
+    private void asset(Message message) {
+        String replyTo = message.header("Reply-To");
+        if (replyTo == null) return;
+        virtualThreads.execute(() -> {
+            try {
+                Assets.File file = assets.read(message.header("Root"), message.header("Path"));
+                tell(Message.of(replyTo).with("Status", "200").withPayload(file.bytes(), file.contentType()));
+            } catch (HttpException e) {
+                respond(replyTo, e.status(), "text/plain", e.getMessage());
+            } catch (RuntimeException e) {
+                LOG.log(System.Logger.Level.WARNING, "could not serve " + message.header("Path"), e);
+                respond(replyTo, 500, "text/plain", "could not serve the file");
+            }
+        });
+    }
+
     private void respondValue(String replyTo, RouteRequest request, Object value) {
         if (value == null) {
             respond(replyTo, 204, "application/json", "");
@@ -486,6 +506,8 @@ public final class App implements AutoCloseable {
                 publish(new Closed(view));
             } else if (kind.equals("request") && tokens.length == 3) {
                 request(view, message);
+            } else if (kind.equals("asset") && tokens.length == 3) {
+                asset(message);
             } else if (kind.equals("invoke") && tokens.length > 3) {
                 invoke(view, subject.substring(("view." + view + ".invoke.").length()), message);
             } else if (tokens.length == 3) {

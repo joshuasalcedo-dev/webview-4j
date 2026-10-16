@@ -42,6 +42,14 @@ pub struct OpenRequest {
     /// Unless given: the origin of `url`, or `null` (an opaque origin) for `html`.
     #[serde(default)]
     pub origins: Option<Vec<String>>,
+    /// The app's own files, by the name Java gave them (a class path directory): `GET <base>app/<path>`
+    /// is asked of Java as `view.<view>.asset`. None serves no files.
+    #[serde(default)]
+    pub assets: Option<String>,
+    /// The window's icon, a PNG in base64: in its title bar, the taskbar and the window switcher.
+    /// None leaves the program's own.
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 fn default_title() -> String {

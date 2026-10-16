@@ -13,4 +13,17 @@ subprojects {
     repositories {
         mavenCentral()
     }
+
+    // ./gradlew publishToMavenLocal: each module as io.joshuasalcedo:<its archive name>, so Maven
+    // and Gradle apps can depend on it (webview-4j-core, webview-4j-processor).
+    plugins.withId("java-library") {
+        apply(plugin = "maven-publish")
+        extensions.configure<PublishingExtension> {
+            publications.create<MavenPublication>("maven") {
+                from(components["java"])
+                // Read once the module has set its archive name.
+                afterEvaluate { artifactId = the<BasePluginExtension>().archivesName.get() }
+            }
+        }
+    }
 }

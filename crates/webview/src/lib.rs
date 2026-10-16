@@ -12,6 +12,7 @@
 //! No panic crosses the boundary: each function catches it and answers with an error code instead.
 
 mod bridge;
+mod icon;
 pub mod frame;
 mod inspector;
 mod logging;

@@ -121,6 +121,7 @@ answers each exactly once (§4).
 | `view.<view>.websocket` | `{"socket":3,"url":"…","direction":"open|in|out|close","frame":"…"}` | capture `websocket` |
 | `view.<view>.invoke.<…command>` | the page's arguments, untouched | always on; header `Reply-To: view.<view>.call.<call>` |
 | `view.<view>.request` | the request body, untouched | a page's request to a controller route (§2.4); headers `Method`, `Path` (e.g. `/users/42`, still percent-encoded), `Query` (raw, may be empty), `Content-Type`, `Reply-To`; answered like a call, `204` for no content |
+| `view.<view>.asset` | none | a page's request for one of the app's files (§2.4); headers `Root` (the window's `assets`, §5.1), `Path` (checked, e.g. `assets/main.js`), `Reply-To`; answered `200` with the file and its `Content-Type`, or `404` |
 | `_inbox.…` | a reply (§4) | |
 
 The `<view>` in a subject is set by the native side from the window the message came from. A page
@@ -158,6 +159,19 @@ carries is run as a script.
 | `POST calls/<call>` | the large answer to an IPC call (above), once |
 | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` `api/<path>[?query]` | `view.<view>.request` to Java (§2.2), the body unread; Java's answer is the response. The routes are a `@WebViewController`'s, and the TypeScript client the annotation processor generates calls them |
 | `POST events` | held until Java emits a large push; answered with the waiting `view.<view>.emit.<…topic>` messages as frames (§1.1), each with a `Seq` header, `Content-Type: application/x-webview4j-frames` |
+| `GET app/<path>` | `view.<view>.asset` to Java (§2.2), for a window opened with `assets`; Java's answer is the response. An empty path or one ending in `/` is `index.html` |
+
+**The app's files** answer before the origin check: a page loading itself and the files it links
+to sends no `Origin`. They are the app's code, never its data, and only a window opened with
+`assets` serves any (`404` otherwise). A path is refused natively with `400`, before Java sees it,
+unless every segment is non-empty, does not start with `.`, and has only letters, digits and
+`._-~@+`: so no `..`, no hidden files, no backslashes or drives, and nothing percent-encoded that
+could smuggle one in. Java checks the same rule again and serves only directories it opened windows
+with. The page's origin (`https://webview4j.localhost` on Windows) is the window's default allowed
+origin, so the app's page uses the bridge and the controllers. Browsers send no `Origin` on a
+same-origin `GET`, so without one a request's origin is taken from headers pages cannot set:
+`Sec-Fetch-Site: same-origin` means the protocol's own origin, and otherwise the origin of the
+`Referer`. With neither, the request has no origin, and no window allows it.
 
 - Both channels answer only origins the window allows: by default the origin of the URL it
   opened, or `null` for HTML it was given; `WindowOptions.origins(...)` sets the list. Over IPC a
@@ -229,6 +243,9 @@ sent (`400`), so a typo fails loudly instead of being half-understood.
 | `dataDirectory` | absolute path | |
 | `ownerWindow` | integer, native handle (Windows) | |
 | `capture` | §5.4 | console only |
+| `origins` | array of origins | the origin of `url`, or `null` |
+| `assets` | string, a class path directory Java serves the app's files from | none |
+| `icon` | string, a PNG in base64 (1 MB at most): the window's icon in its title bar, the taskbar and the window switcher; one that is not a PNG is ignored with a warning | the program's icon |
 
 ### 5.2 Views (`app.list`)
 

@@ -54,7 +54,8 @@ pub fn script() -> String {
 pub fn origin_of(url: &str) -> Option<String> {
     let uri: wry::http::Uri = url.parse().ok()?;
     let scheme = uri.scheme_str()?;
-    if !matches!(scheme, "http" | "https") {
+    // The custom protocol's own origin counts too: the app's files are served from it (`app/`).
+    if !matches!(scheme, "http" | "https" | SCHEME) {
         return None;
     }
     Some(format!("{scheme}://{}", uri.authority()?.as_str().to_ascii_lowercase()))
@@ -96,6 +97,8 @@ pub fn settle_script(page_call: u64, status: u16, value: &Value, fetch: Option<&
 pub struct Link {
     view: String,
     origins: Vec<String>,
+    /// The app's files, as Java named them; None serves none.
+    assets: Option<String>,
     next_call: u64,
     calls: HashMap<u64, Waiting>,
     /// Answers too large to post, waiting for the page to fetch them, by the page's call number.
@@ -116,10 +119,17 @@ pub enum Emit {
 }
 
 impl Link {
+    #[cfg(test)]
     pub fn new(view: &str, origins: Vec<String>) -> Arc<Mutex<Link>> {
+        Self::with_assets(view, origins, None)
+    }
+
+    /// A link that also serves the app's files, `assets`, at `<base>app/`.
+    pub fn with_assets(view: &str, origins: Vec<String>, assets: Option<String>) -> Arc<Mutex<Link>> {
         Arc::new(Mutex::new(Link {
             view: view.to_string(),
             origins,
+            assets,
             next_call: 0,
             calls: HashMap::new(),
             large: HashMap::new(),
@@ -161,7 +171,13 @@ impl Link {
 
     /// A request from the page over the custom protocol. Returns the message to send Java, if it is a call.
     pub fn request(&mut self, request: Request<Vec<u8>>, responder: RequestAsyncResponder) -> Option<Message> {
-        let origin = request.headers().get(header::ORIGIN).and_then(|o| o.to_str().ok()).unwrap_or("").to_string();
+        let origin = request_origin(request.headers());
+        if let Some(path) = request.uri().path().strip_prefix("/app/") {
+            // The app's own files: a page loading itself and what it links to sends no Origin, so
+            // these answer before the origin check. They are the app's code, not its data.
+            let path = path.to_string();
+            return self.asset_request(&request, path, origin, responder);
+        }
         if !self.allows(&origin) {
             responder.respond(response(403, None, "text/plain", format!("origin '{origin}' may not use this window's bridge").into_bytes()));
             return None;
@@ -225,6 +241,34 @@ impl Link {
             .header("Reply-To", format!("view.{}.call.{call}", self.view))
             .header("Content-Type", content_type)
             .payload(body.clone());
+        self.calls.insert(call, Waiting::Fetch(responder, origin));
+        Some(message)
+    }
+
+    /// A request for one of the app's files, `GET <base>app/<path>`: to Java as `view.<view>.asset`
+    /// with `Root` (the assets the window was opened with) and `Path` headers; Java's answer is the
+    /// response. A path that climbs out (`..`), has a backslash, a drive or a control character is
+    /// refused here; an empty path is `index.html`.
+    fn asset_request(&mut self, request: &Request<Vec<u8>>, path: String, origin: String, responder: RequestAsyncResponder) -> Option<Message> {
+        let Some(root) = self.assets.clone() else {
+            responder.respond(response(404, None, "text/plain", b"this window serves no files".to_vec()));
+            return None;
+        };
+        if !matches!(request.method().as_str(), "GET" | "HEAD") {
+            responder.respond(response(405, None, "text/plain", b"GET only".to_vec()));
+            return None;
+        }
+        let path = if path.is_empty() || path.ends_with('/') { format!("{path}index.html") } else { path };
+        if !safe_asset_path(&path) {
+            responder.respond(response(400, None, "text/plain", b"not a file path".to_vec()));
+            return None;
+        }
+        self.next_call += 1;
+        let call = self.next_call;
+        let message = Message::new(format!("view.{}.asset", self.view))
+            .header("Reply-To", format!("view.{}.call.{call}", self.view))
+            .header("Root", root)
+            .header("Path", path);
         self.calls.insert(call, Waiting::Fetch(responder, origin));
         Some(message)
     }
@@ -346,11 +390,47 @@ impl Link {
     }
 }
 
+/// The origin a request came from. Browsers leave `Origin` off a same-origin `GET`, which is what
+/// a page served from the protocol itself (`app/`) sends for its data. Without an `Origin`, the
+/// browser's own word decides, from headers pages cannot set: `Sec-Fetch-Site: same-origin` is
+/// the protocol's own origin, and otherwise the origin of the `Referer` (a page can drop its
+/// referrer, never claim another's). With neither, the empty origin, which no window allows.
+pub fn request_origin(headers: &header::HeaderMap) -> String {
+    let given = headers.get(header::ORIGIN).and_then(|o| o.to_str().ok()).unwrap_or("");
+    if !given.is_empty() {
+        return given.to_string();
+    }
+    let same_origin = headers.get("sec-fetch-site").and_then(|s| s.to_str().ok()) == Some("same-origin");
+    if same_origin {
+        return origin_of(base_url()).unwrap_or_default();
+    }
+    headers
+        .get(header::REFERER)
+        .and_then(|r| r.to_str().ok())
+        .and_then(origin_of)
+        .unwrap_or_default()
+}
+
+/// Whether `path` names a file inside the app's files: segments of letters, digits and `._-~@+`,
+/// none empty, none starting with a dot (no `..`, no hidden files), and nothing percent-encoded, so
+/// no encoding can smuggle a separator or a climb past this check.
+pub fn safe_asset_path(path: &str) -> bool {
+    !path.is_empty()
+        && path.len() <= 512
+        && path.split('/').all(|segment| {
+            !segment.is_empty()
+                && !segment.starts_with('.')
+                && segment.chars().all(|c| c.is_ascii_alphanumeric() || "._-~@+".contains(c))
+        })
+}
+
 /// Answers a fetch with Java's answer: its Status, Content-Type and bytes, unread.
 fn respond_with(responder: RequestAsyncResponder, origin: &str, answer: Message) {
     let status = answer.get("Status").and_then(|s| s.parse::<u16>().ok()).unwrap_or(500);
     let content_type = answer.get("Content-Type").unwrap_or("application/json").to_string();
-    responder.respond(response(status, Some(origin), &content_type, answer.payload));
+    // A request without an Origin (a page loading its own files) gets no CORS headers.
+    let origin = Some(origin).filter(|o| !o.is_empty());
+    responder.respond(response(status, origin, &content_type, answer.payload));
 }
 
 fn response(status: u16, origin: Option<&str>, content_type: &str, body: Vec<u8>) -> Response<Vec<u8>> {
@@ -374,6 +454,44 @@ mod tests {
 
     fn ipc_call(command: &str, page_call: u64, args: &str) -> String {
         String::from_utf8(Message::new(format!("invoke.{command}")).header("Call", page_call.to_string()).payload(args).encode()).unwrap()
+    }
+
+    #[test]
+    fn a_same_origin_request_without_origin_comes_from_the_protocol_itself() {
+        let mut headers = header::HeaderMap::new();
+        assert_eq!(request_origin(&headers), "", "no Origin, no word from the browser: nobody");
+        headers.insert("sec-fetch-site", "cross-site".parse().unwrap());
+        assert_eq!(request_origin(&headers), "", "a cross-site request without an Origin is nobody");
+        headers.insert(header::REFERER, "https://evil.example/page".parse().unwrap());
+        assert_eq!(request_origin(&headers), "https://evil.example", "a referrer names its own origin, never ours");
+        headers.insert(header::REFERER, format!("{}app/index.html", base_url()).parse().unwrap());
+        assert_eq!(request_origin(&headers), origin_of(base_url()).unwrap(), "the app's own page, by its referrer");
+        headers.remove(header::REFERER);
+        headers.insert("sec-fetch-site", "same-origin".parse().unwrap());
+        assert_eq!(request_origin(&headers), origin_of(base_url()).unwrap(), "the app's own page");
+        headers.insert(header::ORIGIN, "https://app.example".parse().unwrap());
+        assert_eq!(request_origin(&headers), "https://app.example", "a given Origin wins");
+    }
+
+    #[test]
+    fn asset_paths_stay_inside_the_apps_files() {
+        assert!(safe_asset_path("index.html"));
+        assert!(safe_asset_path("assets/index-B3x_9a.js"));
+        assert!(safe_asset_path("fonts/inter@4.woff2"));
+        for bad in ["", "../secret", "a/../../b", "a//b", ".env", "a/.git/config", "a\\b", "C:/x", "a%2F..%2Fb", "a b", "a\u{0}b"] {
+            assert!(!safe_asset_path(bad), "{bad:?} is refused");
+        }
+    }
+
+    #[test]
+    fn asset_requests_go_to_java_with_the_windows_root_only_when_it_serves_files() {
+        let served = Link::with_assets("wv-1", vec!["https://webview4j.localhost".into()], Some("app".into()));
+        let served = served.lock().unwrap();
+        assert!(served.assets.is_some());
+        let none = Link::new("wv-2", vec!["null".into()]);
+        assert!(none.lock().unwrap().assets.is_none(), "a window opened without assets serves none");
+        assert_eq!(origin_of("webview4j://localhost/app/index.html").as_deref(), Some("webview4j://localhost"));
+        assert_eq!(origin_of("https://webview4j.localhost/app/").as_deref(), Some("https://webview4j.localhost"));
     }
 
     #[test]

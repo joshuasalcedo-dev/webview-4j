@@ -448,7 +448,7 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
         Some(url) => bridge::origin_of(url).into_iter().collect(),
         None => vec!["null".to_string()],
     });
-    let link = bridge::Link::new(&id, origins);
+    let link = bridge::Link::with_assets(&id, origins, open.assets.clone());
     let page_link = Arc::clone(&link);
     let ipc_link = Arc::clone(&link);
     builder = https_scheme(builder)
@@ -535,13 +535,32 @@ fn not_found(view: &str) -> Outcome {
 }
 
 fn window_builder(open: &OpenRequest) -> WindowBuilder {
-    let builder = WindowBuilder::new()
+    let mut builder = WindowBuilder::new()
         .with_title(&open.title)
         .with_inner_size(LogicalSize::new(open.width, open.height))
         .with_resizable(open.resizable)
         .with_decorations(open.decorations)
         .with_visible(!open.headless);
+    if let Some(png) = &open.icon {
+        // A picture that is not one leaves the program's icon: not worth refusing the window for.
+        match crate::icon::from_png_base64(png) {
+            Ok(icon) => builder = with_icon(builder, icon),
+            Err(reason) => log::warn!("the window's icon is not used: {reason}"),
+        }
+    }
     owned(builder, open.owner_window)
+}
+
+/// The icon in the title bar and the window switcher, and on Windows the taskbar's too.
+#[cfg(target_os = "windows")]
+fn with_icon(builder: WindowBuilder, icon: tao::window::Icon) -> WindowBuilder {
+    use tao::platform::windows::WindowBuilderExtWindows;
+    builder.with_taskbar_icon(Some(icon.clone())).with_window_icon(Some(icon))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn with_icon(builder: WindowBuilder, icon: tao::window::Icon) -> WindowBuilder {
+    builder.with_window_icon(Some(icon))
 }
 
 #[cfg(target_os = "windows")]

@@ -30,6 +30,9 @@ public final class WindowOptions {
     private Path dataDirectory;
     private Set<Capture> capture;
     private List<String> origins;
+    private String assets;
+    private ClassLoader assetLoader;
+    private byte[] icon;
 
     private WindowOptions() {}
 
@@ -49,7 +52,50 @@ public final class WindowOptions {
         return new WindowOptions();
     }
 
+    /**
+     * The app's own page: the window opens {@code <directory>/index.html} from the class path,
+     * served with everything it links to (scripts, styles, fonts, images) over webview-4j's custom
+     * protocol at {@code <base>app/}. No port is opened and nothing is fetched from the network. The
+     * page may use the bridge and the controllers; by default no other origin may.
+     *
+     * <p>Files are read with the thread's context class loader; {@link #app(String, ClassLoader)}
+     * names another. Only files under {@code directory} are served, by paths of letters, digits and
+     * {@code ._-~@+} (no {@code ..}, no hidden files, nothing percent-encoded).
+     *
+     * @param directory a class path directory, such as {@code "app"} for {@code src/main/resources/app}
+     */
+    public static WindowOptions app(String directory) {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        return app(directory, loader != null ? loader : WindowOptions.class.getClassLoader());
+    }
+
+    /** {@link #app(String)}, reading the files with {@code loader}. */
+    public static WindowOptions app(String directory, ClassLoader loader) {
+        WindowOptions options = new WindowOptions();
+        options.assets = Assets.root(directory);
+        options.assetLoader = Objects.requireNonNull(loader, "loader");
+        options.url = Assets.baseUrl() + "app/index.html";
+        return options;
+    }
+
     public WindowOptions title(String title)        { this.title = Objects.requireNonNull(title, "title"); return this; }
+
+    /**
+     * The window's icon, a PNG (a square of 256 pixels reads well everywhere): in its title bar,
+     * the taskbar and the window switcher, instead of the Java program's. A picture that is not a
+     * PNG leaves the program's icon, with a warning in the log.
+     *
+     * @throws IllegalArgumentException if it is empty or over a megabyte
+     */
+    public WindowOptions icon(byte[] png) {
+        Objects.requireNonNull(png, "png");
+        if (png.length == 0 || png.length > 1024 * 1024) {
+            throw new IllegalArgumentException("an icon is a PNG of 1 byte to 1 MB, not " + png.length + " bytes");
+        }
+        this.icon = png.clone();
+        return this;
+    }
+
     public WindowOptions resizable(boolean value)   { this.resizable = value; return this; }
     /** False removes the title bar and borders. */
     public WindowOptions decorations(boolean value) { this.decorations = value; return this; }
@@ -116,7 +162,18 @@ public final class WindowOptions {
         if (dataDirectory != null) payload.put("dataDirectory", dataDirectory.toString());
         if (capture != null) payload.put("capture", switches(capture));
         if (origins != null) payload.put("origins", origins);
+        if (assets != null) payload.put("assets", assets);
+        if (icon != null) payload.put("icon", java.util.Base64.getEncoder().encodeToString(icon));
         return payload;
+    }
+
+    /** The app's files, as a class path directory; null when the window serves none. */
+    String assets() {
+        return assets;
+    }
+
+    ClassLoader assetLoader() {
+        return assetLoader;
     }
 
     /** Every report on or off, as the capture payload. */
