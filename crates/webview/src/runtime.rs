@@ -182,6 +182,7 @@ fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut 
             Err(error) => error,
         },
         ["app", "list"] => Outcome::json(&list(state)),
+        ["app", "play"] => crate::sound::play(&message.payload),
         ["app", "quit"] => {
             // Webviews before their windows and contexts, while the loop is still alive.
             state.ids_by_window.clear();

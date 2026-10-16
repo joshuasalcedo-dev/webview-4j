@@ -90,6 +90,7 @@ A refused frame is never half-processed: the receiver drops it and, if it can te
 | `app.open` | `application/json`: window options (§5.1) | `200`, `{"view":"wv-1"}` |
 | `app.list` | none | `200`, a list of views (§5.2) |
 | `app.quit` | none | `200`, then every window closes and the loop ends |
+| `app.play` | the bytes of an MP3, WAV, Ogg Vorbis or FLAC, up to 4 MiB (§5.6) | `200` once it starts, `415` if it is not a sound |
 | `view.<view>.navigate` | `text/plain`: the URL | `200` |
 | `view.<view>.load-html` | `text/html`: the page | `200` |
 | `view.<view>.eval` | `text/javascript`: a script | `200`, `application/json`: its value |
@@ -271,6 +272,12 @@ As the inspector scripts write them, minus any `viewId` or `sessionKey` the page
   element (`id`, `classes`, `role`, `ariaLabel`, `href`, `title`, `dataAttrs`)
 - `dom-event`: `kind` (`click`, `hover`, `input`, `keyDown`, …), `element` (a snapshot), `x`, `y`,
   `button`, `key`
+
+### 5.6 Sounds
+
+`app.play` plays the app's own sound once on the default output device, such as the sound that
+goes with a notification the app shows. It is decoded before the reply, so bytes that are not a
+sound are answered `415`; it then plays on a thread of its own and never holds the loop up.
 
 ## 6. The FFM transport
 

@@ -16,6 +16,7 @@ mod icon;
 pub mod frame;
 mod inspector;
 mod logging;
+mod sound;
 pub mod payload;
 pub mod runtime;
 

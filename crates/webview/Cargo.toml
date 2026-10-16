@@ -18,5 +18,7 @@ log = "0.4"
 # A window's icon: the PNG Java sends, in base64, as RGBA pixels.
 base64 = "0.22"
 png = "0.17"
+# The app's own sounds (app.play).
+rodio = { version = "0.20.1", default-features = false, features = ["mp3", "wav", "vorbis", "flac"] }
 
 [dev-dependencies]

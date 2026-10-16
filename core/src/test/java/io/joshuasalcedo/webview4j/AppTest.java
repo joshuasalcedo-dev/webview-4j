@@ -107,6 +107,18 @@ class AppTest {
 
     @Test
     @Timeout(60)
+    void whatIsNotASoundIsRefused() {
+        // Nothing here plays: a sound would reach the speakers.
+        try (App app = App.start()) {
+            CompletionException notSound = assertThrows(CompletionException.class,
+                    () -> app.playSound("not a sound".getBytes()).join());
+            assertTrue(notSound.getCause().getMessage().contains("not a sound"), notSound.getCause().getMessage());
+            assertThrows(IllegalArgumentException.class, () -> app.playSound(new byte[0]));
+        }
+    }
+
+    @Test
+    @Timeout(60)
     void aStoppedAppFailsWhatIsAskedOfIt() throws Exception {
         App app = App.start();
         app.close();

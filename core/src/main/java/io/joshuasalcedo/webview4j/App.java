@@ -159,6 +159,19 @@ public final class App implements AutoCloseable {
         });
     }
 
+    // ---- sounds ----
+
+    /**
+     * Plays a sound once on the default output device: an MP3, WAV, Ogg Vorbis or FLAC of up to
+     * 4 MB. The future completes once it starts; it fails if the bytes are not a sound.
+     */
+    public CompletableFuture<Void> playSound(byte[] sound) {
+        Objects.requireNonNull(sound, "sound");
+        if (sound.length == 0 || sound.length > 4 * 1024 * 1024)
+            throw new IllegalArgumentException("a sound is 1 byte to 4 MB, not " + sound.length + " bytes");
+        return request(Message.of("app.play").withPayload(sound, "application/octet-stream")).thenApply(reply -> null);
+    }
+
     /**
      * Sends {@code message} with a fresh {@code Reply-To} and completes with the reply, or fails
      * with a {@link WebViewException} when its {@code Status} is not 200. Package-private on purpose:
