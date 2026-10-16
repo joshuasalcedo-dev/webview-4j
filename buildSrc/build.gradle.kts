@@ -13,7 +13,7 @@ gradlePlugin {
     plugins {
         create("prettyDocs") {
             id = "io.joshuasalcedo.pretty-docs"
-            implementationClass = "io.joshuasalcedo.webview4j.build.PrettyDocsPlugin"
+            implementationClass = "io.joshuasalcedo.webview4j.gradle.PrettyDocsPlugin"
         }
     }
 }
