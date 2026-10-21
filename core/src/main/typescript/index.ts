@@ -21,10 +21,61 @@ export interface Bridge {
   listen(topic: string, handler: (data: unknown) => void): () => void;
 }
 
+/**
+ * Where the routes answer as a plain HTTP API (Java's `HttpApi`): its base URL, such as
+ * `http://127.0.0.1:52144/api` or `https://books.example.com/api`, and the bearer token it wants.
+ */
+export interface HttpConnection {
+  baseUrl: string;
+  token?: string;
+}
+
 declare global {
   interface Window {
     __webview4j?: Bridge;
+    /** Set by a shell that starts the Java side as an HTTP API, such as a Tauri app. */
+    __webview4j_http?: HttpConnection;
   }
+}
+
+let http: HttpConnection | undefined;
+
+/**
+ * Sends {@link request} to a plain HTTP API with `fetch` instead of a webview-4j window: from a
+ * browser, another desktop shell, or a server. A page a shell opened with `window.__webview4j_http`
+ * set is connected already.
+ */
+export function connect(connection: HttpConnection): void {
+  http = { baseUrl: connection.baseUrl.replace(/\/+$/, ""), token: connection.token };
+}
+
+function httpConnection(): HttpConnection | undefined {
+  if (http) return http;
+  if (typeof window !== "undefined" && window.__webview4j_http) connect(window.__webview4j_http);
+  return http;
+}
+
+/** A route over HTTP: the same URL, query and body rules as the window's own channel. */
+async function fetchRoute(connection: HttpConnection, method: HttpMethod, path: string, query?: Record<string, unknown>, body?: unknown) {
+  if (!path.startsWith("/")) throw new TypeError("a route path starts with /");
+  const search: string[] = [];
+  for (const [name, value] of Object.entries(query ?? {})) {
+    if (value === undefined || value === null) continue;
+    for (const item of Array.isArray(value) ? value : [value]) {
+      search.push(encodeURIComponent(name) + "=" + encodeURIComponent(String(item)));
+    }
+  }
+  const headers: Record<string, string> = {};
+  if (connection.token) headers.Authorization = "Bearer " + connection.token;
+  const init: RequestInit = { method, headers };
+  if (body !== undefined && method !== "GET") {
+    init.body = JSON.stringify(body);
+    headers["Content-Type"] = "application/json";
+  }
+  const response = await fetch(connection.baseUrl + path + (search.length ? "?" + search.join("&") : ""), init);
+  const text = await response.text();
+  if (response.status >= 400) throw new RequestError(method, path, response.status, text);
+  return response.status === 204 || text === "" ? null : JSON.parse(text);
 }
 
 /**
@@ -98,6 +149,9 @@ export async function request<T = unknown>(
   path: string,
   options: { query?: Record<string, unknown>; body?: unknown } = {},
 ): Promise<T> {
+  // Once connected to an HTTP API, it answers, even in a webview-4j window.
+  const connection = httpConnection();
+  if (connection) return (await fetchRoute(connection, method, path, options.query, options.body)) as T;
   try {
     return (await bridge().request(method, path, options.query, options.body)) as T;
   } catch (error) {

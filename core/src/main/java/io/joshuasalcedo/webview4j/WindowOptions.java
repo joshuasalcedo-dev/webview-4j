@@ -33,6 +33,7 @@ public final class WindowOptions {
     private String assets;
     private ClassLoader assetLoader;
     private byte[] icon;
+    private long ownerWindow;
 
     private WindowOptions() {}
 
@@ -97,6 +98,19 @@ public final class WindowOptions {
     }
 
     public WindowOptions resizable(boolean value)   { this.resizable = value; return this; }
+    /**
+     * Windows only: the native handle (HWND) of a window that owns this one, such as a Swing frame's.
+     * An owned window stays above its owner, is minimized with it and has no taskbar button of its own.
+     * Ignored on other systems.
+     *
+     * @throws IllegalArgumentException if {@code hwnd} is 0
+     */
+    public WindowOptions ownerWindow(long hwnd) {
+        if (hwnd == 0) throw new IllegalArgumentException("ownerWindow needs a window handle, not 0");
+        this.ownerWindow = hwnd;
+        return this;
+    }
+
     /** False removes the title bar and borders. */
     public WindowOptions decorations(boolean value) { this.decorations = value; return this; }
     public WindowOptions devtools(boolean value)    { this.devtools = value; return this; }
@@ -164,6 +178,7 @@ public final class WindowOptions {
         if (origins != null) payload.put("origins", origins);
         if (assets != null) payload.put("assets", assets);
         if (icon != null) payload.put("icon", java.util.Base64.getEncoder().encodeToString(icon));
+        if (ownerWindow != 0) payload.put("ownerWindow", ownerWindow);
         return payload;
     }
 

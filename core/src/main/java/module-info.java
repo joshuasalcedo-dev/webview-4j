@@ -4,6 +4,7 @@
  * Run with {@code --enable-native-access=io.joshuasalcedo.webview4j}.
  */
 module io.joshuasalcedo.webview4j {
+    requires jdk.httpserver;
     exports io.joshuasalcedo.webview4j;
     exports io.joshuasalcedo.webview4j.annotation;
 }
