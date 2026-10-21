@@ -63,9 +63,14 @@ val cargoBuild = tasks.register<Exec>("cargoBuild") {
     outputs.file(rootProject.file("target/$cargoOutputDir/$nativeLibrary"))
 }
 
+// -PprebuiltNatives=<dir>: a folder with natives/<os>-<arch>/ for every platform (the release workflow builds each on
+// its own OS and gathers them), so the published jar carries them all; cargo is not run then.
+val prebuiltNatives = providers.gradleProperty("prebuiltNatives")
+
 val natives = tasks.register<Sync>("natives") {
-    description = "Puts the native library where the jar carries it: natives/$nativePlatform/."
-    from(cargoBuild) { into("natives/$nativePlatform") }
+    description = "Puts the native library where the jar carries it: natives/$nativePlatform/ (or every platform's, from -PprebuiltNatives)."
+    if (prebuiltNatives.isPresent) from(prebuiltNatives.get()) { include("natives/**") }
+    else from(cargoBuild) { into("natives/$nativePlatform") }
     into(layout.buildDirectory.dir("generated/natives"))
 }
 
