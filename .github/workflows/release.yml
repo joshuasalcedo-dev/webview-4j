@@ -16,11 +16,12 @@ on:
 jobs:
   natives:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - { os: windows-latest, platform: windows-x64 }
           - { os: ubuntu-latest,  platform: linux-x64 }
-          - { os: macos-13,       platform: macos-x64 }
+          - { os: macos-15-intel, platform: macos-x64 }
           - { os: macos-latest,   platform: macos-aarch64 }
     runs-on: ${{ matrix.os }}
     steps:
