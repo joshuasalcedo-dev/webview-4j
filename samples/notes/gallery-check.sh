@@ -11,7 +11,7 @@ until mkdir "$lock" 2>/dev/null; do sleep 2; done
 trap 'rmdir "$lock"' EXIT
 
 if [ $# -gt 0 ]; then
-  tests=(--tests '*GalleryTest.everyPageDraws' --tests '*GalleryTest.aPageCoversOnlyComponents' "-Pgallery.section=$1")
+  tests=(--tests '*GalleryTest.everyPageDraws*' --tests '*GalleryTest.aPageCoversOnlyComponents' "-Pgallery.section=$1")
 else
   tests=(--tests '*GalleryTest')
 fi

@@ -13,6 +13,10 @@ bench:
 gallery:
     cd samples/notes; ./gradlew run -Pgallery -PcargoProfile=dev --console=plain
 
+# The component gallery on the web: the same Java screens in a browser, http://localhost:8080/
+gallery-web port="8080":
+    cd samples/notes; ./gradlew runWeb -Pport={{port}} -PcargoProfile=dev --console=plain
+
 # The sample app (Notes) and its showcase window: sidebar, MDI, an embedded site
 showcase:
     cd samples/notes; ./gradlew run -Pshowcase -PcargoProfile=dev --console=plain

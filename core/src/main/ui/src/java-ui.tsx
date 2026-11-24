@@ -80,9 +80,11 @@ type Bridge = {
   listen(topic: string, handler: (data: unknown) => void): () => void
 }
 
+/** The way to Java: a web host's (over its WebSocket, in a browser), else the desktop window's own. */
 const bridge = (): Bridge => {
-  const found = (window as unknown as { __webview4j?: Bridge }).__webview4j
-  if (!found) throw new Error("the Java UI runs in a webview-4j window")
+  const w = window as unknown as { __webview4jRemote?: Bridge; __webview4j?: Bridge }
+  const found = w.__webview4jRemote ?? w.__webview4j
+  if (!found) throw new Error("the Java UI runs in a webview-4j window, or a page of a webview-4j web host")
   return found
 }
 

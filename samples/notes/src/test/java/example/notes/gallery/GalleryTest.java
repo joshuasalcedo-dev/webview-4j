@@ -61,4 +61,33 @@ class GalleryTest {
             assertTrue(broken.isEmpty(), "pages that do not draw: " + broken);
         }
     }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    @Timeout(900)
+    void everyPageDrawsOnTheWebToo() throws Exception {
+        String only = System.getProperty("gallery.section", "");
+        try (App app = App.start();
+             io.joshuasalcedo.webview4j.ui.WebHost host = io.joshuasalcedo.webview4j.ui.WebHost.of(GalleryScreen::new).title("Gallery").start()) {
+            View view = app.open(io.joshuasalcedo.webview4j.WindowOptions.url(host.url().toString()).headless(true).size(1180, 900)).join();
+            List<String> broken = new ArrayList<>();
+            for (Gallery.Page page : new Gallery().pages()) {
+                if (!only.isEmpty() && !page.section().equals(only)) continue;
+                // as a person would: the page's item in the side bar
+                String name = page.name().replace("\\", "\\\\").replace("'", "\\'");
+                String text = "";
+                for (int i = 0; i < 60; i++) {
+                    view.eval("(() => { const b = [...document.querySelectorAll('button')].find(e => e.innerText.trim() === '" + name + "');"
+                            + " if (b && b.getAttribute('aria-current') !== 'page') b.click(); })()").join();
+                    text = String.valueOf(view.eval("document.body ? document.body.innerText : ''").join());
+                    if (text.contains("The Java") && text.contains(page.name())
+                            && Boolean.TRUE.equals(view.eval("[...document.querySelectorAll('button[aria-current=page]')].some(b => b.innerText.trim() === '" + name + "')").join())) break;
+                    Thread.sleep(100);
+                }
+                if (!text.contains("The Java")) broken.add(page.name() + ": the page did not draw on the web");
+                else if (text.contains("No component \"")) broken.add(page.name() + ": " + text.substring(text.indexOf("No component \"")).lines().findFirst().orElse(""));
+            }
+            assertTrue(broken.isEmpty(), "pages that do not draw on the web: " + broken);
+        }
+    }
 }

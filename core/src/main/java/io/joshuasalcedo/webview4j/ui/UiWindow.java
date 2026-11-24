@@ -53,7 +53,18 @@ public final class UiWindow {
         io.joshuasalcedo.webview4j.ui.components.valueobject.ValueViews.install();
     }
 
+    /**
+     * Where the screen is shown: a desktop window's view, or a browser tab of a {@link WebHost}. Only what the screen
+     * needs: an id, and the tree sent to it.
+     */
+    interface Surface {
+        String id();
+
+        CompletableFuture<Void> emit(String topic, Object data);
+    }
+
     private final View view;
+    private final Surface surface;
     private final Screen screen;
     /** The window's context: its session's values, and its own. */
     private final io.joshuasalcedo.webview4j.ui.state.Context.Scope scope;
@@ -66,7 +77,20 @@ public final class UiWindow {
     private Map<String, Object> notice;
 
     private UiWindow(View view, Screen screen, io.joshuasalcedo.webview4j.ui.state.Session session) {
+        this(view, new Surface() {
+            @Override public String id() { return view.id(); }
+            @Override public CompletableFuture<Void> emit(String topic, Object data) { return view.emit(topic, data); }
+        }, screen, session);
+    }
+
+    /** A screen in a browser tab (WebHost): no native view. */
+    UiWindow(Surface surface, Screen screen, io.joshuasalcedo.webview4j.ui.state.Session session) {
+        this(null, surface, screen, session);
+    }
+
+    private UiWindow(View view, Surface surface, Screen screen, io.joshuasalcedo.webview4j.ui.state.Session session) {
         this.view = view;
+        this.surface = surface;
         this.screen = screen;
         this.scope = new io.joshuasalcedo.webview4j.ui.state.Context.Scope(session);
     }
@@ -174,9 +198,36 @@ public final class UiWindow {
         return windows.computeIfAbsent(call.view().id(), id -> new CompletableFuture<>());
     }
 
-    /** The view the screen is shown in: to close it, move it, or embed a site in it. */
+    /**
+     * The view the screen is shown in: to close it, move it, or embed a site in it. On the web (a {@link WebHost}'s
+     * browser tab) there is none: the browser owns its window.
+     *
+     * @throws UnsupportedOperationException in a browser tab
+     */
     public View view() {
+        if (view == null) throw new UnsupportedOperationException(
+                "this screen is in a browser tab (a WebHost): there is no native window to move, close or embed in; check onWeb()");
         return view;
+    }
+
+    /** Whether the screen is in a browser tab of a {@link WebHost} rather than a desktop window. */
+    public boolean onWeb() {
+        return view == null;
+    }
+
+    /** Its tab closed (web): what it read no longer draws it. */
+    void detach() {
+        closed = true;
+        var r = reader;
+        if (r != null) r.end();
+    }
+
+    /** Its tab came to the front (web): what it shows is checked again, if stale. */
+    void focused() {
+        scope.call(() -> {
+            io.joshuasalcedo.webview4j.ui.state.Tracking.focused(reader);
+            return null;
+        });
     }
 
     public Screen screen() {
@@ -231,20 +282,25 @@ public final class UiWindow {
 
     /** Shows the screen again: after its state changed outside its handlers (a timer, a message, a download). */
     public CompletableFuture<Void> refresh() {
-        return view.emit(TREE, tree());
+        return surface.emit(TREE, tree());
     }
 
     /** Runs the handler the user's action names, then renders again; the page gets the new tree as the answer. */
     private Map<String, Object> handle(Invocation call) {
+        return handle(call.text("handler"), call.fields().get("value"));
+    }
+
+    /** Runs the handler named {@code name} with {@code value}, then renders again: the new tree. */
+    Map<String, Object> handle(String name, Object value) {
         Consumer<Object> handler;
         synchronized (this) {
-            handler = handlers.get(call.text("handler"));
+            handler = handlers.get(name);
         }
         if (handler != null) {
             try {
                 synchronized (screen) {
                     scope.call(() -> {
-                        handler.accept(call.fields().get("value"));
+                        handler.accept(value);
                         return null;
                     });
                 }

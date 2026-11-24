@@ -2,6 +2,7 @@
 
 ## 0.2.0 — unreleased
 
+- The same screens on the web: `WebHost.of(MyScreen::new).port(8080).start()` shows a `Screen` in every browser tab over a WebSocket (no dependency: sockets and virtual threads); each browser session (a cookie) is a `Session` of its own, keeping what it persists in that browser's IndexedDB; another site's page is refused; `UiWindow.onWeb()` tells a screen where it is (`just gallery-web`)
 - `loadable(serverState, data -> ...)` and a collection's `.state(serverState)`: loading, errors with Try again and the reload bar from server state, nothing by hand
 - Invalidations leave the JVM: `ServerState.invalidate` (and every `Mutation`) tells the app's pages, and `@webview4j/api` refreshes a page's TanStack queries (`invalidateFromJava(queryClient)`, `javaQuery(command)`); a server pushes them over server-sent events (`Invalidations.listen`), the starter has the endpoint (`StateInvalidations.publish`) and a desktop client listens by itself
 - `paragraph(...)`: code, links and bold inside one paragraph; a file rename asks for the new name (`onRename((path, name) -> ...)`); `Quantity.Display`; `result(query.apply(rows))` instead of `page(result)`

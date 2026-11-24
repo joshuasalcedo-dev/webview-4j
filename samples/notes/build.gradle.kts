@@ -88,3 +88,12 @@ tasks.named<JavaExec>("run") {
     if (providers.gradleProperty("showcase").isPresent) systemProperty("notes.showcase", "true")
     if (providers.gradleProperty("gallery").isPresent) systemProperty("notes.gallery", "true")
 }
+
+// ./gradlew runWeb: the component gallery on the web, http://localhost:8080/ (no window: a browser shows it).
+tasks.register<JavaExec>("runWeb") {
+    description = "Serves the component gallery to browsers."
+    group = "application"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "example.notes.GalleryOnTheWeb"
+    providers.gradleProperty("port").orNull?.let { systemProperty("notes.port", it) }
+}
