@@ -1,6 +1,5 @@
 package io.joshuasalcedo.webview4j.ui.components.usecase.collection;
 
-import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.components.Element;
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
@@ -22,13 +21,12 @@ import java.util.function.Consumer;
  *         .onRowOpen(id -> page.navigate("/teams/" + id))
  * }</pre>
  */
-public final class DataTree extends Component<DataTree> {
+public final class DataTree extends CollectionView<DataTree> {
 
     private final List<Map<String, Object>> columns = new ArrayList<>();
 
     public DataTree(String label) {
-        super("dataTree");
-        prop("label", label);
+        super("dataTree", label);
         prop("columns", columns);
     }
 
@@ -71,15 +69,17 @@ public final class DataTree extends Component<DataTree> {
     /** A row with children not loaded yet ({@code hasChildren}) was opened: load them, the screen shows again. */
     public DataTree onExpand(Consumer<String> action) { return on("onExpand", v -> action.accept(String.valueOf(v))); }
     public DataTree selectable() { return prop("selectable", true); }
-    public DataTree selected(List<String> ids) { return prop("selected", List.copyOf(ids)); }
-    public DataTree onSelectionChange(Consumer<List<String>> action) { return on("onSelectionChange", v -> action.accept(Rows.texts(v))); }
     public DataTree onRowOpen(Consumer<String> action) { return on("onRowOpen", v -> action.accept(String.valueOf(v))); }
     public DataTree menu(String label, Consumer<String> action) {
         return add(slot(new Element("menuItem").set("label", label).handle("onSelect", v -> action.accept(String.valueOf(v))), "menu"));
     }
-    public DataTree empty(String text) { return prop("empty", text); }
 
     public List<Map<String, Object>> columns() {
         return List.copyOf(columns);
+    }
+
+    @Override
+    DataTree rowsOf(List<?> rows) {
+        return rows(rows);
     }
 }

@@ -12,6 +12,8 @@ function cssAsIs(dir: string): Plugin {
   return {
     name: "swaswa-css-as-is",
     enforce: "pre",
+    // the npm build only: in dev (Storybook) Vite has to serve the CSS itself
+    apply: "build",
     resolveId(source) {
       if (source.endsWith(".css") && source.startsWith(".")) return { id: source, external: true }
       return null

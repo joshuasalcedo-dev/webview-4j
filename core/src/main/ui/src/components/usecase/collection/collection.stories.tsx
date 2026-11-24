@@ -6,6 +6,7 @@ import { DataGrid } from "./data-grid"
 import { DataList } from "./data-list"
 import { DataMap } from "./data-map"
 import type { DataRow } from "./data-table"
+import { DataTable } from "./data-table"
 import { DataTree } from "./data-tree"
 
 const PEOPLE: DataRow[] = ["Ana Reyes", "Marco Silva", "Jules", "Kim Park", "Grace Hopper", "Ada Lovelace"].map((name, i) => ({
@@ -69,3 +70,30 @@ type Story = StoryObj<typeof meta>
 export const Windows: Story = {}
 export const Mac: Story = { args: { platform: "mac" } }
 export const Dark: Story = { args: { theme: "dark" } }
+
+/** Column filters, server pages, and the states every collection shares: loading, error, empty, no matches. */
+function States({ platform, theme }: { platform: "windows" | "mac"; theme: "light" | "dark" }) {
+  const [state, setState] = React.useState<"rows" | "loading" | "error" | "empty">("rows")
+  const columns = [
+    { key: "name", header: "Name", filter: "text" as const },
+    { key: "role", header: "Role", type: "pill" as const, filter: "options" as const },
+    { key: "seen", header: "Seen", filter: "text" as const },
+  ]
+  return (
+    <NativeProvider platform={platform} theme={theme} style={{ padding: 24, display: "grid", gap: 16 }}>
+      <div style={{ display: "flex", gap: 8 }}>
+        {(["rows", "loading", "error", "empty"] as const).map((s) => (
+          <button key={s} onClick={() => setState(s)} aria-pressed={state === s}>{s}</button>
+        ))}
+      </div>
+      <DataTable aria-label="People" columns={columns} search pageSize={4}
+        rows={state === "empty" ? [] : PEOPLE}
+        loading={state === "loading"}
+        error={state === "error" ? { title: "People could not be loaded", message: "The server did not answer." } : null}
+        onRetry={() => setState("rows")}
+        empty={{ title: "No people yet", message: "People you invite show here.", action: { label: "Invite", onClick: () => setState("rows") } }} />
+    </NativeProvider>
+  )
+}
+
+export const QueryAndStates: StoryObj<typeof States> = { render: (args) => <States {...args} />, args: { platform: "windows", theme: "light" } }

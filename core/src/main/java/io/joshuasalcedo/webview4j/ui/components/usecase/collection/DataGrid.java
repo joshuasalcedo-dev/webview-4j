@@ -1,6 +1,5 @@
 package io.joshuasalcedo.webview4j.ui.components.usecase.collection;
 
-import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.components.Element;
 import java.util.List;
 import java.util.function.Consumer;
@@ -12,11 +11,10 @@ import java.util.function.Consumer;
  * DataGrid.of("Products", products, "name").image("photoUrl").subtitle("category").pill("status").footer("price")
  * }</pre>
  */
-public final class DataGrid extends Component<DataGrid> {
+public final class DataGrid extends CollectionView<DataGrid> {
 
     public DataGrid(String label, List<?> items, String title) {
-        super("dataGrid");
-        prop("label", label);
+        super("dataGrid", label);
         prop("items", Rows.rows(items));
         prop("title", title);
     }
@@ -34,11 +32,18 @@ public final class DataGrid extends Component<DataGrid> {
     /** The narrowest a card is, CSS pixels: as many fit in a row as the width allows. */
     public DataGrid minCardWidth(double width) { return prop("minWidth", width); }
     public DataGrid multiple() { return prop("multiple", true); }
-    public DataGrid selected(List<String> ids) { return prop("selected", List.copyOf(ids)); }
-    public DataGrid onSelectionChange(Consumer<List<String>> action) { return on("onSelectionChange", v -> action.accept(Rows.texts(v))); }
     public DataGrid onOpen(Consumer<String> action) { return on("onOpen", v -> action.accept(String.valueOf(v))); }
     public DataGrid menu(String label, Consumer<String> action) {
         return add(slot(new Element("menuItem").set("label", label).handle("onSelect", v -> action.accept(String.valueOf(v))), "menu"));
     }
-    public DataGrid empty(String text) { return prop("empty", text); }
+
+    /** The items shown (one page of them, with {@link #paging}, when the server answers the query). */
+    public DataGrid items(List<?> items) {
+        return prop("items", Rows.rows(items));
+    }
+
+    @Override
+    DataGrid rowsOf(List<?> rows) {
+        return items(rows);
+    }
 }

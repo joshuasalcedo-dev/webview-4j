@@ -4,6 +4,8 @@ import { Avatar } from "../../avatar"
 import { type MenuEntry, useContextMenu } from "../../context-menu"
 import { Pill } from "../../pill"
 import type { DataRow } from "./data-table"
+import { type CollectionQuery, EMPTY_QUERY, type Paging } from "./query"
+import { CollectionState, type EmptyStateProps, LoadingBar, Pages, useLoadedOnce } from "./states"
 import "./collection.css"
 
 /**
@@ -28,7 +30,16 @@ type DataGridProps = {
   multiple?: boolean
   onOpen?: (id: string, item: DataRow) => void
   itemMenu?: (item: DataRow) => MenuEntry[]
-  empty?: React.ReactNode
+  /** Cards per page; 0: all of them. */
+  pageSize?: number
+  query?: Partial<CollectionQuery>
+  /** The server answers the page. */
+  onQueryChange?: (query: CollectionQuery) => void
+  paging?: Paging
+  loading?: boolean
+  error?: { title?: string; message?: string } | null
+  onRetry?: () => void
+  empty?: React.ReactNode | EmptyStateProps
   className?: string
   style?: React.CSSProperties
 }
@@ -47,7 +58,14 @@ function DataGrid({
   multiple = false,
   onOpen,
   itemMenu,
-  empty = "Nothing here.",
+  pageSize = 0,
+  query,
+  onQueryChange,
+  paging,
+  loading = false,
+  error,
+  onRetry,
+  empty,
   className,
   style,
   ...props
@@ -60,15 +78,32 @@ function DataGrid({
     if (!selected) setOwnSelected(next)
   }
   const field = (item: DataRow, key?: string) => (key && item[key] != null ? String(item[key]) : undefined)
+  const [own, setOwn] = React.useState<CollectionQuery>({ ...EMPTY_QUERY, size: pageSize })
+  const current: CollectionQuery = { ...own, ...query, size: query?.size ?? paging?.size ?? (pageSize || own.size) }
+  const onServer = onQueryChange != null
+  const size = current.size
+  const all = onServer ? (paging?.total ?? items.length) : items.length
+  const pages = size > 0 ? Math.max(1, Math.ceil(all / size)) : 1
+  const at = Math.min(Math.max(1, onServer ? (paging?.page ?? current.page) : current.page), pages)
+  const visible = !onServer && size > 0 ? items.slice((at - 1) * size, at * size) : items
+  const loadedOnce = useLoadedOnce(loading, items.length)
+  const go = (n: number) => {
+    const next = { ...current, page: n }
+    setOwn(next)
+    onQueryChange?.(next)
+  }
   return (
+    <div style={{ position: "relative", display: "grid", gap: 8, alignContent: "start" }}>
+    {loading && loadedOnce && <LoadingBar />}
     <div
       role="listbox"
       aria-label={props["aria-label"]}
       aria-multiselectable={multiple || undefined}
       className={["nt-datagrid", className].filter(Boolean).join(" ")}
+      data-reloading={loading && loadedOnce ? "" : undefined}
       style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`, ...style }}
     >
-      {items.map((item, i) => {
+      {!(loading && !loadedOnce) && !error && visible.map((item, i) => {
         const id = String(item[itemKey] ?? i)
         return (
           <Card
@@ -99,7 +134,11 @@ function DataGrid({
           </Card>
         )
       })}
-      {items.length === 0 && <div className="nt-datatable-note" style={{ gridColumn: "1 / -1" }}>{empty}</div>}
+      <div style={{ gridColumn: "1 / -1" }}>
+        <CollectionState loading={loading} loadedOnce={loadedOnce} error={error} onRetry={onRetry} count={visible.length} filtering={false} empty={empty} columns={3} />
+      </div>
+    </div>
+    <Pages page={at} pages={pages} total={onServer ? all : undefined} onPage={go} />
     </div>
   )
 }

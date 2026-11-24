@@ -172,3 +172,129 @@ button.nt-datatree-toggle:hover {
   color: var(--nt-text-secondary);
   font-size: var(--nt-small, 12px);
 }
+
+/* ---- states: empty, error, loading ---- */
+.nt-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.nt-state[data-compact] {
+  padding: 16px;
+}
+
+.nt-state-icon {
+  font-size: 32px;
+  color: var(--nt-text-secondary);
+}
+
+.nt-state-title {
+  font-weight: 600;
+  color: var(--nt-text);
+}
+
+.nt-state-message {
+  max-width: 420px;
+  color: var(--nt-text-secondary);
+}
+
+.nt-state[data-error] .nt-state-title {
+  color: var(--nt-error);
+}
+
+.nt-skeleton {
+  display: grid;
+  gap: 0;
+}
+
+.nt-skeleton-row {
+  display: flex;
+  gap: 16px;
+  padding: 10px;
+  border-bottom: 1px solid var(--nt-line, var(--nt-surface-border));
+}
+
+.nt-skeleton-cell {
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg,
+      color-mix(in srgb, var(--nt-text) 8%, transparent) 0%,
+      color-mix(in srgb, var(--nt-text) 14%, transparent) 50%,
+      color-mix(in srgb, var(--nt-text) 8%, transparent) 100%);
+  background-size: 200% 100%;
+  animation: nt-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes nt-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.nt-loading-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: 2px;
+  overflow: hidden;
+}
+
+.nt-loading-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  background: var(--nt-accent);
+  animation: nt-loading 1s ease-in-out infinite;
+}
+
+@keyframes nt-loading {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+
+/* Rows dimmed while new ones load. */
+[data-reloading] tbody,
+[data-reloading] .nt-datalist-scroll > *,
+.nt-datagrid[data-reloading] > * {
+  opacity: 0.55;
+  transition: opacity 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-skeleton-cell,
+  .nt-loading-bar::after {
+    animation: none;
+  }
+}
+
+/* ---- column filters ---- */
+.nt-datatable-filters th {
+  position: sticky;
+  top: 31px;
+  z-index: 1;
+  padding: 4px 6px;
+  font-weight: normal;
+}
+
+.nt-datatable-filters .nt-input,
+.nt-datatable-filters select {
+  width: 100%;
+  min-width: 60px;
+  box-sizing: border-box;
+  font-size: var(--nt-small, 12px);
+}
+
+.nt-datatable-range {
+  display: flex;
+  gap: 4px;
+}
+
+.nt-datatable-filter-on {
+  color: var(--nt-accent);
+}

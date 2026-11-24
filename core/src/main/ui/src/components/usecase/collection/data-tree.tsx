@@ -4,6 +4,7 @@ import { Checkbox } from "../../checkbox"
 import { type MenuEntry, useContextMenu } from "../../context-menu"
 import { Spinner } from "../../infinite-scroll"
 import { CellValue, type DataColumn, type DataRow } from "./data-table"
+import { CollectionState, type EmptyStateProps, LoadingBar, useLoadedOnce } from "./states"
 import "./collection.css"
 
 /**
@@ -29,7 +30,10 @@ type DataTreeProps = {
   onSelectionChange?: (ids: string[]) => void
   onRowOpen?: (id: string, row: DataRow) => void
   rowMenu?: (row: DataRow) => MenuEntry[]
-  empty?: React.ReactNode
+  loading?: boolean
+  error?: { title?: string; message?: string } | null
+  onRetry?: () => void
+  empty?: React.ReactNode | EmptyStateProps
   className?: string
   style?: React.CSSProperties
 }
@@ -47,7 +51,10 @@ function DataTree({
   onSelectionChange,
   onRowOpen,
   rowMenu,
-  empty = "Nothing here.",
+  loading = false,
+  error,
+  onRetry,
+  empty,
   className,
   style,
   ...props
@@ -83,11 +90,13 @@ function DataTree({
     })
   }
   walk(rows, 0)
+  const loadedOnce = useLoadedOnce(loading, rows.length)
 
   return (
     <div className={["nt-datatable", "nt-datatree", className].filter(Boolean).join(" ")} style={style}>
-      <div className="nt-datatable-scroll">
-        <table aria-label={props["aria-label"]} role="treegrid">
+      <div className="nt-datatable-scroll" data-reloading={loading && loadedOnce ? "" : undefined}>
+        {loading && loadedOnce && <LoadingBar />}
+        <table aria-label={props["aria-label"]} role="treegrid" aria-busy={loading || undefined}>
           <thead>
             <tr>
               {selectable && <th style={{ width: 36 }} />}
@@ -99,7 +108,7 @@ function DataTree({
             </tr>
           </thead>
           <tbody>
-            {flat.map(({ row, id, depth, parent }) => (
+            {!(loading && !loadedOnce) && !error && flat.map(({ row, id, depth, parent }) => (
               <TreeRow
                 key={id}
                 id={id}
@@ -119,7 +128,7 @@ function DataTree({
             ))}
           </tbody>
         </table>
-        {flat.length === 0 && <div className="nt-datatable-note">{empty}</div>}
+        <CollectionState loading={loading} loadedOnce={loadedOnce} error={error} onRetry={onRetry} count={flat.length} filtering={false} empty={empty} columns={Math.min(columns.length, 6)} />
       </div>
     </div>
   )

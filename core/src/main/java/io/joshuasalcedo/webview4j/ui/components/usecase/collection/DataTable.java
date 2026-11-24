@@ -1,7 +1,6 @@
 package io.joshuasalcedo.webview4j.ui.components.usecase.collection;
 
 import io.joshuasalcedo.valueobject.financial.Money;
-import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.components.Element;
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
@@ -29,10 +28,11 @@ import java.util.function.IntConsumer;
  *         .rowMenu("Delete", id -> orders.delete(id))
  * }</pre>
  *
- * <p>Sorting, searching and paging happen in the page unless their handlers are given: then the server does them
- * (a {@code Pageable} call), and the table shows the rows it is given, one page of them ({@link #page}, {@link #total}).
+ * <p>Sorting (Shift-click for more than one column), searching, filtering ({@link #filterable}) and paging happen in
+ * the page, unless {@link #onQueryChange} is given: then each change is a {@link Query} for the server, and the table
+ * shows the page it answers ({@link #page(Query.Result)}, or {@link #rows} and {@link #paging}).
  */
-public final class DataTable extends Component<DataTable> {
+public final class DataTable extends CollectionView<DataTable> {
 
     /** How a column's values are shown. */
     public enum ColumnType { TEXT, NUMBER, MONEY, DATE, DATETIME, BOOLEAN, PILL, LINK }
@@ -46,8 +46,7 @@ public final class DataTable extends Component<DataTable> {
     private final List<Map<String, Object>> columns = new ArrayList<>();
 
     public DataTable(String label) {
-        super("dataTable");
-        prop("label", label);
+        super("dataTable", label);
         prop("columns", columns);
     }
 
@@ -112,6 +111,42 @@ public final class DataTable extends Component<DataTable> {
         return this;
     }
 
+    /**
+     * A filter under the column, of the kind its values call for: text contains (text), a range (numbers, money,
+     * dates), yes/no, one of the values (pills, enums: those in the rows).
+     */
+    public DataTable filterable(String key) {
+        for (Map<String, Object> c : columns) {
+            if (!key.equals(c.get("key"))) continue;
+            c.put("filter", switch (String.valueOf(c.get("type"))) {
+                case "number", "money", "date", "datetime" -> "range";
+                case "boolean" -> "boolean";
+                case "pill" -> "options";
+                default -> "text";
+            });
+        }
+        return this;
+    }
+
+    /** A filter under the column: one of these options. */
+    public DataTable filterable(String key, List<String> options) {
+        set(key, "filter", "options");
+        return set(key, "options", List.copyOf(options));
+    }
+
+    /** A filter under the column: one of an enum's values (by name). */
+    public DataTable filterable(String key, Class<? extends Enum<?>> options) {
+        List<String> names = new ArrayList<>();
+        for (Enum<?> e : options.getEnumConstants()) names.add(e.name());
+        return filterable(key, names);
+    }
+
+    /** Filters under every column. */
+    public DataTable filterable() {
+        for (Map<String, Object> c : columns) filterable(String.valueOf(c.get("key")));
+        return this;
+    }
+
     private DataTable set(String key, String name, Object value) {
         for (Map<String, Object> c : columns) if (key.equals(c.get("key"))) c.put(name, value);
         return this;
@@ -126,6 +161,11 @@ public final class DataTable extends Component<DataTable> {
      */
     public DataTable rows(List<?> rows) {
         return prop("rows", Rows.rows(rows));
+    }
+
+    @Override
+    DataTable rowsOf(List<?> rows) {
+        return rows(rows);
     }
 
     /** The field that tells rows apart: "id" unless set. */
@@ -148,14 +188,6 @@ public final class DataTable extends Component<DataTable> {
     /** Check boxes to choose rows. */
     public DataTable selectable() {
         return prop("selectable", true);
-    }
-
-    public DataTable selected(List<String> ids) {
-        return prop("selected", List.copyOf(ids));
-    }
-
-    public DataTable onSelectionChange(Consumer<List<String>> action) {
-        return on("onSelectionChange", v -> action.accept(Rows.texts(v)));
     }
 
     /** A button above the table acting on the chosen rows; call again for each. */
@@ -191,11 +223,6 @@ public final class DataTable extends Component<DataTable> {
         return on("onFilterChange", v -> action.accept(v == null ? "" : String.valueOf(v)));
     }
 
-    /** Rows per page; 0 for no pages. */
-    public DataTable pageSize(int size) {
-        return prop("pageSize", size);
-    }
-
     /** The page shown (from 1). With {@link #total} and {@link #onPageChange}, paging is the server's. */
     public DataTable page(int page) {
         return prop("page", page);
@@ -229,15 +256,6 @@ public final class DataTable extends Component<DataTable> {
             Map<?, ?> m = v instanceof Map<?, ?> map ? map : Map.of();
             action.accept(new CellEdit(String.valueOf(m.get("id")), String.valueOf(m.get("key")), m.get("value") == null ? "" : String.valueOf(m.get("value"))));
         });
-    }
-
-    public DataTable loading(boolean loading) {
-        return prop("loading", loading);
-    }
-
-    /** Said when there are no rows. */
-    public DataTable empty(String text) {
-        return prop("empty", text);
     }
 
     /** The columns, for tests and tools. */

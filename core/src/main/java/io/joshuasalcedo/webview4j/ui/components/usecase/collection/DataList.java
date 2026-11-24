@@ -1,6 +1,5 @@
 package io.joshuasalcedo.webview4j.ui.components.usecase.collection;
 
-import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.components.Element;
 import java.util.List;
 import java.util.function.Consumer;
@@ -14,12 +13,11 @@ import java.util.function.Consumer;
  *         .search().onOpen(id -> page.navigate("/people/" + id))
  * }</pre>
  */
-public final class DataList extends Component<DataList> {
+public final class DataList extends CollectionView<DataList> {
 
     /** A list of {@code items} (records or maps), each titled by its {@code title} field. */
     public DataList(String label, List<?> items, String title) {
-        super("dataList");
-        prop("label", label);
+        super("dataList", label);
         prop("items", Rows.rows(items));
         prop("title", title);
     }
@@ -42,18 +40,23 @@ public final class DataList extends Component<DataList> {
     public DataList search() { return prop("search", true); }
     /** Several items chosen, with Ctrl/⌘. */
     public DataList multiple() { return prop("multiple", true); }
-    public DataList selected(List<String> ids) { return prop("selected", List.copyOf(ids)); }
-    public DataList onSelectionChange(Consumer<List<String>> action) { return on("onSelectionChange", v -> action.accept(Rows.texts(v))); }
     /** An item opened (double-click, Enter): its id. */
     public DataList onOpen(Consumer<String> action) { return on("onOpen", v -> action.accept(String.valueOf(v))); }
     /** An entry of every item's right-click menu: it gets the item's id. Call again for each. */
     public DataList menu(String label, Consumer<String> action) {
         return add(slot(new Element("menuItem").set("label", label).handle("onSelect", v -> action.accept(String.valueOf(v))), "menu"));
     }
-    /** Items per page; 0 for all of them. */
-    public DataList pageSize(int size) { return prop("pageSize", size); }
     /** More to load as the end comes near: {@link #onLoadMore} adds them, the screen shows again. */
     public DataList hasMore(boolean more) { return prop("hasMore", more); }
     public DataList onLoadMore(Runnable action) { return on("onLoadMore", v -> action.run()); }
-    public DataList empty(String text) { return prop("empty", text); }
+
+    /** The items shown (one page of them, with {@link #paging}, when the server answers the query). */
+    public DataList items(List<?> items) {
+        return prop("items", Rows.rows(items));
+    }
+
+    @Override
+    DataList rowsOf(List<?> rows) {
+        return items(rows);
+    }
 }

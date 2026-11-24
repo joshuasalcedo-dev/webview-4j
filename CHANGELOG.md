@@ -2,6 +2,11 @@
 
 ## 0.2.0 — unreleased
 
+- Collections (`ui.components.usecase.collection`), React first and then Java: `DataTable`, `DataList`, `DataTree`, `DataMap` and `DataGrid`, from records and maps
+- One query model for every collection: `Query` (page, size, sorts, search, column filters) and `Paging`; with `onQueryChange` the server answers it, and `Query.apply` answers one in memory
+- Column filters in `DataTable`: text contains, one of some options (an enum), a range (numbers, money, dates), yes/no; Shift-click sorts by more than one column
+- States shared by the collections: grey rows on the first load, a running bar after, an error with Try again, an empty state with an action, and "No matches" with Clear filters
+- Spring Data in the starter: `SpringPaging.pageable(query)` and `SpringPaging.result(page)`
 - File dialogs: `app.openFile`, `openFiles`, `saveFile` and `pickFolder`, with filters, a start directory and a parent window
 - Message boxes: `app.message` (info, warning or error; OK, OK/Cancel, Yes/No, Yes/No/Cancel) and `app.confirm`
 - A dialog never holds the app up: other windows keep working while it is open

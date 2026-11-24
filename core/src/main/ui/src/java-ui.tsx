@@ -34,6 +34,7 @@ import {
   UrlField,
 } from "./components/value-fields"
 import { DataTable, type DataColumn, type DataRow } from "./components/usecase/collection/data-table"
+import type { CollectionQuery, Paging } from "./components/usecase/collection/query"
 import { DataGrid } from "./components/usecase/collection/data-grid"
 import { DataList } from "./components/usecase/collection/data-list"
 import { DataMap } from "./components/usecase/collection/data-map"
@@ -765,6 +766,28 @@ function JavaValueField({ node }: { node: JavaNode }) {
 }
 
 /** A data table: its rows, columns and state from Java; what the person does goes back as events. */
+/** What every collection gets from Java: the query and its pages, and its states (loading, error, empty). */
+function collectionStates(p: Record<string, unknown>, send: Send) {
+  const has = (name: string) => typeof p[name] === "string"
+  const empty = p.emptyState as { title?: string; message?: string; action?: string } | undefined
+  return {
+    pageSize: num(p.pageSize),
+    query: p.query as Partial<CollectionQuery> | undefined,
+    paging: p.paging as Paging | undefined,
+    onQueryChange: has("onQueryChange") ? (q: CollectionQuery) => send(p.onQueryChange, q) : undefined,
+    loading: bool(p.loading),
+    error: (p.error as { title?: string; message?: string } | undefined) ?? null,
+    onRetry: has("onRetry") ? () => send(p.onRetry) : undefined,
+    empty: empty?.title
+      ? {
+          title: empty.title,
+          message: empty.message,
+          action: empty.action && has("onEmptyAction") ? { label: empty.action, onClick: () => send(p.onEmptyAction) } : undefined,
+        }
+      : str(p.empty),
+  }
+}
+
 function JavaDataTable({ node }: { node: JavaNode }) {
   const send = React.useContext(SendContext)
   const p = node.p
@@ -786,7 +809,7 @@ function JavaDataTable({ node }: { node: JavaNode }) {
       search={bool(p.search)}
       filter={has("onFilterChange") ? (str(p.filter) ?? "") : undefined}
       onFilterChange={has("onFilterChange") ? (t) => send(p.onFilterChange, t) : undefined}
-      pageSize={num(p.pageSize)}
+      {...collectionStates(p, send)}
       page={num(p.page)}
       total={num(p.total)}
       onPageChange={has("onPageChange") ? (n) => send(p.onPageChange, n) : undefined}
@@ -794,8 +817,6 @@ function JavaDataTable({ node }: { node: JavaNode }) {
       rowMenu={menu.length ? (row) => menu.map((m) => ({ label: str(m.p.label) ?? "", onSelect: () => send(m.p.onSelect, String(row[str(p.rowKey) ?? "id"])) })) : undefined}
       onCellEdit={has("onCellEdit") ? (id, key, value) => send(p.onCellEdit, { id, key, value }) : undefined}
       actions={actions.map((a) => ({ label: str(a.p.label) ?? "", onSelect: (ids) => send(a.p.onSelect, ids) }))}
-      loading={bool(p.loading)}
-      empty={str(p.empty)}
       style={{ minHeight: 0, ...sizing(p) }}
     />
   )
@@ -816,7 +837,7 @@ function JavaCollection({ node }: { node: JavaNode }) {
     "aria-label": str(p.label) ?? "Items",
     selected: p.selected as string[] | undefined,
     onSelectionChange: has("onSelectionChange") ? (ids: string[]) => send(p.onSelectionChange, ids) : undefined,
-    empty: str(p.empty),
+    ...collectionStates(p, send),
     style: { minHeight: 0, ...sizing(p) },
   }
   switch (node.t) {
@@ -833,7 +854,6 @@ function JavaCollection({ node }: { node: JavaNode }) {
           trailing={str(p.trailing)}
           search={bool(p.search)}
           multiple={bool(p.multiple)}
-          pageSize={num(p.pageSize)}
           hasMore={bool(p.hasMore)}
           onLoadMore={has("onLoadMore") ? () => sendAndWait(p.onLoadMore) : undefined}
           onOpen={has("onOpen") ? (id) => send(p.onOpen, id) : undefined}
