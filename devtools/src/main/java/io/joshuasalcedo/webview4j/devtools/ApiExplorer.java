@@ -50,6 +50,8 @@ public final class ApiExplorer implements Screen {
     private final String specUrl;
     private final Map<String, String> headers = new LinkedHashMap<>();
     private Path project = Path.of("").toAbsolutePath();
+    private String title = "API explorer";
+    private boolean headless;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL).build();
 
@@ -95,10 +97,22 @@ public final class ApiExplorer implements Screen {
         return this;
     }
 
+    /** The window's title: "API explorer" by default. */
+    public ApiExplorer title(String title) {
+        this.title = Objects.requireNonNull(title, "title");
+        return this;
+    }
+
+    /** Keeps the window hidden: for automation and tests. */
+    public ApiExplorer headless(boolean headless) {
+        this.headless = headless;
+        return this;
+    }
+
     /** Opens the explorer in a window of its own. */
     public CompletableFuture<UiWindow> open(App app) {
         load();
-        return Ui.open(app, this, o -> o.title("API explorer").size(1280, 820).minSize(800, 520).decorations(false))
+        return Ui.open(app, this, o -> o.title(title).size(1280, 820).minSize(800, 520).decorations(false).headless(headless))
                 .thenApply(w -> {
                     window = w;
                     w.view().subscribe(io.joshuasalcedo.webview4j.Closed.class, closed -> stopAll());
@@ -261,10 +275,10 @@ public final class ApiExplorer implements Screen {
     public synchronized Component<?> render() {
         if (api == null) {
             return frame(column(
-                    title("API explorer"),
+                    Ui.title("API explorer"),
                     text(loadError == null ? "Loading…" : loadError).tone(Tone.ERROR),
                     button("Try again").accent().onClick(this::load)).padding(24).gap(12))
-                    .titleBar(titleBar("API explorer"));
+                    .titleBar(titleBar(title));
         }
         Map<String, List<Component<?>>> byTag = new LinkedHashMap<>();
         for (int i = 0; i < api.operations.size(); i++) {
@@ -294,10 +308,10 @@ public final class ApiExplorer implements Screen {
 
         long failed = api.operations.stream().map(op -> results.get(op.label())).filter(r -> r != null && !r.ok()).count();
         return frame(split(sidebar, content))
-                .titleBar(titleBar("API explorer: " + api.title + (api.version.isEmpty() ? "" : " " + api.version)))
+                .titleBar(titleBar(title + " · " + api.title + (api.version.isEmpty() ? "" : " " + api.version)))
                 .toolbar(toolbar(mode == Mode.ENDPOINT ? "Endpoint" : mode == Mode.ALL ? "Every endpoint" : "Tests",
                         spacer(),
-                        segmented("Send to", Map.of("server", "Server", "mock", "Mock"))
+                        segmented("Send to", ordered("server", "Server", "mock", "Mock"))
                                 .value(mock ? "mock" : "server").onChange(v -> mock = v.equals("mock")),
                         toolbarButton("Run every endpoint").onClick(this::runAll),
                         toolbarButton("Run tests").onClick(this::runTests),
@@ -356,7 +370,7 @@ public final class ApiExplorer implements Screen {
                     }));
         }
         return column(
-                title("Every endpoint"),
+                Ui.title("Every endpoint"),
                 text("Sends each endpoint its example values" + (mock ? " (to the mock server)." : ".") + " Passed: a 2xx or 3xx answer.")
                         .tone(Tone.SECONDARY),
                 row(button(runningAll ? "Running…" : "Run every endpoint").accent().disabled(runningAll).onClick(this::runAll),
@@ -367,7 +381,7 @@ public final class ApiExplorer implements Screen {
     private Component<?> testsPage() {
         if (tests == null) {
             return column(
-                    title("Tests"),
+                    Ui.title("Tests"),
                     text("Runs the JUnit tests of " + project + " with its own build (Gradle or Maven), and shows each as it finishes.")
                             .tone(Tone.SECONDARY),
                     loadError != null && mode == Mode.TESTS ? text(loadError).tone(Tone.ERROR) : text(""),
@@ -383,7 +397,7 @@ public final class ApiExplorer implements Screen {
         List<String> lines = progress.output();
         String tail = String.join("\n", lines.subList(Math.max(0, lines.size() - 30), lines.size()));
         return column(
-                title("Tests"),
+                Ui.title("Tests"),
                 row(progress.running() ? spinner("Running") : pill(progress.exitCode() != null && progress.exitCode() == 0 ? "Done" : "Ended")
                                 .color(progress.exitCode() != null && progress.exitCode() == 0 ? PillColor.GREEN : PillColor.RED),
                         text(progress.summary()),
@@ -392,6 +406,12 @@ public final class ApiExplorer implements Screen {
                 progress.running() ? progress("Running the tests", 0).indeterminate() : text(progress.command()).mono().tone(Tone.SECONDARY),
                 list("Tests", rows),
                 surface("Output", code(tail.isEmpty() ? "(nothing yet)" : tail, "plaintext"))).padding(24).gap(16);
+    }
+
+    private static Map<String, String> ordered(String... pairs) {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) map.put(pairs[i], pairs[i + 1]);
+        return map;
     }
 
     private static PillColor methodColor(String method) {

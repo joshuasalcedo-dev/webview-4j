@@ -28,6 +28,7 @@
 - `UiException`: a handler's problem said for people (title, message, level) in the kit's dialog, the technical message under "Show details"; any other exception shows a calm generic message and is logged; `Ui.explain` for a library's own exceptions; `UiWindow.notify`
 - devtools `ApiExplorer`: an API from its OpenAPI description (Spring's /v3/api-docs, any server, local or not): every endpoint with example values, sent from Java; every endpoint at once; a `MockServer` that answers from the description; the project's JUnit tests run from a button (`TestRunner`)
 - `Json` is public: a small JSON reader and writer
+- `webview-4j-spring-boot-starter`: a Spring Boot app opens in a native window when it is ready, with no code: titled after the app, its page at `/`, the API explorer found by itself (as the window, for an API with no page); `webview4j.*` overrides; quiet while tests run; `App` and `WebView4jWindow` beans
 - The build reuses a native library already built from the current Rust sources instead of running cargo again (`-PrebuildNative` forces it)
 
 ## 0.1.0 — 2026-10-21

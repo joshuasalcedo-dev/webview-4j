@@ -41,7 +41,25 @@ progress, spinners, avatars, pills, money, lists, surfaces, code, rows and colum
 toolbar, side bar and status bar: [the gallery](samples/notes/src/main/java/example/notes/GalleryScreen.java) shows
 every one, written in Java.
 
-**2. You have a Java server and a web frontend already.** Open it in a native window; nothing to change:
+**2. A Spring Boot app: add one dependency.** When the app is ready, it opens in a native window, with no code
+and nothing to set:
+
+```xml
+<dependency>
+    <groupId>io.joshuasalcedo</groupId>
+    <artifactId>webview-4j-spring-boot-starter</artifactId>
+    <version>0.2.0</version>
+</dependency>
+```
+
+The window is titled after `spring.application.name` and shows the app's page at `/`. With
+`webview-4j-devtools` too, an app with an OpenAPI description (springdoc's `/v3/api-docs`, `/openapi.json`...)
+also gets the API explorer, and an API with no page opens in it. Closing the window stops the app. `webview4j.*`
+properties change any of it (`title`, `path`, `url`, `api-explorer`, `api-docs`, `quit-on-close`...). While tests
+run it opens nothing, unless a test sets `webview4j.enabled=true`. Keep it in a Maven profile (or a Gradle
+configuration) for the desktop, so the server you deploy is built without it.
+
+**Any other Java server with a web frontend.** Open it in a native window; nothing to change:
 
 ```java
 App.run(app -> app.open(WindowOptions.url("http://localhost:8080").title("My app")));

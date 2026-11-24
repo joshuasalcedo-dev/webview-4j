@@ -33,6 +33,7 @@ subprojects {
                 description = when (project.name) {
                     "core" -> "A small Tauri-like desktop framework: a native webview driven from Java over FFM."
                     "processor" -> "webview-4j's annotation processor: @WebViewController classes and their TypeScript."
+                    "spring-boot-starter" -> "webview-4j for Spring Boot: the app opens in a native window when it is ready."
                     else -> "webview-4j devtools: a Swing window with an app's log and live metrics, beside it while developing."
                 }
                 url = "https://github.com/joshuasalcedo-dev/webview-4j"
