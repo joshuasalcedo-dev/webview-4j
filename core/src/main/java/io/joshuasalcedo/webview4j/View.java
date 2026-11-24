@@ -142,6 +142,21 @@ public final class View {
         });
     }
 
+    /** The monitors, in this window's logical pixels: where it may go. */
+    @SuppressWarnings("unchecked")
+    public CompletableFuture<java.util.List<Monitor>> monitors() {
+        return app.request(message("monitors")).thenApply(reply -> {
+            java.util.List<Monitor> out = new java.util.ArrayList<>();
+            for (Object o : (java.util.List<Object>) reply.json()) {
+                Map<String, Object> m = (Map<String, Object>) o;
+                out.add(new Monitor(String.valueOf(m.getOrDefault("name", "")), Events.decimal(m, "x"), Events.decimal(m, "y"),
+                        Events.decimal(m, "width"), Events.decimal(m, "height"), Events.decimal(m, "scaleFactor"),
+                        flag(m, "primary"), flag(m, "current")));
+            }
+            return java.util.List.copyOf(out);
+        });
+    }
+
     private CompletableFuture<Void> state(Map<String, Boolean> changes) {
         return done(message("state").withJson(changes));
     }

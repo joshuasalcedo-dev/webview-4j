@@ -170,13 +170,38 @@ type MdiAreaProps = Omit<React.ComponentProps<"div">, "children"> & {
   "aria-label": string
   /** Shown when no window is open. */
   empty?: React.ReactNode
+  /** Cascade and Tile buttons in the area's corner. */
+  arrange?: boolean
+}
+
+/** Where the windows are, back to front: to keep and put back (a saved workspace). */
+type MdiLayout = { id: string; x: number; y: number; width: number; height: number; state: MdiWindowState }[]
+
+/** The area's windows as a layout, in whole pixels. */
+function layoutOf(windows: MdiWindow[]): MdiLayout {
+  return windows.map((w) => ({ id: w.id, x: Math.round(w.x), y: Math.round(w.y), width: Math.round(w.width), height: Math.round(w.height), state: w.state }))
+}
+
+/** Puts the windows where a layout says (those it names; the order back to front too). */
+function applyLayout(mdi: MdiApi, layout: MdiLayout) {
+  for (const place of layout) {
+    if (!mdi.windows.some((w) => w.id === place.id)) continue
+    mdi.restore(place.id)
+    mdi.resize(place.id, place.x, place.y, place.width, place.height)
+  }
+  for (const place of layout) {
+    if (!mdi.windows.some((w) => w.id === place.id)) continue
+    if (place.state === "minimized") mdi.minimize(place.id)
+    else if (place.state === "maximized") mdi.maximize(place.id)
+    else mdi.focus(place.id)
+  }
 }
 
 type Edge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw"
 const EDGES: Edge[] = ["n", "s", "e", "w", "ne", "nw", "se", "sw"]
 
 /** The area the windows live in. Give it a size (flex: 1, or a height). */
-function MdiArea({ mdi, empty, className, onKeyDown, ...props }: MdiAreaProps) {
+function MdiArea({ mdi, empty, arrange = false, className, onKeyDown, ...props }: MdiAreaProps) {
   const ref = React.useRef<HTMLDivElement>(null)
   const { setArea } = mdi
 
@@ -293,6 +318,16 @@ function MdiArea({ mdi, empty, className, onKeyDown, ...props }: MdiAreaProps) {
             </section>
           )
         })}
+      {arrange && mdi.windows.length > 1 && (
+        <div className="nt-mdi-arrange" role="toolbar" aria-label="Arrange windows">
+          <button type="button" onClick={() => mdi.cascade()}>
+            Cascade
+          </button>
+          <button type="button" onClick={() => mdi.tile()}>
+            Tile
+          </button>
+        </div>
+      )}
       {minimized.length > 0 && (
         <div className="nt-mdi-minimized" role="toolbar" aria-label="Minimized windows">
           {minimized.map((window) => (
@@ -307,5 +342,5 @@ function MdiArea({ mdi, empty, className, onKeyDown, ...props }: MdiAreaProps) {
   )
 }
 
-export { MdiArea, useMdi, useMdiWindow }
-export type { MdiApi, MdiAreaProps, MdiOpen, MdiWindow, MdiWindowState }
+export { applyLayout, layoutOf, MdiArea, useMdi, useMdiWindow }
+export type { MdiApi, MdiAreaProps, MdiLayout, MdiOpen, MdiWindow, MdiWindowState }

@@ -287,7 +287,9 @@ final class CollectionDemos implements Demos {
             return column(
                     row(button("Reopen all").onClick(() -> open.addAll(List.of("notes", "counter", "orders"))),
                             text(open.size() + " open").tone(Tone.SECONDARY)),
-                    mdi("Workspace", windows.toArray(MdiWindow[]::new)).empty("Every window is closed").height(500));
+                    mdi("Workspace", windows.toArray(MdiWindow[]::new)).empty("Every window is closed").height(500)
+                            .arrangeButtons()             // Cascade and Tile
+                            .remember("gallery-workspace"));   // where the windows are, kept between runs
         },
                 """
                 mdi("Workspace",
@@ -298,7 +300,10 @@ final class CollectionDemos implements Demos {
                                 .bounds(360, 40, 260, 160),
                         mdiWindow("orders", "Recent orders", DataList.of("Recent orders", orders, "customer"))
                                 .bounds(120, 220, 380, 240))
-                        .empty("Every window is closed").height(500)""",
+                        .empty("Every window is closed").height(500)
+                        .arrangeButtons()                 // Cascade and Tile in the corner
+                        .remember("workspace")            // opens as it was left, next run too
+                // any component in a window: a table, a form, a GridPane, a SplitPane""",
                 Mdi.class, MdiWindow.class, DataList.class, Button.class);
     }
 

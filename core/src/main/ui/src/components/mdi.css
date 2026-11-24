@@ -118,3 +118,32 @@
 .nt-mdi-chip:hover {
   background: var(--nt-subtle-hover);
 }
+
+/* Cascade and Tile, in the area's top right corner. */
+.nt-mdi-arrange {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+}
+
+.nt-mdi-arrange button {
+  all: unset;
+  padding: 3px 10px;
+  border-radius: var(--nt-radius, 4px);
+  font-size: var(--nt-small, 12px);
+  color: var(--nt-text);
+  background: color-mix(in srgb, var(--nt-window, #fff) 85%, transparent);
+  border: 1px solid var(--nt-surface-border);
+  cursor: pointer;
+}
+
+.nt-mdi-arrange button:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-mdi-arrange button:focus-visible {
+  box-shadow: 0 0 0 2px var(--nt-accent);
+}

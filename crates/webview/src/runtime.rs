@@ -449,7 +449,7 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
         // An embedded view has no window of its own: what is about a window is refused; showing, hiding and
         // focusing are about the webview, and `place` moves it.
         match rest {
-            ["title"] | ["size"] | ["position"] | ["bounds"] | ["state"] | ["min-size"] | ["geometry"] | ["theme"] => {
+            ["title"] | ["size"] | ["position"] | ["bounds"] | ["state"] | ["min-size"] | ["geometry"] | ["monitors"] | ["theme"] => {
                 return Some(Outcome::error(400, format!("'{view}' is embedded: it has no window of its own (place moves it)")));
             }
             ["show"] => return Some(result(instance.webview.set_visible(true))),
@@ -593,6 +593,7 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
             Err(error) => error,
         },
         ["geometry"] => Outcome::json(&geometry(&instance.window)),
+        ["monitors"] => Outcome::json(&monitors(&instance.window)),
         ["place"] => match payload::json::<PlaceBody>(payload) {
             Ok(body) if instance.parent.is_some() => result(instance.webview.set_bounds(logical_rect(&body))),
             Ok(_) => Outcome::error(400, format!("'{view}' is not embedded: place moves an embedded view")),
@@ -699,6 +700,32 @@ fn settle(instance: &Instance, script: &str) {
             log::warn!("could not answer the page: {error}");
         }
     }
+}
+
+/// The monitors, in the window's own logical pixels (as `geometry`'s are), so the two can be compared: each one's
+/// bounds and work area are where a window may go.
+fn monitors(window: &Window) -> Vec<crate::payload::Monitor> {
+    let scale = window.scale_factor();
+    let primary = window.primary_monitor().map(|m| (m.position(), m.size()));
+    let current = window.current_monitor().map(|m| (m.position(), m.size()));
+    window
+        .available_monitors()
+        .map(|m| {
+            let position = m.position().to_logical::<f64>(scale);
+            let size = m.size().to_logical::<f64>(scale);
+            let key = (m.position(), m.size());
+            crate::payload::Monitor {
+                name: m.name().unwrap_or_default(),
+                x: position.x,
+                y: position.y,
+                width: size.width,
+                height: size.height,
+                scale_factor: m.scale_factor(),
+                primary: primary == Some(key),
+                current: current == Some(key),
+            }
+        })
+        .collect()
 }
 
 fn geometry(window: &Window) -> Geometry {
@@ -932,6 +959,9 @@ fn window_builder(open: &OpenRequest) -> WindowBuilder {
         .with_maximized(open.maximized)
         .with_always_on_top(open.always_on_top)
         .with_theme(window_theme(open.theme));
+    if open.positioned {
+        builder = builder.with_position(LogicalPosition::new(open.x, open.y));
+    }
     if open.fullscreen {
         builder = builder.with_fullscreen(Some(Fullscreen::Borderless(None)));
     }

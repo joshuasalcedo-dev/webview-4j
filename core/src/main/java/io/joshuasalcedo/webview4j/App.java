@@ -144,7 +144,8 @@ public final class App implements AutoCloseable {
 
     /** Opens a window; the future completes once it exists. */
     public CompletableFuture<View> open(WindowOptions options) {
-        return open(options, options.toPayload());
+        if (options.remembered() == null) return open(options, options.toPayload());
+        return io.joshuasalcedo.webview4j.ui.WindowMemory.open(this, options.toPayload(), options.remembered(), payload -> open(options, payload));
     }
 
     /** Opens what {@code payload} says (a window, or with {@code parent} an embedded view); {@code options} for its files. */

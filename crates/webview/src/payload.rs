@@ -76,6 +76,9 @@ pub struct OpenRequest {
     /// the window's top left), `width` by `height`. Window options (title, frame, size limits...) do not apply.
     #[serde(default)]
     pub parent: Option<String>,
+    /// A window opens at `x`, `y` (logical pixels on the desktop), not where the system puts it.
+    #[serde(default)]
+    pub positioned: bool,
     #[serde(default)]
     pub x: f64,
     #[serde(default)]
@@ -201,6 +204,20 @@ pub struct Geometry {
     pub fullscreen: bool,
     pub focused: bool,
     pub visible: bool,
+}
+
+/// One monitor, in the asking window's logical pixels (reply of `view.<id>.monitors`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Monitor {
+    pub name: String,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+    pub scale_factor: f64,
+    pub primary: bool,
+    pub current: bool,
 }
 
 /// Payload of `app.dialog.file`.

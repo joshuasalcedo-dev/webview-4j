@@ -2,8 +2,11 @@ package io.joshuasalcedo.webview4j.ui.components.usecase.mdi;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 
-/** One window of an {@link Mdi}: an id that stays the same, its title, and what is inside. */
+/** One window of an {@link Mdi}: an id that stays the same, its title, and what is inside (any component). */
 public final class MdiWindow extends Component<MdiWindow> {
+
+    /** How it is shown. */
+    public enum State { NORMAL, MINIMIZED, MAXIMIZED }
 
     public MdiWindow(String id, String title, Component<?>... children) {
         super("mdiWindow");
@@ -16,6 +19,9 @@ public final class MdiWindow extends Component<MdiWindow> {
     public MdiWindow bounds(double x, double y, double width, double height) {
         return prop("x", x).prop("y", y).prop("width", width).prop("height", height);
     }
+
+    /** How it opens: normal, minimized or maximized. */
+    public MdiWindow state(State state) { return prop("state", state.name().toLowerCase(java.util.Locale.ROOT)); }
 
     public MdiWindow with(Component<?>... children) { return add(children); }
     /** Its close button: without it, closing just hides it until the next render. */

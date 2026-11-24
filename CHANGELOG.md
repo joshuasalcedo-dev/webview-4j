@@ -2,6 +2,8 @@
 
 ## 0.2.0 — unreleased
 
+- MDI workspaces: any component (layouts too) in a window; `Mdi.remember("workspace")` keeps where the windows are between runs, `onLayoutChange` and `layout(MdiLayout)` for screens that keep it themselves, `arrangeButtons()` for Cascade and Tile, `MdiWindow.state(...)`
+- `WindowOptions.remember("main")`: a window opens where it was left (place, size, maximized), back on the main monitor when its monitor is gone; `WindowOptions.position(x, y)`; `View.monitors()` (bounds, scale, primary, current)
 - `Host.current()`: files to open and save, messages, questions and notifications, the same in a desktop window (the system's dialogs and disk) and a browser tab (the browser's file chooser and downloads, dialogs in the page, the browser's notifications); `supports(Feature)` says what is there; what is chained to an answer redraws the screen
 - `WebHost` signs people in: `.signIn(authenticator)` (a sign-in screen in the kit's look, tries limited per name and per address, a new session id once signed in, `WebHost.account().signOut()`), `.allow(user -> ...)`, `.trustProxyUser(header, groups)` from a proxy on the same machine; and serves TLS itself (`.tls(pkcs12, password)`: Secure cookies, HSTS), with a warning when it listens beyond the machine with neither
 - The same screens on the web: `WebHost.of(MyScreen::new).port(8080).start()` shows a `Screen` in every browser tab over a WebSocket (no dependency: sockets and virtual threads); each browser session (a cookie) is a `Session` of its own, keeping what it persists in that browser's IndexedDB; another site's page is refused; `UiWindow.onWeb()` tells a screen where it is (`just gallery-web`)

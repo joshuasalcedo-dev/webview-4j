@@ -37,6 +37,9 @@ public final class WindowOptions {
     private double minWidth;
     private double minHeight;
     private boolean maximized;
+    private Double x;
+    private Double y;
+    private String remember;
     private boolean fullscreen;
     private boolean alwaysOnTop;
     private boolean confirmClose;
@@ -161,6 +164,26 @@ public final class WindowOptions {
 
     /** Opens maximized. */
     public WindowOptions maximized(boolean value)   { this.maximized = value; return this; }
+
+    /** Where the window opens: its top left, logical pixels on the desktop (the system's place unless set). */
+    public WindowOptions position(double x, double y) {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+
+    /**
+     * Opens where it was left and as it was (its place, size, maximized), kept under {@code name} in the app's state on
+     * disk; on a monitor that is no longer there, back on the main one. Each window of the app its own name.
+     */
+    public WindowOptions remember(String name) {
+        this.remember = java.util.Objects.requireNonNull(name, "name");
+        return this;
+    }
+
+    String remembered() {
+        return remember;
+    }
     /** Opens fullscreen, without borders, on the main display. */
     public WindowOptions fullscreen(boolean value)  { this.fullscreen = value; return this; }
     /** Stays above every other window. */
@@ -249,6 +272,11 @@ public final class WindowOptions {
             payload.put("minHeight", minHeight);
         }
         if (maximized) payload.put("maximized", true);
+        if (x != null && y != null) {
+            payload.put("positioned", true);
+            payload.put("x", x);
+            payload.put("y", y);
+        }
         if (fullscreen) payload.put("fullscreen", true);
         if (alwaysOnTop) payload.put("alwaysOnTop", true);
         if (confirmClose) payload.put("confirmClose", true);

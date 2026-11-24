@@ -12,7 +12,7 @@ import { FileChip, FileIcon, FileTree } from "./components/files"
 import { InfiniteScroll } from "./components/infinite-scroll"
 import { Inspector, InspectorSection } from "./components/inspector"
 import { LogView } from "./components/log-view"
-import { MdiArea, useMdi } from "./components/mdi"
+import { applyLayout, layoutOf, type MdiLayout, type MdiWindowState, MdiArea, useMdi } from "./components/mdi"
 import { MoneyField } from "./components/money"
 import { PillGroup } from "./components/pill"
 import { Quantity, QuantityField } from "./components/quantity"
@@ -877,17 +877,44 @@ function JavaMdi({ node }: { node: JavaNode }) {
   const windows = (node.c ?? []).filter((c) => c.t === "mdiWindow")
   const mdi = useMdi()
   const ids = windows.map((w) => str(w.p.id) ?? "").join("|")
+  const layout = node.p.layout as MdiLayout | undefined
   React.useEffect(() => {
     const present = new Set(windows.map((w) => str(w.p.id)))
     for (const w of windows) {
       if (!mdi.windows.some((m) => m.id === str(w.p.id))) {
-        const at = num(w.p.x) !== undefined ? { x: num(w.p.x), y: num(w.p.y), width: num(w.p.width), height: num(w.p.height) } : {}
-        mdi.open({ id: str(w.p.id) ?? "", title: str(w.p.title) ?? "", content: null, ...at })
+        const saved = layout?.find((l) => l.id === str(w.p.id))
+        const at = saved
+          ? { x: saved.x, y: saved.y, width: saved.width, height: saved.height, state: saved.state }
+          : num(w.p.x) !== undefined
+            ? { x: num(w.p.x), y: num(w.p.y), width: num(w.p.width), height: num(w.p.height) }
+            : {}
+        const state = (str(w.p.state) as MdiWindowState | undefined) ?? undefined
+        mdi.open({ id: str(w.p.id) ?? "", title: str(w.p.title) ?? "", content: null, ...(state ? { state } : {}), ...at })
       }
     }
     for (const m of mdi.windows) if (!present.has(m.id)) mdi.close(m.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids])
+  // A layout Java gives that differs from where the windows are (restored, or set by Java): put them there.
+  const given = JSON.stringify(layout ?? null)
+  const reported = React.useRef<string | null>(null)
+  React.useEffect(() => {
+    if (!layout || given === reported.current) return
+    if (JSON.stringify(layoutOf(mdi.windows).filter((w) => layout.some((l) => l.id === w.id))) === given) return
+    applyLayout(mdi, layout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [given])
+  // Where the windows are, told to Java once it settles (not for every pixel of a drag).
+  const now = JSON.stringify(layoutOf(mdi.windows))
+  React.useEffect(() => {
+    if (typeof node.p.onLayoutChange !== "string" || mdi.windows.length === 0) return
+    const timer = setTimeout(() => {
+      reported.current = now
+      send(node.p.onLayoutChange, JSON.parse(now))
+    }, 400)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now])
   // The content and titles are always Java's newest; where each is, the hook's.
   const live = {
     ...mdi,
@@ -902,7 +929,8 @@ function JavaMdi({ node }: { node: JavaNode }) {
     },
   }
   return (
-    <MdiArea mdi={live} aria-label={str(node.p.label) ?? "Windows"} empty={str(node.p.empty)} style={{ flex: 1, minHeight: 320, ...sizing(node.p) }} />
+    <MdiArea mdi={live} aria-label={str(node.p.label) ?? "Windows"} empty={str(node.p.empty)} arrange={bool(node.p.arrange)}
+      style={{ flex: 1, minHeight: 320, ...sizing(node.p) }} />
   )
 }
 
