@@ -15,6 +15,11 @@ your UI is a web page, your logic is Java.
   jar for pages with no bundler, and on npm for apps with one
 - **Devtools**: a window beside your app with its log and live metrics while you develop
 
+## Start from the sample
+
+[samples/notes](samples/notes) is a whole app, a Gradle build of its own: a React page made with the native
+components, a Java controller behind it, a window without the system's frame. Copy the folder to begin yours.
+
 ## Add it
 
 Gradle:
@@ -76,6 +81,12 @@ view.subscribe(CloseRequested.class, request -> {  // only with confirmClose(tru
 ```
 
 `WindowOptions.fileDrop(true)` reports files dropped on the window as `FileDrop` events, with their paths.
+
+`WindowOptions.theme(Theme.DARK)` and `view.setTheme(...)` set light or dark for the window's frame and the page's
+`prefers-color-scheme` at once (the native components follow it); `Theme.SYSTEM`, the default, follows the system.
+
+A window opened with `decorations(false)` has no frame: the page's `TitleBar` (or any element with
+`data-webview4j-drag-region`) moves it, and the page's outer edge resizes it, with the system's resize pointers.
 
 ## Dialogs
 
@@ -158,6 +169,7 @@ Needs Java 25, Rust (cargo) and [bun](https://bun.sh) (for the components). On L
 
 ```shell
 ./gradlew build                 # the jar carries the native library for this machine
+                                # (built once: later builds reuse it until the Rust code changes; -PrebuildNative forces it)
 ./gradlew :devtools:runDemo     # a sample app with the dev window
 ./gradlew publishToMavenLocal   # io.joshuasalcedo:webview-4j-* in ~/.m2
 ./gradlew prettyDocs            # the documentation site

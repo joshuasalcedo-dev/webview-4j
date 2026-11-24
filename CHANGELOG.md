@@ -16,6 +16,10 @@
 - Core's jar carries the kit built (`ui.js` with React, `ui.css`): every window loads it from `<base>ui/` (`App.UI_URL`), no bundler needed
 - The page's own window: `data-webview4j-drag-region` moves it, a double click maximizes it, and `currentWindow` (`@webview4j/api`) minimizes, maximizes and closes it; `TitleBar` uses them by itself
 - Building core needs bun, for the kit
+- A window without the system's frame resizes from its edges, with the system's resize pointers
+- `WindowOptions.theme` and `view.setTheme`: light or dark for the window and the page's `prefers-color-scheme` together
+- `samples/notes`: a whole sample app, its own Gradle build, with a look (Windows 11 / macOS) and theme switcher
+- The build reuses a native library already built from the current Rust sources instead of running cargo again (`-PrebuildNative` forces it)
 
 ## 0.1.0 — 2026-10-21
 

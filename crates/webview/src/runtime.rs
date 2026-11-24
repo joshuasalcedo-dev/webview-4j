@@ -13,7 +13,7 @@ use tao::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
 use tao::event::{Event, StartCause, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
 use tao::platform::run_return::EventLoopExtRunReturn;
-use tao::window::{Fullscreen, Window, WindowBuilder, WindowId};
+use tao::window::{Fullscreen, ResizeDirection, Window, WindowBuilder, WindowId};
 use wry::{WebContext, WebView, WebViewBuilder};
 
 use crate::bridge;
@@ -21,7 +21,7 @@ use crate::frame::Message;
 use crate::inspector::{self, Capture};
 use crate::payload::{
     self, BoundsBody, CaptureBody, CookieRecord, FileDialogBody, Geometry, MessageDialogBody, OpenRequest, Outcome, PositionBody,
-    SizeBody, StateBody, WebViewInfo,
+    SizeBody, StateBody, ThemeChoice, WebViewInfo,
 };
 
 /// Receives each message as a frame (`frame`, `length` bytes), valid only during the call. Mostly
@@ -220,12 +220,115 @@ fn page_window_action(view: &str, action: &str, state: &mut State) {
         }
         "minimize" => window.set_minimized(true),
         "toggle-maximize" => window.set_maximized(!window.is_maximized()),
+        resize if resize.starts_with("resize-") => {
+            // A window without the system's frame, resized from its edge: not while maximized.
+            if let Some(direction) = resize_direction(&resize["resize-".len()..]) {
+                if window.is_resizable() && !window.is_maximized() {
+                    start_resize(window, direction);
+                }
+            }
+        }
         "close" => {
             let id = window.id();
             on_window(id, WindowEvent::CloseRequested, state);
         }
         _ => log::debug!("a page asked its window for '{action}', which there is not"),
     }
+}
+
+/// Windows: hands the mouse to the system's own sizing from that edge, as if the window had a frame there. tao's
+/// drag_resize_window posts the cursor's position as a pointer to a value on its stack instead of the position itself,
+/// so the sizing starts from a wrong point and the left and top edges do not move; this posts the position.
+#[cfg(target_os = "windows")]
+fn start_resize(window: &Window, direction: ResizeDirection) {
+    use tao::platform::windows::WindowExtWindows;
+    use windows_sys::Win32::Foundation::POINT;
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::ReleaseCapture;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetCursorPos, HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTLEFT, HTRIGHT, HTTOP, HTTOPLEFT, HTTOPRIGHT, PostMessageW,
+        WM_NCLBUTTONDOWN,
+    };
+    let hit = match direction {
+        ResizeDirection::North => HTTOP,
+        ResizeDirection::South => HTBOTTOM,
+        ResizeDirection::East => HTRIGHT,
+        ResizeDirection::West => HTLEFT,
+        ResizeDirection::NorthEast => HTTOPRIGHT,
+        ResizeDirection::NorthWest => HTTOPLEFT,
+        ResizeDirection::SouthEast => HTBOTTOMRIGHT,
+        ResizeDirection::SouthWest => HTBOTTOMLEFT,
+    };
+    let mut cursor = POINT { x: 0, y: 0 };
+    unsafe {
+        if GetCursorPos(&mut cursor) == 0 {
+            return;
+        }
+        // MAKELPARAM(x, y): screen coordinates, each 16 bits (negative on a monitor left of or above the main one).
+        let position = ((cursor.y as u16 as u32) << 16 | (cursor.x as u16 as u32)) as isize;
+        ReleaseCapture();
+        PostMessageW(window.hwnd() as _, WM_NCLBUTTONDOWN, hit as usize, position);
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn start_resize(window: &Window, direction: ResizeDirection) {
+    if let Err(error) = window.drag_resize_window(direction) {
+        log::debug!("the window could not be resized: {error}");
+    }
+}
+
+fn resize_direction(edge: &str) -> Option<ResizeDirection> {
+    Some(match edge {
+        "n" => ResizeDirection::North,
+        "s" => ResizeDirection::South,
+        "e" => ResizeDirection::East,
+        "w" => ResizeDirection::West,
+        "ne" => ResizeDirection::NorthEast,
+        "nw" => ResizeDirection::NorthWest,
+        "se" => ResizeDirection::SouthEast,
+        "sw" => ResizeDirection::SouthWest,
+        _ => return None,
+    })
+}
+
+fn window_theme(theme: ThemeChoice) -> Option<tao::window::Theme> {
+    match theme {
+        ThemeChoice::System => None,
+        ThemeChoice::Light => Some(tao::window::Theme::Light),
+        ThemeChoice::Dark => Some(tao::window::Theme::Dark),
+    }
+}
+
+fn webview_theme(theme: ThemeChoice) -> wry::Theme {
+    match theme {
+        ThemeChoice::System => wry::Theme::Auto,
+        ThemeChoice::Light => wry::Theme::Light,
+        ThemeChoice::Dark => wry::Theme::Dark,
+    }
+}
+
+/// The page's `prefers-color-scheme`. WebView2 is told; WebKit follows the window's appearance by itself.
+#[cfg(target_os = "windows")]
+fn page_theme(webview: &WebView, theme: ThemeChoice) -> Outcome {
+    use wry::WebViewExtWindows;
+    result(webview.set_theme(webview_theme(theme)))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn page_theme(_webview: &WebView, theme: ThemeChoice) -> Outcome {
+    let _ = webview_theme(theme);
+    Outcome::ok()
+}
+
+#[cfg(target_os = "windows")]
+fn with_page_theme(builder: WebViewBuilder, theme: ThemeChoice) -> WebViewBuilder {
+    use wry::WebViewBuilderExtWindows;
+    builder.with_theme(webview_theme(theme))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn with_page_theme(builder: WebViewBuilder, _theme: ThemeChoice) -> WebViewBuilder {
+    builder
 }
 
 /// Clears the proxy and the callback once the loop has returned, even if it unwinds.
@@ -443,6 +546,14 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
             }
             Err(error) => error,
         },
+        ["theme"] => match payload::text(payload).map(|t| serde_json::from_value::<ThemeChoice>(Value::String(t.trim().to_string()))) {
+            Ok(Ok(theme)) => {
+                instance.window.set_theme(window_theme(theme));
+                page_theme(&instance.webview, theme)
+            }
+            Ok(Err(_)) => Outcome::error(400, "a theme is system, light or dark"),
+            Err(error) => error,
+        },
         ["min-size"] => match payload::json::<SizeBody>(payload) {
             Ok(body) => {
                 let size = (body.width > 0.0 && body.height > 0.0).then(|| LogicalSize::new(body.width, body.height));
@@ -617,7 +728,7 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
     let link = bridge::Link::with_assets(&id, origins, open.assets.clone());
     let page_link = Arc::clone(&link);
     let ipc_link = Arc::clone(&link);
-    builder = https_scheme(builder)
+    builder = with_page_theme(https_scheme(builder), open.theme)
         .with_initialization_script(&bridge::script())
         .with_initialization_script(&inspector::initialization_script())
         .with_ipc_handler(move |request| from_page(&request, &view_id, &view_capture, &ipc_link))
@@ -627,6 +738,10 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
                 emit(&call);
             }
         });
+    if !open.decorations && open.resizable {
+        // No system frame to grab: the bridge resizes the window from the page's edges (bridge.js).
+        builder = builder.with_initialization_script("window.__webview4j_frameless = true;");
+    }
     if let Some(script) = &open.initialization_script {
         builder = builder.with_initialization_script(script);
     }
@@ -742,7 +857,8 @@ fn window_builder(open: &OpenRequest) -> WindowBuilder {
         .with_decorations(open.decorations)
         .with_visible(!open.headless)
         .with_maximized(open.maximized)
-        .with_always_on_top(open.always_on_top);
+        .with_always_on_top(open.always_on_top)
+        .with_theme(window_theme(open.theme));
     if open.fullscreen {
         builder = builder.with_fullscreen(Some(Fullscreen::Borderless(None)));
     }

@@ -105,6 +105,7 @@ A refused frame is never half-processed: the receiver drops it and, if it can te
 | `view.<view>.state` | `{"minimized":bool,"maximized":bool,"fullscreen":bool,"alwaysOnTop":bool,"resizable":bool}`, keys left out stay as they are | `200` |
 | `view.<view>.min-size` | `{"width":400,"height":300}` logical pixels; `0` for none | `200` |
 | `view.<view>.geometry` | none | `200`, where the window is and how it is shown (§5.8) |
+| `view.<view>.theme` | `text/plain`: `system`, `light` or `dark` | `200`: the window's frame and the page's `prefers-color-scheme` |
 | `view.<view>.capture` | `{"api":true,"clicks":false,...}`, keys left out keep their setting (§5.4) | `200` |
 | `view.<view>.websocket.<socket>.send` | `text/plain`: one text frame | `200`, or `404` if the socket is unknown or not open |
 | `view.<view>.emit.<…topic>` | `application/json`: the data | `200` once handed to the page |
@@ -208,7 +209,10 @@ same-origin `GET`, so without one a request's origin is taken from headers pages
 `close-requested`) or `drag` (moves the window with the mouse; sent on a mouse-down). Only a page
 the window allows is heard; anything else is ignored. A mouse-down on an element inside
 `[data-webview4j-drag-region]` (or `[data-tauri-drag-region]`), not on a button, link, field or
-`[data-no-drag]`, sends `drag`; a double click sends `toggle-maximize`.
+`[data-no-drag]`, sends `drag`; a double click sends `toggle-maximize`. In a window opened with
+`decorations: false` (and resizable), the page's outer 5 pixels show the resize pointers, and a
+mouse-down there sends `resize-<edge>` (`n`, `s`, `e`, `w`, `ne`, `nw`, `se`, `sw`): the window
+resizes from that edge, unless it is maximized.
 
 ## 3. Headers
 
@@ -267,6 +271,7 @@ sent (`400`), so a typo fails loudly instead of being half-understood.
 | `minWidth`, `minHeight` | number, logical pixels: the smallest the user can resize it to | none |
 | `maximized`, `fullscreen`, `alwaysOnTop` | boolean | `false` |
 | `confirmClose` | boolean: the close button sends `close-requested` instead of closing | `false` |
+| `theme` | `system`, `light` or `dark`: the frame and the page's `prefers-color-scheme` | `system` |
 | `fileDrop` | boolean: files dropped on the window are reported (`file-drop`), not opened by the page | `false` |
 | `icon` | string, a PNG in base64 (1 MB at most): the window's icon in its title bar, the taskbar and the window switcher; one that is not a PNG is ignored with a warning | the program's icon |
 

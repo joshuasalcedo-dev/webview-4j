@@ -32,5 +32,7 @@ class WindowOptionsTest {
             assertTrue((Boolean) set.get(key), key);
         }
         assertThrows(IllegalArgumentException.class, () -> WindowOptions.blank().minSize(0, 300));
+        assertFalse(plain.containsKey("theme"), "the system's theme is the default");
+        assertEquals("dark", WindowOptions.blank().theme(Theme.DARK).toPayload().get("theme"));
     }
 }

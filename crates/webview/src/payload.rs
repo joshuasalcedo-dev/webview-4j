@@ -69,6 +69,19 @@ pub struct OpenRequest {
     /// does not open them.
     #[serde(default)]
     pub file_drop: bool,
+    /// Light or dark for the window's frame and the page's `prefers-color-scheme`; the system's unless given.
+    #[serde(default)]
+    pub theme: ThemeChoice,
+}
+
+/// `system` follows the system, and changes when it does; `light` and `dark` hold.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ThemeChoice {
+    #[default]
+    System,
+    Light,
+    Dark,
 }
 
 fn default_title() -> String {
@@ -328,5 +341,8 @@ mod tests {
         let open = json::<OpenRequest>(br#"{"minWidth":400,"minHeight":300,"confirmClose":true,"fileDrop":true}"#).unwrap();
         assert_eq!((open.min_width, open.min_height), (Some(400.0), Some(300.0)));
         assert!(open.confirm_close && open.file_drop && !open.maximized);
+        assert_eq!(open.theme, ThemeChoice::System);
+        assert_eq!(json::<OpenRequest>(br#"{"theme":"dark"}"#).unwrap().theme, ThemeChoice::Dark);
+        assert_eq!(json::<OpenRequest>(br#"{"theme":"sepia"}"#).err().unwrap().status, 400);
     }
 }

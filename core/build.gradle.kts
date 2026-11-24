@@ -52,13 +52,32 @@ val nativePlatform = run {
     "$os-$arch"
 }
 
+val nativeSources = files(
+    rootProject.fileTree("crates") { exclude("**/target/**", "**/node_modules/**") },
+    rootProject.file("Cargo.toml"),
+    rootProject.file("Cargo.lock"),
+)
+
+// A native library already built from the current sources, by either profile (target/release or target/debug,
+// the newer one): used as it is, so starting an app or running the tests never waits for cargo. Cargo runs only
+// when the Rust code changed since, or with -PrebuildNative.
+val rebuildNative = providers.gradleProperty("rebuildNative").isPresent
+val upToDateNative: Provider<File> = provider {
+    if (rebuildNative) return@provider null
+    val newestSource = nativeSources.files.maxOfOrNull { it.lastModified() } ?: 0L
+    listOf("release", "debug")
+        .map { rootProject.file("target/$it/$nativeLibrary") }
+        .filter { it.isFile && it.lastModified() >= newestSource }
+        .maxByOrNull { it.lastModified() }
+}
+
 val cargoBuild = tasks.register<Exec>("cargoBuild") {
-    description = "Builds the native library with cargo ($cargoProfile)."
+    description = "Builds the native library with cargo ($cargoProfile), unless one is built from these sources already."
     group = "build"
+    onlyIf("no native library is built from the current sources (or -PrebuildNative)") { !upToDateNative.isPresent }
     workingDir = rootDir
     commandLine("cargo", "build", "-p", "webview", "--lib", "--profile", cargoProfile)
-    inputs.files(rootProject.fileTree("crates") { exclude("**/target/**", "**/node_modules/**") })
-    inputs.files(rootProject.file("Cargo.toml"), rootProject.file("Cargo.lock"))
+    inputs.files(nativeSources)
     inputs.property("cargoProfile", cargoProfile)
     outputs.file(rootProject.file("target/$cargoOutputDir/$nativeLibrary"))
 }
@@ -70,7 +89,12 @@ val prebuiltNatives = providers.gradleProperty("prebuiltNatives")
 val natives = tasks.register<Sync>("natives") {
     description = "Puts the native library where the jar carries it: natives/$nativePlatform/ (or every platform's, from -PprebuiltNatives)."
     if (prebuiltNatives.isPresent) from(prebuiltNatives.get()) { include("natives/**") }
-    else from(cargoBuild) { into("natives/$nativePlatform") }
+    else {
+        dependsOn(cargoBuild)
+        from(provider { upToDateNative.orNull ?: rootProject.file("target/$cargoOutputDir/$nativeLibrary") }) {
+            into("natives/$nativePlatform")
+        }
+    }
     into(layout.buildDirectory.dir("generated/natives"))
 }
 

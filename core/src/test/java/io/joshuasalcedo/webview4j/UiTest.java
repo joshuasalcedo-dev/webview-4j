@@ -52,4 +52,33 @@ class UiTest {
             assertEquals(view.id(), closed.poll(10, SECONDS).view());
         }
     }
+
+    @Test
+    @Timeout(60)
+    void aWindowWithoutAFrameShowsResizeArrowsAtItsEdges() throws Exception {
+        String moveTo = "(() => { document.dispatchEvent(new MouseEvent('mousemove', {clientX: %s, clientY: %s}));"
+                + " return getComputedStyle(document.body).cursor; })()";
+        try (App app = App.start()) {
+            View frameless = app.open(WindowOptions.html("<body style='margin:0;height:100vh'></body>")
+                    .headless(true).decorations(false).size(400, 300)).join();
+            assertEquals(true, frameless.eval("window.__webview4j_frameless === true").join());
+            assertEquals("nwse-resize", frameless.eval(moveTo.formatted(1, 1)).join());
+            assertEquals("ew-resize", frameless.eval(moveTo.formatted("innerWidth - 2", 150)).join());
+            assertEquals("ns-resize", frameless.eval(moveTo.formatted(200, "innerHeight - 1")).join());
+            assertEquals("auto", frameless.eval(moveTo.formatted(200, 150)).join(), "the middle is the page's own");
+
+            // the native theme is the page's prefers-color-scheme: Java switches it, the page follows
+            String dark = "matchMedia('(prefers-color-scheme: dark)').matches";
+            frameless.setTheme(Theme.DARK).join();
+            assertEquals(true, frameless.eval(dark).join());
+            frameless.setTheme(Theme.LIGHT).join();
+            assertEquals(false, frameless.eval(dark).join());
+            View darkFromStart = app.open(WindowOptions.html("<p>dark</p>").headless(true).theme(Theme.DARK)).join();
+            assertEquals(true, darkFromStart.eval(dark).join());
+
+            View framed = app.open(WindowOptions.html("<body style='margin:0;height:100vh'></body>").headless(true)).join();
+            assertEquals(false, framed.eval("window.__webview4j_frameless === true").join());
+            assertEquals("auto", framed.eval(moveTo.formatted(1, 1)).join(), "a framed window's edges are the system's");
+        }
+    }
 }

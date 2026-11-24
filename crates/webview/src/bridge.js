@@ -254,7 +254,40 @@
   });
   const DRAG_REGION = '[data-webview4j-drag-region], [data-tauri-drag-region]';
   const NOT_DRAGGED = 'button, a, input, select, textarea, label, [role="button"], [role="tab"], [contenteditable=""], [contenteditable="true"], [data-no-drag]';
+  // A window without the system's frame (window.__webview4j_frameless, set natively) has no edges of its own to
+  // grab: the page's outer few pixels show the resize arrows and resize it when dragged, as a frame would.
+  const EDGE = 5;
+  const EDGE_CURSORS = { n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize',
+    ne: 'nesw-resize', sw: 'nesw-resize', nw: 'nwse-resize', se: 'nwse-resize' };
+  let edgeStyle = null;
+  let shownEdge = '';
+  function edgeAt(x, y) {
+    if (!window.__webview4j_frameless) return '';
+    const vertical = y < EDGE ? 'n' : y >= window.innerHeight - EDGE ? 's' : '';
+    const horizontal = x < EDGE ? 'w' : x >= window.innerWidth - EDGE ? 'e' : '';
+    return vertical + horizontal;
+  }
+  function showEdge(edge) {
+    if (edge === shownEdge) return;
+    shownEdge = edge;
+    if (!edgeStyle) {
+      edgeStyle = document.createElement('style');
+      (document.head || document.documentElement).appendChild(edgeStyle);
+    }
+    edgeStyle.textContent = edge ? '* { cursor: ' + EDGE_CURSORS[edge] + ' !important; }' : '';
+  }
+
   if (typeof document !== 'undefined') {
+    document.addEventListener('mousemove', (event) => showEdge(edgeAt(event.clientX, event.clientY)), true);
+    document.addEventListener('mouseleave', () => showEdge(''), true);
+    document.addEventListener('mousedown', (event) => {
+      const edge = event.button === 0 ? edgeAt(event.clientX, event.clientY) : '';
+      if (!edge) return;
+      // The edge belongs to the window, not to whatever the page drew there.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      windowAction('resize-' + edge);
+    }, true);
     document.addEventListener('mousedown', (event) => {
       if (event.button !== 0 || !(event.target instanceof Element)) return;
       const region = event.target.closest(DRAG_REGION);

@@ -26,3 +26,7 @@ rfd = "0.18"
 pollster = "1"
 
 [dev-dependencies]
+
+# Windows: resizing a frameless window from the page's edge (runtime.rs, start_resize).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse"] }

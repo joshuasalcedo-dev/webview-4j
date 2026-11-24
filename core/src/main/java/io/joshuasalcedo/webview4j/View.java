@@ -106,6 +106,14 @@ public final class View {
     /** Above every other window, even when another has the focus. */
     public CompletableFuture<Void> setAlwaysOnTop(boolean on) { return state(Map.of("alwaysOnTop", on)); }
 
+    /**
+     * Light or dark for the window's frame and the page's {@code prefers-color-scheme}, at once: a page with
+     * {@code @webview4j/ui} (theme "system") changes with it. {@link Theme#SYSTEM} follows the system again.
+     */
+    public CompletableFuture<Void> setTheme(Theme theme) {
+        return done(message("theme").withText(java.util.Objects.requireNonNull(theme, "theme").key(), "text/plain"));
+    }
+
     public CompletableFuture<Void> setResizable(boolean on) { return state(Map.of("resizable", on)); }
 
     /**

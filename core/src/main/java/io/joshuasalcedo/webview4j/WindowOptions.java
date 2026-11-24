@@ -41,6 +41,7 @@ public final class WindowOptions {
     private boolean alwaysOnTop;
     private boolean confirmClose;
     private boolean fileDrop;
+    private Theme theme = Theme.SYSTEM;
 
     private WindowOptions() {}
 
@@ -166,6 +167,15 @@ public final class WindowOptions {
      */
     public WindowOptions fileDrop(boolean value)    { this.fileDrop = value; return this; }
 
+    /**
+     * Light or dark for the window's frame and its page's {@code prefers-color-scheme}, which
+     * {@code @webview4j/ui} follows. {@link Theme#SYSTEM} (the default) follows the system's setting.
+     */
+    public WindowOptions theme(Theme theme) {
+        this.theme = Objects.requireNonNull(theme, "theme");
+        return this;
+    }
+
     /** A script that runs in every page before the page's own, on every navigation. */
     public WindowOptions initializationScript(String script) {
         this.initializationScript = script;
@@ -229,6 +239,7 @@ public final class WindowOptions {
         if (alwaysOnTop) payload.put("alwaysOnTop", true);
         if (confirmClose) payload.put("confirmClose", true);
         if (fileDrop) payload.put("fileDrop", true);
+        if (theme != Theme.SYSTEM) payload.put("theme", theme.key());
         return payload;
     }
 
