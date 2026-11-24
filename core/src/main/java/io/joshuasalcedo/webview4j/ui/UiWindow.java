@@ -41,9 +41,16 @@ public final class UiWindow {
     /** Each app's windows by view id: a future, as the page may ask before Java has its view. */
     private static final Map<App, Map<String, CompletableFuture<UiWindow>>> APPS = new ConcurrentHashMap<>();
 
+    /** How other exceptions become ones for people (Ui.explain): the first whose type fits. */
+    private static final Map<Class<? extends Throwable>, java.util.function.Function<Throwable, UiException>> EXPLAINED =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.atomic.AtomicLong NOTICES = new java.util.concurrent.atomic.AtomicLong();
+
     private final View view;
     private final Screen screen;
     private Map<String, Consumer<Object>> handlers = Map.of();
+    /** The last notice: what went wrong (or what to know), shown once by the page in a dialog. */
+    private Map<String, Object> notice;
 
     private UiWindow(View view, Screen screen) {
         this.view = view;
@@ -86,6 +93,52 @@ public final class UiWindow {
         return screen;
     }
 
+    /**
+     * Tells the person something in a dialog over the screen: {@code UiException.Level.INFO} for news, WARNING or
+     * ERROR for problems. The same as throwing a {@link UiException} from a handler, without stopping it.
+     */
+    public CompletableFuture<Void> notify(String title, String message, UiException.Level level) {
+        synchronized (this) {
+            notice = notice(title, message, null, level);
+        }
+        return refresh();
+    }
+
+    static <E extends Throwable> void explain(Class<E> type, java.util.function.Function<? super E, UiException> how) {
+        EXPLAINED.put(type, e -> how.apply(type.cast(e)));
+    }
+
+    private static Map<String, Object> notice(String title, String message, String details, UiException.Level level) {
+        Map<String, Object> n = new LinkedHashMap<>();
+        n.put("id", NOTICES.incrementAndGet());
+        n.put("title", title);
+        n.put("message", message);
+        if (details != null && !details.isBlank()) n.put("details", details);
+        n.put("kind", level.name().toLowerCase(java.util.Locale.ROOT));
+        return n;
+    }
+
+    /** What the person reads about {@code e}: its own words for a UiException (or an explained one), else a calm generic one. */
+    private Map<String, Object> noticeFor(RuntimeException e) {
+        UiException ui = e instanceof UiException u ? u : null;
+        if (ui == null) {
+            for (Map.Entry<Class<? extends Throwable>, java.util.function.Function<Throwable, UiException>> how : EXPLAINED.entrySet()) {
+                if (how.getKey().isInstance(e)) {
+                    ui = how.getValue().apply(e);
+                    break;
+                }
+            }
+        }
+        if (ui != null) {
+            Throwable cause = ui.getCause() != null ? ui.getCause() : ui == e ? null : e;
+            return notice(ui.title(), ui.userMessage(), cause == null ? null : String.valueOf(cause), ui.level());
+        }
+        LOG.log(System.Logger.Level.ERROR, "a handler of " + screen.getClass().getName() + " failed", e);
+        return notice("Something went wrong",
+                "The app could not finish that. Try again; if it keeps happening, tell the people who make it.",
+                e.toString(), UiException.Level.ERROR);
+    }
+
     /** Shows the screen again: after its state changed outside its handlers (a timer, a message, a download). */
     public CompletableFuture<Void> refresh() {
         return view.emit(TREE, tree());
@@ -103,7 +156,10 @@ public final class UiWindow {
                     handler.accept(call.fields().get("value"));
                 }
             } catch (RuntimeException e) {
-                LOG.log(System.Logger.Level.ERROR, "a handler of " + screen.getClass().getName() + " failed", e);
+                Map<String, Object> n = noticeFor(e);
+                synchronized (this) {
+                    notice = n;
+                }
             }
         }
         return tree();
@@ -120,6 +176,11 @@ public final class UiWindow {
         }
         synchronized (this) {
             handlers = registry;
+            if (notice != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> props = (Map<String, Object>) tree.get("p");
+                props.put("notice", notice);
+            }
         }
         return tree;
     }

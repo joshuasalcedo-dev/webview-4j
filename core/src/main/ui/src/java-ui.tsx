@@ -6,6 +6,7 @@ import { Button } from "./components/button"
 import { Checkbox } from "./components/checkbox"
 import { CodeBlock } from "./components/code-editor"
 import { Content } from "./components/content"
+import { useDialogs } from "./components/dialog"
 import { Spinner } from "./components/infinite-scroll"
 import { List, ListItem } from "./components/list"
 import { Money } from "./components/money"
@@ -111,6 +112,7 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
       const theme = (str(p.theme) ?? "system") as "system" | "light" | "dark"
       return (
         <NativeProvider platform={platform} theme={theme} accent={str(p.accent)} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+          <Notice notice={p.notice as NoticeData | undefined} />
           {titleBar && <Render node={titleBar} />}
           {toolbar && <Render node={toolbar} />}
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "auto" }}>{body && <Render node={body} />}</div>
@@ -309,6 +311,24 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
         </Text>
       )
   }
+}
+
+type NoticeData = { id: number; title: string; message: string; details?: string; kind: "info" | "warning" | "error" }
+
+/**
+ * What Java has to tell the person (a UiException from a handler, or UiWindow.notify): in the kit's dialog, once.
+ * Problems in the error dialog (the human message, the technical one folded under its details); news in a message.
+ */
+function Notice({ notice }: { notice: NoticeData | undefined }) {
+  const dialogs = useDialogs()
+  const shown = React.useRef<number>(0)
+  React.useEffect(() => {
+    if (!notice || notice.id === shown.current) return
+    shown.current = notice.id
+    if (notice.kind === "info") void dialogs.message({ title: notice.title, message: notice.message, kind: "info" })
+    else void dialogs.error({ title: notice.title, message: notice.message, details: notice.details })
+  }, [notice, dialogs])
+  return null
 }
 
 /**

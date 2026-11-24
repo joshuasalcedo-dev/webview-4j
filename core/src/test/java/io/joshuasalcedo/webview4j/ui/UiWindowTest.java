@@ -84,6 +84,50 @@ class UiWindowTest {
         }
     }
 
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    @Timeout(90)
+    void whatGoesWrongInAHandlerIsToldToThePersonInADialog() throws Exception {
+        try (App app = App.start()) {
+            Screen screen = () -> column(
+                    button("Save").onClick(() -> {
+                        throw new UiException("Name is required", "Type the name people will see.");
+                    }),
+                    button("Crash").onClick(() -> {
+                        throw new IllegalStateException("database pool exhausted");
+                    }));
+            UiWindow window = Ui.open(app, screen, o -> o.headless(true).size(600, 400)).join();
+            View view = window.view();
+            String dialog = "document.querySelector('[role=dialog],[role=alertdialog],dialog')?.innerText ?? null";
+            String clickSave = "[...document.querySelectorAll('button')].find(b => b.textContent === 'Save').click()";
+            assertEquals("ok", until(view, "document.querySelectorAll('button').length >= 2 ? 'ok' : null", "ok"));
+
+            view.eval(clickSave).join();
+            String said = (String) untilContains(view, dialog, "Type the name people will see.");
+            assertTrue(said.contains("Name is required"), said);
+
+            view.eval("document.querySelector('[role=dialog] button,[role=alertdialog] button,dialog button')?.click()").join();
+            assertEquals("gone", until(view, dialog.replace("?? null", "?? 'gone'"), "gone"));
+
+            view.eval("[...document.querySelectorAll('button')].find(b => b.textContent === 'Crash').click()").join();
+            String generic = (String) untilContains(view, dialog, "Something went wrong");
+            assertFalse(generic.contains("database pool"), "the technical message is folded under the details: " + generic);
+            // the technical message is under "Show details", as the person would open it
+            view.eval("[...document.querySelectorAll('button')].find(b => b.textContent === 'Show details').click()").join();
+            untilContains(view, dialog, "database pool exhausted");
+        }
+    }
+
+    private static Object untilContains(View view, String script, String part) throws InterruptedException {
+        Object value = null;
+        for (int i = 0; i < 100; i++) {
+            value = view.eval(script).join();
+            if (value instanceof String s && s.contains(part)) return value;
+            Thread.sleep(100);
+        }
+        throw new AssertionError("never showed '" + part + "'; last: " + value);
+    }
+
     /** The script's value once it is {@code expected} (the page loads and answers after the call), or its last. */
     private static Object until(View view, String script, Object expected) throws InterruptedException {
         Object value = null;

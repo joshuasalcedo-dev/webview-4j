@@ -25,6 +25,9 @@
 - `TitleBar dragsWindow={false}`: a title bar that is not the window's own
 - `io.joshuasalcedo.webview4j.ui`: screens built only in Java from the native components (`Ui`, `Screen`, `UiWindow`): Java sends what to show as data, core's jar draws it, the user's actions run Java handlers; nothing is generated
 - The sample's component gallery, written only in Java (`./gradlew run -Pgallery`)
+- `UiException`: a handler's problem said for people (title, message, level) in the kit's dialog, the technical message under "Show details"; any other exception shows a calm generic message and is logged; `Ui.explain` for a library's own exceptions; `UiWindow.notify`
+- devtools `ApiExplorer`: an API from its OpenAPI description (Spring's /v3/api-docs, any server, local or not): every endpoint with example values, sent from Java; every endpoint at once; a `MockServer` that answers from the description; the project's JUnit tests run from a button (`TestRunner`)
+- `Json` is public: a small JSON reader and writer
 - The build reuses a native library already built from the current Rust sources instead of running cargo again (`-PrebuildNative` forces it)
 
 ## 0.1.0 — 2026-10-21

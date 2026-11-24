@@ -9,15 +9,21 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Just enough JSON for the native boundary, so the library needs no dependency.
- * Reads objects as {@code Map<String, Object>} (in order), arrays as {@code List<Object>},
- * numbers as {@code Long} or {@code Double}, plus {@code String}, {@code Boolean} and null.
+ * Just enough JSON, so the library needs no dependency: what the bridge and the controllers use, and a handy
+ * reader and writer for an app's own small needs. Reads objects as {@code Map<String, Object>} (in order),
+ * arrays as {@code List<Object>}, numbers as {@code Long} or {@code Double}, plus {@code String},
+ * {@code Boolean} and null.
  */
-final class Json {
+public final class Json {
 
     private Json() {}
 
-    static Object parse(String text) {
+    /**
+     * The value {@code text} holds.
+     *
+     * @throws IllegalArgumentException if it is not JSON
+     */
+    public static Object parse(String text) {
         Reader reader = new Reader(text);
         reader.space();
         Object value = reader.value();
@@ -27,13 +33,18 @@ final class Json {
     }
 
     @SuppressWarnings("unchecked")
-    static Map<String, Object> object(String text) {
+    /**
+     * The object {@code text} holds.
+     *
+     * @throws IllegalArgumentException if it is not a JSON object
+     */
+    public static Map<String, Object> object(String text) {
         if (parse(text) instanceof Map<?, ?> map) return (Map<String, Object>) map;
         throw new IllegalArgumentException("not a JSON object: " + text);
     }
 
     /** Writes maps, iterables, records (as objects), strings, numbers, booleans, enums (by name) and null. */
-    static String write(Object value) {
+    public static String write(Object value) {
         StringBuilder out = new StringBuilder();
         write(value, out);
         return out.toString();

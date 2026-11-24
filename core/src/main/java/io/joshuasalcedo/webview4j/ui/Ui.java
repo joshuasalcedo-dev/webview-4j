@@ -49,6 +49,17 @@ public final class Ui {
         return UiWindow.open(app, screen, options);
     }
 
+    /**
+     * How an exception that is not a {@link UiException} is said to the person when a handler throws it: for a
+     * library's own exceptions whose messages are written for people.
+     * <pre>{@code
+     * Ui.explain(ValueObjectException.class, e -> new UiException("Check what you typed", e.getMessage(), UiException.Level.WARNING));
+     * }</pre>
+     */
+    public static <E extends Throwable> void explain(Class<E> type, java.util.function.Function<? super E, UiException> how) {
+        UiWindow.explain(Objects.requireNonNull(type, "type"), Objects.requireNonNull(how, "how"));
+    }
+
     // ---- the window ----
 
     /**
