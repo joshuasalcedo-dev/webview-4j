@@ -33,6 +33,7 @@ import {
   PhoneField,
   UrlField,
 } from "./components/value-fields"
+import { DataTable, type DataColumn, type DataRow } from "./components/usecase/data-table"
 import { Button } from "./components/button"
 import { Checkbox } from "./components/checkbox"
 import { CodeBlock } from "./components/code-editor"
@@ -654,6 +655,9 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
       if (node.t === "currencySelect") return <CurrencySelect {...props} />
       return <LanguageSelect {...props} />
     }
+    // ---- use cases ----
+    case "dataTable":
+      return <JavaDataTable node={node} />
     default:
       return (
         <Text tone="error" style={style}>
@@ -749,6 +753,43 @@ function JavaValueField({ node }: { node: JavaNode }) {
     default:
       return <CardNumberField {...props} />
   }
+}
+
+/** A data table: its rows, columns and state from Java; what the person does goes back as events. */
+function JavaDataTable({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const menu = (node.c ?? []).filter((c) => c.p.slot === "rowMenu")
+  const actions = (node.c ?? []).filter((c) => c.p.slot === "action")
+  const has = (name: string) => typeof p[name] === "string"
+  const sort = p.sort as { key: string; desc: boolean } | null | undefined
+  return (
+    <DataTable
+      aria-label={str(p.label) ?? "Table"}
+      columns={(p.columns as DataColumn[]) ?? []}
+      rows={(p.rows as DataRow[]) ?? []}
+      rowKey={str(p.rowKey)}
+      selectable={bool(p.selectable)}
+      selected={p.selected as string[] | undefined}
+      onSelectionChange={has("onSelectionChange") ? (ids) => send(p.onSelectionChange, ids) : undefined}
+      sort={has("onSortChange") ? (sort ?? null) : undefined}
+      onSortChange={has("onSortChange") ? (s) => send(p.onSortChange, s) : undefined}
+      search={bool(p.search)}
+      filter={has("onFilterChange") ? (str(p.filter) ?? "") : undefined}
+      onFilterChange={has("onFilterChange") ? (t) => send(p.onFilterChange, t) : undefined}
+      pageSize={num(p.pageSize)}
+      page={num(p.page)}
+      total={num(p.total)}
+      onPageChange={has("onPageChange") ? (n) => send(p.onPageChange, n) : undefined}
+      onRowOpen={has("onRowOpen") ? (id) => send(p.onRowOpen, id) : undefined}
+      rowMenu={menu.length ? (row) => menu.map((m) => ({ label: str(m.p.label) ?? "", onSelect: () => send(m.p.onSelect, String(row[str(p.rowKey) ?? "id"])) })) : undefined}
+      onCellEdit={has("onCellEdit") ? (id, key, value) => send(p.onCellEdit, { id, key, value }) : undefined}
+      actions={actions.map((a) => ({ label: str(a.p.label) ?? "", onSelect: (ids) => send(a.p.onSelect, ids) }))}
+      loading={bool(p.loading)}
+      empty={str(p.empty)}
+      style={{ minHeight: 0, ...sizing(p) }}
+    />
+  )
 }
 
 function JavaPasswordField({ node }: { node: JavaNode }) {
