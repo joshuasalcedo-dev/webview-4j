@@ -8,4 +8,5 @@ module io.joshuasalcedo.webview4j {
     exports io.joshuasalcedo.webview4j;
     exports io.joshuasalcedo.webview4j.annotation;
     exports io.joshuasalcedo.webview4j.ui;
+    exports io.joshuasalcedo.webview4j.ui.components;
 }

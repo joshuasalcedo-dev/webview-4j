@@ -2,6 +2,8 @@ package io.joshuasalcedo.webview4j.spring.client;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
+import io.joshuasalcedo.webview4j.ui.components.*;
+
 import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.Screen;
 import io.joshuasalcedo.webview4j.ui.Ui;

@@ -2,6 +2,25 @@ import * as React from "react"
 import { createRoot } from "react-dom/client"
 
 import { Avatar } from "./components/avatar"
+import { Breadcrumb } from "./components/breadcrumb"
+import { MessageBubble, TypingIndicator } from "./components/chat/message-bubble"
+import { CodeEditor } from "./components/code-editor"
+import { Composer } from "./components/composer"
+import { Dialog } from "./components/dialog"
+import { FileExplorer, FileGrid, FileList } from "./components/file-views"
+import { FileChip, FileIcon, FileTree } from "./components/files"
+import { InfiniteScroll } from "./components/infinite-scroll"
+import { Inspector, InspectorSection } from "./components/inspector"
+import { LogView } from "./components/log-view"
+import { MdiArea, useMdi } from "./components/mdi"
+import { MoneyField } from "./components/money"
+import { PillGroup } from "./components/pill"
+import { Quantity, QuantityField } from "./components/quantity"
+import { RichTextEditor } from "./components/rich-text"
+import { SearchField } from "./components/search-field"
+import { Swipeable } from "./components/swipeable"
+import { Tabs } from "./components/tabs"
+import { NumberField, PasswordField, TokenField } from "./components/text-inputs"
 import { Button } from "./components/button"
 import { Checkbox } from "./components/checkbox"
 import { CodeBlock } from "./components/code-editor"
@@ -19,11 +38,11 @@ import { Sidebar, SidebarItem, SidebarSection } from "./components/sidebar"
 import { StatusBar, StatusBarSpacer, StatusDot, StatusItem } from "./components/status-bar"
 import { Surface } from "./components/surface"
 import { Switch } from "./components/switch"
-import { Link, Text } from "./components/text"
+import { Code as InlineCode, Label, Link, Shortcut, Text } from "./components/text"
 import { TextArea } from "./components/text-inputs"
 import { TextField } from "./components/text-field"
 import { TitleBar } from "./components/title-bar"
-import { Toolbar, ToolbarButton, ToolbarSpacer } from "./components/toolbar"
+import { Toolbar, ToolbarButton, ToolbarSeparator, ToolbarSpacer } from "./components/toolbar"
 
 /**
  * Screens built in Java (io.joshuasalcedo.webview4j.ui): Java sends a tree of components, this shows it with the
@@ -46,6 +65,9 @@ const bridge = (): Bridge => {
 
 type Send = (handler: unknown, value?: unknown) => void
 const SendContext = React.createContext<Send>(() => {})
+/** An action the component waits for (load more, send a message): resolves when Java has answered. */
+type SendAndWait = (handler: unknown, value?: unknown) => Promise<void>
+const SendAndWaitContext = React.createContext<SendAndWait>(async () => {})
 
 function JavaUi() {
   const [tree, setTree] = React.useState<JavaNode | null>(null)
@@ -53,14 +75,17 @@ function JavaUi() {
   // Actions go to Java one at a time, in order; each answer is the newest tree.
   const queue = React.useRef(Promise.resolve())
 
-  const send = React.useCallback<Send>((handler, value) => {
-    if (typeof handler !== "string") return
-    queue.current = queue.current.then(() =>
+  const sendAndWait = React.useCallback<SendAndWait>((handler, value) => {
+    if (typeof handler !== "string") return Promise.resolve()
+    const done = queue.current.then(() =>
       bridge()
         .invoke("webview4j.ui.event", { handler, value: value ?? null })
         .then((next) => setTree(next as JavaNode), (e: Error) => setError(e.message))
     )
+    queue.current = done
+    return done
   }, [])
+  const send = React.useCallback<Send>((handler, value) => void sendAndWait(handler, value), [sendAndWait])
 
   React.useEffect(() => {
     const stop = bridge().listen("webview4j.ui.tree", (next) => setTree(next as JavaNode))
@@ -72,7 +97,9 @@ function JavaUi() {
   if (!tree) return null
   return (
     <SendContext.Provider value={send}>
-      <Render node={tree} />
+      <SendAndWaitContext.Provider value={sendAndWait}>
+        <Render node={tree} />
+      </SendAndWaitContext.Provider>
     </SendContext.Provider>
   )
 }
@@ -100,6 +127,7 @@ function sizing(p: Record<string, unknown>): React.CSSProperties {
 
 function Render({ node }: { node: JavaNode }): React.ReactNode {
   const send = React.useContext(SendContext)
+  const sendAndWait = React.useContext(SendAndWaitContext)
   const p = node.p
   const style = sizing(p)
   switch (node.t) {
@@ -304,6 +332,291 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     }
     case "code":
       return <CodeBlock code={str(p.code) ?? ""} language={str(p.language)} style={style} />
+    // ---- navigation ----
+    case "toolbarSeparator":
+      return <ToolbarSeparator />
+    case "statusDot":
+      return <StatusDot state={(str(p.state) ?? "online") as "online"} aria-label={str(p.state) ?? "state"} />
+    case "breadcrumb":
+      return (
+        <Breadcrumb
+          items={(node.c ?? []).map((c) => ({
+            label: str(c.p.label) ?? "",
+            onSelect: typeof c.p.onSelect === "string" ? () => send(c.p.onSelect) : undefined,
+          }))}
+        />
+      )
+    case "tabs": {
+      const tabs = (node.c ?? []).map((c) => ({ value: str(c.p.value) ?? "", label: str(c.p.label) ?? "", closable: bool(c.p.closable) }))
+      return (
+        <Tabs<string>
+          aria-label={str(p.label) ?? "Tabs"}
+          tabs={tabs}
+          value={str(p.value) ?? tabs[0]?.value ?? ""}
+          onValueChange={(v) => send(p.onChange, v)}
+          onClose={typeof p.onClose === "string" ? (v) => send(p.onClose, v) : undefined}
+          onAdd={typeof p.onAdd === "string" ? () => send(p.onAdd) : undefined}
+        />
+      )
+    }
+    // ---- layout ----
+    case "inspector":
+      return (
+        <Inspector
+          open={p.open !== false}
+          onOpenChange={typeof p.onOpenChange === "string" ? (open) => send(p.onOpenChange, open) : undefined}
+          title={str(p.title) ?? ""}
+          defaultWidth={num(p.defaultWidth)}
+        >
+          <Children nodes={node.c} />
+        </Inspector>
+      )
+    case "inspectorSection":
+      return (
+        <InspectorSection title={str(p.title) ?? ""} count={num(p.count)} defaultOpen={p.defaultOpen !== false}>
+          <Children nodes={node.c} />
+        </InspectorSection>
+      )
+    case "dialog": {
+      const actions = (node.c ?? [])
+        .filter((c) => c.p.slot === "action")
+        .map((c) => ({
+          label: str(c.p.label) ?? "",
+          onSelect: () => send(c.p.onSelect),
+          primary: bool(c.p.primary),
+          cancel: bool(c.p.cancel),
+          destructive: bool(c.p.destructive),
+        }))
+      return (
+        <Dialog open={bool(p.open)} title={str(p.title) ?? ""} message={str(p.message)} kind={str(p.kind) as never} actions={actions}>
+          <Children nodes={(node.c ?? []).filter((c) => c.p.slot !== "action")} />
+        </Dialog>
+      )
+    }
+    case "mdi":
+      return <JavaMdi node={node} />
+    case "infiniteScroll":
+      return (
+        <InfiniteScroll
+          hasMore={bool(p.hasMore)}
+          direction={str(p.direction) === "up" ? "up" : "down"}
+          endText={str(p.endText)}
+          onLoadMore={() => sendAndWait(p.onLoadMore)}
+          style={style}
+        >
+          <Children nodes={node.c} />
+        </InfiniteScroll>
+      )
+    case "swipeable": {
+      const actions = (side: string) =>
+        (node.c ?? [])
+          .filter((c) => c.p.slot === side)
+          .map((c) => ({ label: str(c.p.label) ?? "", tone: str(c.p.tone) as never, onAction: () => send(c.p.onAction) }))
+      const content = slot(node, "content")
+      return (
+        <Swipeable swipeRight={actions("right")} swipeLeft={actions("left")}>
+          {content && <Render node={content} />}
+        </Swipeable>
+      )
+    }
+    // ---- text ----
+    case "label":
+      return (
+        <Label tone={str(p.tone) as never} strong={bool(p.strong)}>
+          {str(p.text)}
+        </Label>
+      )
+    case "inlineCode":
+      return <InlineCode>{str(p.text)}</InlineCode>
+    case "shortcut":
+      return <Shortcut keys={str(p.keys) ?? ""} />
+    // ---- inputs ----
+    case "passwordField":
+      return <JavaPasswordField node={node} />
+    case "searchField":
+      return <JavaSearchField node={node} />
+    case "numberField":
+      return (
+        <NumberField
+          label={str(p.label)}
+          hint={str(p.hint)}
+          error={str(p.error)}
+          value={num(p.value) ?? null}
+          min={num(p.min)}
+          max={num(p.max)}
+          step={num(p.step)}
+          fractionDigits={num(p.fractionDigits)}
+          before={str(p.before)}
+          after={str(p.after)}
+          onValueChange={(v) => send(p.onChange, v)}
+          style={style}
+        />
+      )
+    case "tokenField":
+      return (
+        <TokenField
+          label={str(p.label)}
+          placeholder={str(p.placeholder)}
+          value={(p.value as string[] | undefined) ?? []}
+          suggestions={p.suggestions as string[] | undefined}
+          onValueChange={(tokens) => send(p.onChange, tokens)}
+          style={style}
+        />
+      )
+    case "moneyField":
+      return (
+        <MoneyField
+          label={str(p.label)}
+          hint={str(p.hint)}
+          error={str(p.error)}
+          currency={str(p.currency) ?? "USD"}
+          currencies={p.currencies as string[] | undefined}
+          value={num(p.value) ?? null}
+          min={num(p.min)}
+          max={num(p.max)}
+          onValueChange={(v) => send(p.onChange, v)}
+          onCurrencyChange={typeof p.onCurrencyChange === "string" ? (c) => send(p.onCurrencyChange, c) : undefined}
+          style={style}
+        />
+      )
+    case "quantityField":
+      return (
+        <QuantityField
+          label={str(p.label)}
+          hint={str(p.hint)}
+          error={str(p.error)}
+          unit={(str(p.unit) ?? "kilogram") as never}
+          units={p.units as never}
+          convert={bool(p.convert)}
+          value={num(p.value) ?? null}
+          onValueChange={(v) => send(p.onChange, v)}
+          onUnitChange={typeof p.onUnitChange === "string" ? (u) => send(p.onUnitChange, u) : undefined}
+          style={style}
+        />
+      )
+    case "richText":
+      return (
+        <RichTextEditor
+          aria-label={str(p.label) ?? "Text"}
+          value={str(p.value)}
+          placeholder={str(p.placeholder)}
+          readOnly={bool(p.readOnly)}
+          minHeight={num(p.minHeight)}
+          onChange={(v) => send(p.onChange, v.html)}
+          style={style}
+        />
+      )
+    case "codeEditor":
+      return (
+        <CodeEditor
+          aria-label={str(p.label) ?? "Code"}
+          value={str(p.value)}
+          language={str(p.language)}
+          fileName={str(p.fileName)}
+          readOnly={bool(p.readOnly)}
+          lineNumbers={p.lineNumbers as boolean | undefined}
+          minimap={p.minimap as boolean | undefined}
+          wordWrap={p.wordWrap as boolean | undefined}
+          height={num(p.height) ?? 320}
+          onChange={(v) => send(p.onChange, v)}
+        />
+      )
+    case "composer":
+      return (
+        <Composer
+          aria-label={str(p.label)}
+          placeholder={str(p.placeholder)}
+          sending={bool(p.sending)}
+          disabled={bool(p.disabled)}
+          sendKey={str(p.sendKey) === "mod+enter" ? "mod+enter" : "enter"}
+          maxLength={num(p.maxLength)}
+          onSend={(message) => sendAndWait(p.onSend, message.text)}
+          style={style}
+        />
+      )
+    // ---- content ----
+    case "pillGroup":
+      return (
+        <PillGroup max={num(p.max)} fit={bool(p.fit)}>
+          <Children nodes={node.c} />
+        </PillGroup>
+      )
+    case "quantity":
+      return (
+        <Quantity
+          value={num(p.value) ?? 0}
+          unit={(str(p.unit) ?? "kilogram") as never}
+          as={str(p.as) as never}
+          digits={num(p.digits)}
+          display={str(p.display) as never}
+        />
+      )
+    case "logView":
+      return (
+        <LogView
+          aria-label={str(p.label) ?? "Log"}
+          lines={(p.lines as never[]) ?? []}
+          empty={str(p.empty)}
+          follow={p.follow as boolean | undefined}
+          style={{ minHeight: 200, ...style }}
+        />
+      )
+    case "messageBubble": {
+      const mine = bool(p.mine)
+      const sender = { id: mine ? "me" : (str(p.sender) ?? "them"), name: str(p.sender) ?? (mine ? "Me" : "Them") }
+      return (
+        <MessageBubble
+          message={{
+            id: node.k ?? str(p.text) ?? "",
+            senderId: sender.id,
+            text: str(p.text),
+            sentAt: str(p.sentAt) ?? new Date().toISOString(),
+            state: str(p.state) as never,
+          }}
+          mine={mine}
+          sender={sender}
+          showName={!mine && str(p.sender) !== undefined}
+          showMeta={str(p.sentAt) !== undefined}
+        />
+      )
+    }
+    case "typing":
+      return <TypingIndicator people={((p.people as string[] | undefined) ?? []).map((name) => ({ id: name, name }))} />
+    // ---- files ----
+    case "fileIcon":
+      return <FileIcon name={str(p.name) ?? ""} folder={bool(p.folder)} size={num(p.size)} />
+    case "fileChip":
+      return (
+        <FileChip
+          name={str(p.name) ?? ""}
+          size={num(p.size)}
+          variant={str(p.variant) === "inline" ? "inline" : "card"}
+          progress={num(p.progress)}
+          status={str(p.status)}
+          error={bool(p.error)}
+          onOpen={typeof p.onOpen === "string" ? () => send(p.onOpen) : undefined}
+          onRemove={typeof p.onRemove === "string" ? () => send(p.onRemove) : undefined}
+        />
+      )
+    case "fileTree":
+    case "fileList":
+    case "fileGrid":
+    case "fileExplorer": {
+      const common = {
+        "aria-label": str(p.label) ?? "Files",
+        items: (p.items as never[]) ?? [],
+        selected: p.selected as string[] | undefined,
+        onSelectionChange: typeof p.onSelectionChange === "string" ? (paths: string[]) => send(p.onSelectionChange, paths) : undefined,
+        onOpen: typeof p.onOpen === "string" ? (path: string) => send(p.onOpen, path) : undefined,
+        onRename: typeof p.onRename === "string" ? (path: string) => send(p.onRename, path) : undefined,
+        onDelete: typeof p.onDelete === "string" ? (path: string) => send(p.onDelete, path) : undefined,
+        style: { minHeight: 240, ...style },
+      }
+      if (node.t === "fileTree") return <FileTree {...common} />
+      if (node.t === "fileList") return <FileList {...common} />
+      if (node.t === "fileGrid") return <FileGrid {...common} />
+      return <FileExplorer {...common} />
+    }
     default:
       return (
         <Text tone="error" style={style}>
@@ -329,6 +642,87 @@ function Notice({ notice }: { notice: NoticeData | undefined }) {
     else void dialogs.error({ title: notice.title, message: notice.message, details: notice.details })
   }, [notice, dialogs])
   return null
+}
+
+/**
+ * Windows inside the window (MDI): where each is, its size and state stay here as the user moves them; which
+ * windows there are, their titles and what is in them come from Java. A window Java no longer sends closes; one the
+ * user closes tells Java (onClose).
+ */
+function JavaMdi({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const windows = (node.c ?? []).filter((c) => c.t === "mdiWindow")
+  const mdi = useMdi()
+  const ids = windows.map((w) => str(w.p.id) ?? "").join("|")
+  React.useEffect(() => {
+    const present = new Set(windows.map((w) => str(w.p.id)))
+    for (const w of windows) {
+      if (!mdi.windows.some((m) => m.id === str(w.p.id))) {
+        const at = num(w.p.x) !== undefined ? { x: num(w.p.x), y: num(w.p.y), width: num(w.p.width), height: num(w.p.height) } : {}
+        mdi.open({ id: str(w.p.id) ?? "", title: str(w.p.title) ?? "", content: null, ...at })
+      }
+    }
+    for (const m of mdi.windows) if (!present.has(m.id)) mdi.close(m.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids])
+  // The content and titles are always Java's newest; where each is, the hook's.
+  const live = {
+    ...mdi,
+    windows: mdi.windows.map((m) => {
+      const w = windows.find((x) => str(x.p.id) === m.id)
+      return w ? { ...m, title: str(w.p.title) ?? m.title, content: <Children nodes={w.c} /> } : m
+    }),
+    close: (id: string) => {
+      const w = windows.find((x) => str(x.p.id) === id)
+      mdi.close(id)
+      if (w && typeof w.p.onClose === "string") send(w.p.onClose)
+    },
+  }
+  return (
+    <MdiArea mdi={live} aria-label={str(node.p.label) ?? "Windows"} empty={str(node.p.empty)} style={{ flex: 1, minHeight: 320, ...sizing(node.p) }} />
+  )
+}
+
+function JavaPasswordField({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const [value, setValue] = useJavaValue(str(p.value))
+  return (
+    <PasswordField
+      label={str(p.label)}
+      hint={str(p.hint)}
+      error={str(p.error)}
+      placeholder={str(p.placeholder)}
+      disabled={bool(p.disabled)}
+      value={value}
+      onChange={(e) => {
+        setValue(e.target.value)
+        send(p.onChange, e.target.value)
+      }}
+      style={sizing(p)}
+    />
+  )
+}
+
+function JavaSearchField({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const [value, setValue] = useJavaValue(str(p.value))
+  return (
+    <SearchField
+      aria-label={str(p.label) ?? "Search"}
+      placeholder={str(p.placeholder)}
+      value={value}
+      onChange={(e) => {
+        setValue(e.target.value)
+        send(p.onChange, e.target.value)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && typeof p.onSubmit === "string") send(p.onSubmit, (e.target as HTMLInputElement).value)
+      }}
+      style={sizing(p)}
+    />
+  )
 }
 
 /**

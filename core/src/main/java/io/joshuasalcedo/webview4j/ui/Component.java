@@ -22,12 +22,12 @@ public abstract class Component<C extends Component<C>> {
     final Map<String, Consumer<Object>> handlers = new LinkedHashMap<>();
     private String key;
 
-    Component(String type) {
+    protected Component(String type) {
         this.type = Objects.requireNonNull(type, "type");
     }
 
     @SuppressWarnings("unchecked")
-    C self() {
+    protected C self() {
         return (C) this;
     }
 
@@ -55,25 +55,48 @@ public abstract class Component<C extends Component<C>> {
         return prop("height", height);
     }
 
-    C prop(String name, Object value) {
+    /** Sets a property the page's renderer reads; null removes it. */
+    protected C prop(String name, Object value) {
         if (value == null) props.remove(name);
         else props.put(name, value);
         return self();
     }
 
-    C on(String event, Consumer<Object> handler) {
+    /** Java code for an event of the component ({@code onClick}): it gets what the page sent, as a JSON value. */
+    protected C on(String event, Consumer<Object> handler) {
         handlers.put(event, Objects.requireNonNull(handler, "handler"));
         return self();
     }
 
-    C add(Component<?>... components) {
+    protected C add(Component<?>... components) {
         for (Component<?> c : components) if (c != null) children.add(c);
         return self();
     }
 
-    C add(List<? extends Component<?>> components) {
+    protected C add(List<? extends Component<?>> components) {
         for (Component<?> c : components) if (c != null) children.add(c);
         return self();
+    }
+
+    /** A property set before, or null. */
+    protected Object get(String name) {
+        return props.get(name);
+    }
+
+    /** The children, in order. */
+    protected List<Component<?>> children() {
+        return children;
+    }
+
+    /** Marks {@code component} as filling a named place of its parent (a frame's title bar, a list item's leading part). */
+    protected static <T extends Component<?>> T slot(T component, String name) {
+        component.props.put("slot", name);
+        return component;
+    }
+
+    /** The named place {@code component} fills, or null. */
+    protected static String slotOf(Component<?> component) {
+        return component.props.get("slot") instanceof String s ? s : null;
     }
 
     /**

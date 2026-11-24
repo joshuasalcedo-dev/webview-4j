@@ -2,6 +2,8 @@ package example.notes;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
+import io.joshuasalcedo.webview4j.ui.components.*;
+
 import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.Screen;
 import io.joshuasalcedo.webview4j.ui.Ui;
@@ -23,7 +25,7 @@ public final class GalleryScreen implements Screen {
     private final Map<String, Page> pages = new LinkedHashMap<>();
     private String selected = "Button";
     private Platform platform = Platform.AUTO;
-    private Theme theme = Theme.SYSTEM;
+    private ColorScheme theme = ColorScheme.SYSTEM;
 
     // What the demos change, so they work.
     private int clicks;
@@ -208,14 +210,14 @@ public final class GalleryScreen implements Screen {
 
         return frame(split(sidebar, content))
                 .platform(platform)
-                .theme(theme)
+                .scheme(theme)
                 .titleBar(titleBar("Component gallery"))
                 .toolbar(toolbar(page.name(),
                         spacer(),
                         segmented("Look", ordered("AUTO", "This system", "WINDOWS", "Windows 11", "MAC", "macOS"))
                                 .value(platform.name()).onChange(v -> platform = Platform.valueOf(v)),
                         segmented("Theme", ordered("SYSTEM", "System", "LIGHT", "Light", "DARK", "Dark"))
-                                .value(theme.name()).onChange(v -> theme = Theme.valueOf(v))))
+                                .value(theme.name()).onChange(v -> theme = ColorScheme.valueOf(v))))
                 .statusBar(statusBar(
                         statusItem("Written in Java only").dot(DotState.ONLINE),
                         spacer(),

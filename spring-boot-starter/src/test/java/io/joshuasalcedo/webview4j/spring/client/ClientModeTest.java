@@ -1,6 +1,8 @@
 package io.joshuasalcedo.webview4j.spring.client;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
+
+import io.joshuasalcedo.webview4j.ui.components.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.joshuasalcedo.webview4j.App;

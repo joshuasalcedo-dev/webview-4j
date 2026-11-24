@@ -1,6 +1,8 @@
 package io.joshuasalcedo.webview4j.ui;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
+
+import io.joshuasalcedo.webview4j.ui.components.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
@@ -139,7 +141,7 @@ class RouterTest {
     void paginationShowsThePagesAroundTheCurrentOne() {
         Map<String, Consumer<Object>> handlers = new LinkedHashMap<>();
         int[] went = {0};
-        Map<String, Object> shown = pagination(6, 12, n -> went[0] = n).toTree(handlers);
+        Map<String, Object> shown = ((Component<?>) pagination(6, 12, n -> went[0] = n)).toTree(handlers);
         assertEquals(List.of("Previous", "1", "…", "4", "5", "6", "7", "8", "…", "12", "Next"), texts(shown));
         assertTrue(press(shown, handlers, "Next"));
         assertEquals(7, went[0], "Next goes to 7");

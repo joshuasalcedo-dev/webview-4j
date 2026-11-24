@@ -171,7 +171,7 @@ public final class UiWindow {
         Map<String, Object> tree;
         synchronized (screen) {
             Component<?> root = Objects.requireNonNull(screen.render(), "render() returned null");
-            if (!(root instanceof Ui.Frame)) root = Ui.frame(root);
+            if (!(root instanceof io.joshuasalcedo.webview4j.ui.components.Frame)) root = Ui.frame(root);
             tree = root.toTree(registry);
         }
         synchronized (this) {

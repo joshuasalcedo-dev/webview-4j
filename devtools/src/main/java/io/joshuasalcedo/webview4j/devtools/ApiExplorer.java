@@ -2,6 +2,8 @@ package io.joshuasalcedo.webview4j.devtools;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
+import io.joshuasalcedo.webview4j.ui.components.*;
+
 import io.joshuasalcedo.webview4j.App;
 import io.joshuasalcedo.webview4j.Json;
 import io.joshuasalcedo.webview4j.ui.Component;
