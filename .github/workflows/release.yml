@@ -68,3 +68,102 @@ jobs:
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
+
+  # The GitHub release: the tag's CHANGELOG.md section as its notes, and the jars Maven Central got.
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ github.event.inputs.version || github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${VERSION#v}"
+          awk -v v="$VERSION" '/^## /{p = ($2 == v)} p && !/^## /' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "CHANGELOG.md has no section for $VERSION"; exit 1; }
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            gh release edit "v$VERSION" --notes-file notes.md
+          else
+            gh release create "v$VERSION" --title "$VERSION" --notes-file notes.md --verify-tag
+          fi
+
+  # https://api.swaswa.cloud/changelogs/webview-4j (Workers KV "swaswa-changelogs"). The same script as
+  # swaswa-systems/root's publish-changelog.yml, here because this public repository can't call that private one.
+  # Needs the repository secret CLOUDFLARE_API_TOKEN (Workers KV write); skipped without it.
+  changelog:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish the changelog
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VERSION: ${{ github.event.inputs.version || github.ref_name }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::warning::CLOUDFLARE_API_TOKEN is not set: changelog not published"; exit 0; fi
+          VERSION="${VERSION#v}"
+          python3 - "$VERSION" <<'PY'
+          import json, os, re, sys, urllib.request, uuid
+          ACCOUNT, NAMESPACE = "12c0b2b480ff34fcd7eeaeb0c9b0eec8", "758ce4416be04e29a8734535f0ae3760"
+          software, name, version = "webview-4j", "webview-4j", sys.argv[1]
+          releases = [s for s in re.split(r"(?m)^(?=##\s)", open("CHANGELOG.md", encoding="utf-8").read()) if s.startswith("## ")]
+          start = next((i for i, s in enumerate(releases) if re.match(rf"##\s+{re.escape(version)}(\s|$)", s)), None)
+          if start is None: sys.exit(f"CHANGELOG.md has no section for {version}")
+          published = releases[start:]
+          date = re.match(r"##\s+\S+\s*[—-]\s*(.+)", published[0].splitlines()[0])
+          markdown = f"# {name}\n\n" + "".join(s.rstrip() + "\n\n" for s in published).rstrip() + "\n"
+          metadata = {"name": name, "latest": version, "updated": date.group(1).strip() if date else ""}
+          b = uuid.uuid4().hex
+          body = (f"--{b}\r\nContent-Disposition: form-data; name=\"value\"\r\n\r\n{markdown}\r\n"
+                  f"--{b}\r\nContent-Disposition: form-data; name=\"metadata\"\r\n\r\n{json.dumps(metadata)}\r\n--{b}--\r\n").encode()
+          req = urllib.request.Request(
+              f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/storage/kv/namespaces/{NAMESPACE}/values/{software}",
+              data=body, method="PUT", headers={"Authorization": f"Bearer {os.environ['CLOUDFLARE_API_TOKEN']}",
+                                                "Content-Type": f"multipart/form-data; boundary={b}"})
+          result = json.load(urllib.request.urlopen(req))
+          if not result.get("success"): sys.exit(f"KV refused it: {result.get('errors')}")
+          print(f"published {version} -> https://api.swaswa.cloud/changelogs/{software}")
+          PY
+          for i in $(seq 1 12); do
+            curl -fsS "https://api.swaswa.cloud/changelogs/webview-4j/$VERSION" >/dev/null && { echo "served"; exit 0; }
+            sleep 10
+          done
+          echo "not served yet"; exit 1
+
+  # Discord #deployments, as swaswa-systems/root's notify-discord.yml does it.
+  # Needs the repository secret DISCORD_WEBHOOK_DEPLOYMENTS; skipped without it.
+  notify:
+    needs: [natives, publish, github-release, changelog]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_DEPLOYMENTS }}
+          RESULT: ${{ contains(needs.*.result, 'failure') && 'failure' || (contains(needs.*.result, 'cancelled') && 'cancelled' || 'success') }}
+          VERSION: ${{ github.event.inputs.version || github.ref_name }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then echo "DISCORD_WEBHOOK_DEPLOYMENTS is not set: skipping"; exit 0; fi
+          case "$RESULT" in
+            success)   icon="🟢"; color=3066993;  word="released" ;;
+            cancelled) icon="⚪"; color=9807270;  word="release was cancelled" ;;
+            *)         icon="🔴"; color=15158332; word="release FAILED" ;;
+          esac
+          export ICON="$icon" COLOR="$color" WORD="$word"
+          python3 - <<'PY' > payload.json
+          import json, os
+          e = os.environ
+          v = e["VERSION"].lstrip("v")
+          desc = (f"**{e['REPO']}** @ `{e['SHA'][:7]}` by {e['ACTOR']}\n"
+                  f"https://central.sonatype.com/artifact/io.joshuasalcedo/webview-4j-core/{v}")
+          print(json.dumps({"embeds": [{"title": f"{e['ICON']} webview-4j {v} {e['WORD']}",
+                                        "url": e["RUN_URL"], "color": int(e["COLOR"]), "description": desc}]}))
+          PY
+          curl -fsS -H "Content-Type: application/json" --data @payload.json "$WEBHOOK" >/dev/null && echo "posted to Discord"

@@ -1,5 +1,9 @@
 # webview-4j
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.joshuasalcedo/webview-4j-core)](https://central.sonatype.com/artifact/io.joshuasalcedo/webview-4j-core)
+[![CI](https://github.com/joshuasalcedo-dev/webview-4j/actions/workflows/ci.yml/badge.svg)](https://github.com/joshuasalcedo-dev/webview-4j/actions/workflows/ci.yml)
+[![Licence](https://img.shields.io/badge/licence-Apache--2.0-blue)](LICENSE)
+
 A small Tauri-like desktop framework for Java: a native webview (WebView2 on Windows, WebKit on macOS and Linux)
 driven from Java over FFM, with NATS-style messages as the frontend transport. No Electron, no bundled browser:
 your UI is a web page, your logic is Java.
@@ -65,6 +69,24 @@ in the page.
 Events go the other way: `view.emit("topic", data)`. `app.subscribe(LogRecord.class, ...)` hears the page's console,
 and its clicks, fetches and WebSockets when you turn them on (`view.capture(Capture.API, true)`).
 
+## The same routes over HTTP
+
+```java
+try (HttpApi api = HttpApi.local().token(secret).origins("http://tauri.localhost")
+        .register(new UserController()).start()) {
+    System.out.println(api.port());   // GET /api/users/42 runs the route GET /users/42
+}
+```
+
+The generated TypeScript client calls it with `fetch` once its base URL is set, so the same screens work from a
+browser or another desktop shell. With a token, every request must carry `Authorization: Bearer <token>`.
+
+## Sounds
+
+```java
+app.playSound(Files.readAllBytes(Path.of("ding.mp3")));   // MP3, WAV, Ogg Vorbis or FLAC, up to 4 MB
+```
+
 ## Devtools
 
 ```java
@@ -88,9 +110,11 @@ How Java, the native side and the page talk: [PROTOCOL.md](PROTOCOL.md).
 
 ## Releases
 
-Tag `vX.Y.Z` and push: the Release workflow (`.github/workflows/release.yml`) builds the native library on Windows,
+What changed in each version: [CHANGELOG.md](CHANGELOG.md).
+
+Write the version's section in `CHANGELOG.md`, tag `vX.Y.Z` and push: the Release workflow (`.github/workflows/release.yml`) builds the native library on Windows,
 Linux and macOS (x64 and Apple silicon), puts all of them in one jar, signs it and publishes every module to Maven
-Central.
+Central, then makes the GitHub release from the changelog section.
 
 ## Licence
 

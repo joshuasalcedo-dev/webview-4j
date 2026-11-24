@@ -8,7 +8,7 @@ plugins {
 // Each has its own build.gradle.kts. ./gradlew prettyDocs makes the documentation site.
 
 // The version: a release passes -PreleaseVersion=1.2.3 (the release workflow takes it from the tag v1.2.3).
-val releaseVersion = providers.gradleProperty("releaseVersion").getOrElse("0.1.0-SNAPSHOT")
+val releaseVersion = providers.gradleProperty("releaseVersion").getOrElse("0.2.0-SNAPSHOT")
 
 subprojects {
     group = "io.joshuasalcedo"
