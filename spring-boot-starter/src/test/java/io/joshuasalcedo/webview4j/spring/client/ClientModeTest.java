@@ -37,7 +37,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.annotation.PostExchange;
-import org.springframework.web.service.registry.ImportHttpServices;
 
 /** A desktop client of a server: pages in the main window, the server's API in the developer window. */
 @EnabledOnOs(OS.WINDOWS)
@@ -103,8 +102,9 @@ class ClientModeTest {
 
     // ---- the desktop app: its pages ----
 
-    @WebViewApplication(scanBasePackages = "io.joshuasalcedo.webview4j.spring.client.nothing")
-    @ImportHttpServices(types = OrdersApi.class)
+    // The API found by its package (and the packages under it): no list of interfaces.
+    @WebViewApplication(scanBasePackages = "io.joshuasalcedo.webview4j.spring.client.nothing",
+            httpServices = "io.joshuasalcedo.webview4j.spring.client")
     @Import({OrdersPage.class, OrderPage.class, OrdersLayout.class})
     public static class Desktop {}
 

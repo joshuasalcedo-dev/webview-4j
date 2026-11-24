@@ -5,6 +5,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.springframework.core.annotation.AliasFor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -34,6 +35,10 @@ import org.springframework.stereotype.Component;
 @Documented
 @Component
 public @interface Page {
+
+    /** The bean's name; made from the class's name when empty (the path is not a name). */
+    @AliasFor(annotation = Component.class, attribute = "value")
+    String name() default "";
 
     /** The path: {@code /users}, {@code /users/{id}} (a slug), {@code /docs/{*rest}} (the rest of the path). */
     String value();

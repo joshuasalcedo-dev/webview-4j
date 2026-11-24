@@ -7,15 +7,15 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.AliasFor;
 
 /**
  * A desktop app for a server you already have: a Spring Boot app with no web server of its own, whose window is
- * made from the server's {@code @HttpExchange} interfaces. Import them with Spring's {@code @ImportHttpServices}, say
- * where the server is, and run it with {@link WebViewApplications#run}:
+ * made from the server's {@code @HttpExchange} interfaces: name their package, say where the server is, and run it
+ * with {@link WebViewApplications#run}:
  * <pre>{@code
- * @WebViewApplication
- * @ImportHttpServices(basePackageClasses = UsersApi.class)
+ * @WebViewApplication(httpServices = "com.example.api")   // every @HttpExchange interface in it and under it
  * public class Desktop {
  *     public static void main(String[] args) {
  *         WebViewApplications.run(Desktop.class, args);
@@ -37,7 +37,14 @@ import org.springframework.core.annotation.AliasFor;
 @Documented
 @Inherited
 @SpringBootApplication
+@Import(HttpServicesSelector.class)
 public @interface WebViewApplication {
+
+    /**
+     * The packages of the server's {@code @HttpExchange} interfaces: each interface in them, and in the packages under
+     * them, becomes a client bean (inject it), and a form in the developer window. Empty: this class's own package.
+     */
+    String[] httpServices() default {};
 
     /** As {@link SpringBootApplication#scanBasePackages()}. */
     @AliasFor(annotation = SpringBootApplication.class)
