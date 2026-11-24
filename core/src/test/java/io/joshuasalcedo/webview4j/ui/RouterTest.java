@@ -125,7 +125,8 @@ class RouterTest {
         Router router = new Router().page("/", page -> page.load("orders", () -> List.of("A-1", "A-2"))
                 .<Component<?>>map(orders -> text(orders.size() + " orders"))
                 .orElseGet(() -> spinner("Loading orders")));
-        assertTrue(show(router).isEmpty() || !show(router).contains("2 orders"));
+        List<String> first = show(router);   // starts the load: it shows the spinner, never the data
+        assertFalse(first.contains("2 orders"), first.toString());
         for (int i = 0; i < 50 && !show(router).contains("2 orders"); i++) Thread.sleep(20);
         assertTrue(show(router).contains("2 orders"));
 
