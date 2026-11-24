@@ -55,6 +55,26 @@ public abstract class Component<C extends Component<C>> {
         return prop("height", height);
     }
 
+    /** The narrowest it gets, CSS pixels (JavaFX's minWidth). */
+    public C minWidth(double width) {
+        return prop("minWidth", width);
+    }
+
+    /** The widest it gets, CSS pixels (JavaFX's maxWidth). */
+    public C maxWidth(double width) {
+        return prop("maxWidth", width);
+    }
+
+    /** The shortest it gets, CSS pixels. */
+    public C minHeight(double height) {
+        return prop("minHeight", height);
+    }
+
+    /** The tallest it gets, CSS pixels. */
+    public C maxHeight(double height) {
+        return prop("maxHeight", height);
+    }
+
     /** Sets a property the page's renderer reads; null removes it. */
     protected C prop(String name, Object value) {
         if (value == null) props.remove(name);
@@ -64,7 +84,7 @@ public abstract class Component<C extends Component<C>> {
 
     /** Java code for an event of the component ({@code onClick}): it gets what the page sent, as a JSON value. */
     protected C on(String event, Consumer<Object> handler) {
-        handlers.put(event, Objects.requireNonNull(handler, "handler"));
+        handlers.put(event, io.joshuasalcedo.webview4j.ui.state.Context.bind(Objects.requireNonNull(handler, "handler")));
         return self();
     }
 

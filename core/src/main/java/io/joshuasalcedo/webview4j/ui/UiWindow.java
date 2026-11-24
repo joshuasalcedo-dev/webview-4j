@@ -53,24 +53,94 @@ public final class UiWindow {
 
     private final View view;
     private final Screen screen;
+    /** The window's context: its session's values, and its own. */
+    private final io.joshuasalcedo.webview4j.ui.state.Context.Scope scope;
+    /** What the last render read: a change to it draws the window again. */
+    private volatile io.joshuasalcedo.webview4j.ui.state.Tracking.Reader reader;
+    private final java.util.concurrent.atomic.AtomicBoolean redrawQueued = new java.util.concurrent.atomic.AtomicBoolean();
+    private volatile boolean closed;
     private Map<String, Consumer<Object>> handlers = Map.of();
     /** The last notice: what went wrong (or what to know), shown once by the page in a dialog. */
     private Map<String, Object> notice;
 
-    private UiWindow(View view, Screen screen) {
+    private UiWindow(View view, Screen screen, io.joshuasalcedo.webview4j.ui.state.Session session) {
         this.view = view;
         this.screen = screen;
+        this.scope = new io.joshuasalcedo.webview4j.ui.state.Context.Scope(session);
     }
 
     static CompletableFuture<UiWindow> open(App app, Screen screen, UnaryOperator<WindowOptions> options) {
         Objects.requireNonNull(screen, "screen");
         Map<String, CompletableFuture<UiWindow>> windows = windows(app);
         WindowOptions page = Objects.requireNonNull(options, "options").apply(WindowOptions.html(PAGE));
+        io.joshuasalcedo.webview4j.ui.state.Session session = session(app);
         return app.open(page).thenApply(view -> {
-            UiWindow window = new UiWindow(view, screen);
+            UiWindow window = new UiWindow(view, screen, session);
             windows.computeIfAbsent(view.id(), id -> new CompletableFuture<>()).complete(window);
-            view.subscribe(Closed.class, closed -> windows.remove(view.id()));
+            view.subscribe(Closed.class, closed -> {
+                windows.remove(view.id());
+                window.closed = true;
+                var r = window.reader;
+                if (r != null) r.end();
+            });
+            // Back in front: what it shows is checked again, if stale.
+            view.subscribe(io.joshuasalcedo.webview4j.Focused.class, f -> {
+                if (f.focused()) window.scope.call(() -> {
+                    io.joshuasalcedo.webview4j.ui.state.Tracking.focused(window.reader);
+                    return null;
+                });
+            });
             return window;
+        });
+    }
+
+    /**
+     * The app's session (on the desktop, one): its state is kept in the native store in the system's place for the
+     * app's data, and written out when the app stops.
+     */
+    public static io.joshuasalcedo.webview4j.ui.state.Session session(App app) {
+        io.joshuasalcedo.webview4j.ui.state.Session session = io.joshuasalcedo.webview4j.ui.state.Session.of(app);
+        session.defaultStorage(() -> io.joshuasalcedo.webview4j.NativeStore.forApp(appName()));
+        if (STOPPING.add(app)) app.whenStopped().thenRun(() -> {
+            STOPPING.remove(app);
+            session.close();
+        });
+        return session;
+    }
+
+    private static final java.util.Set<App> STOPPING = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /** The app's name, for its data's folder: {@code -Dwebview4j.app=...}, else its main class's simple name. */
+    static String appName() {
+        String named = System.getProperty("webview4j.app");
+        if (named != null && !named.isBlank()) return named;
+        String command = System.getProperty("sun.java.command", "");
+        String main = command.isBlank() ? "webview4j-app" : command.split(" ")[0];
+        if (main.endsWith(".jar")) main = java.nio.file.Path.of(main).getFileName().toString().replaceAll("\\.jar$", "");
+        return main.contains(".") ? main.substring(main.lastIndexOf('.') + 1) : main;
+    }
+
+    /** A value this window's screens (and what they build) see in their context. */
+    public <T> UiWindow provide(io.joshuasalcedo.webview4j.ui.state.ContextProperty<T> property, T value) {
+        scope.provide(property, value);
+        return this;
+    }
+
+    public io.joshuasalcedo.webview4j.ui.state.Session session() {
+        return scope.session();
+    }
+
+    /** Something the screen read changed: drawn again soon, once for a burst of changes. */
+    private void redraw() {
+        if (closed || !redrawQueued.compareAndSet(false, true)) return;
+        Thread.ofVirtual().name("webview4j-redraw").start(() -> {
+            try {
+                Thread.sleep(16);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            redrawQueued.set(false);
+            if (!closed) refresh();
         });
     }
 
@@ -158,7 +228,10 @@ public final class UiWindow {
         if (handler != null) {
             try {
                 synchronized (screen) {
-                    handler.accept(call.fields().get("value"));
+                    scope.call(() -> {
+                        handler.accept(call.fields().get("value"));
+                        return null;
+                    });
                 }
             } catch (RuntimeException e) {
                 Map<String, Object> n = noticeFor(e);
@@ -175,9 +248,14 @@ public final class UiWindow {
         Map<String, Consumer<Object>> registry = new LinkedHashMap<>();
         Map<String, Object> tree;
         synchronized (screen) {
-            Component<?> root = Objects.requireNonNull(screen.render(), "render() returned null");
-            if (!(root instanceof io.joshuasalcedo.webview4j.ui.components.Frame)) root = Ui.frame(root);
-            tree = root.toTree(registry);
+            var next = new io.joshuasalcedo.webview4j.ui.state.Tracking.Reader(this::redraw, reader);
+            if (closed) next.end();
+            reader = next;
+            tree = scope.call(() -> io.joshuasalcedo.webview4j.ui.state.Tracking.reading(next, () -> {
+                Component<?> root = Objects.requireNonNull(screen.render(), "render() returned null");
+                if (!(root instanceof io.joshuasalcedo.webview4j.ui.components.Frame)) root = Ui.frame(root);
+                return root.toTree(registry);
+            }));
         }
         synchronized (this) {
             handlers = registry;

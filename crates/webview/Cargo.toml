@@ -24,6 +24,8 @@ rodio = { version = "0.20.1", default-features = false, features = ["mp3", "wav"
 rfd = "0.18"
 # Waits for a dialog's answer on a thread of its own.
 pollster = "1"
+# The app's local store (store.rs): Java's persisted state, keys and bytes in one ACID file.
+redb = "5"
 
 [dev-dependencies]
 

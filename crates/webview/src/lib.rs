@@ -18,6 +18,7 @@ pub mod frame;
 mod inspector;
 mod logging;
 mod sound;
+pub mod store;
 pub mod payload;
 pub mod runtime;
 
