@@ -1,4 +1,4 @@
-package io.joshuasalcedo.webview4j.ui.components;
+package io.joshuasalcedo.webview4j.ui.components.usecase.mdi;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 

@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "4.7.0",
+    "@tanstack/react-table": "^8",
     "@tiptap/extension-placeholder": "3.31.4",
     "@tiptap/pm": "3.31.4",
     "@tiptap/react": "3.31.4",

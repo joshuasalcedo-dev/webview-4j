@@ -3,6 +3,8 @@ package io.joshuasalcedo.webview4j.ui;
 import io.joshuasalcedo.webview4j.App;
 import io.joshuasalcedo.webview4j.WindowOptions;
 import io.joshuasalcedo.webview4j.ui.components.*;
+import io.joshuasalcedo.webview4j.ui.components.usecase.mdi.Mdi;
+import io.joshuasalcedo.webview4j.ui.components.usecase.mdi.MdiWindow;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
