@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.joshuasalcedo.webview4j.App;
 import io.joshuasalcedo.webview4j.View;
 import io.joshuasalcedo.webview4j.ui.components.*;
+import io.joshuasalcedo.webview4j.ui.components.valueobject.ValueField;
+import io.joshuasalcedo.valueobject.contact.Email;
+import io.joshuasalcedo.valueobject.geo.Country;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -100,5 +103,42 @@ class ComponentsTest {
             Thread.sleep(100);
         }
         throw new AssertionError("never showed '" + part + "': " + text);
+    }
+
+    static final class Signup implements Screen {
+        final ValueField<Email> email = ValueField.email().required();
+        final ValueField<Country> country = ValueField.country();
+
+        @Override
+        public Component<?> render() {
+            return column(email.field("Email"), country.field("Country"),
+                    text(email.value().map(e -> "valid " + e.value()).orElse("not yet"))).padding(16);
+        }
+    }
+
+    @Test
+    @Timeout(90)
+    void aValueObjectFieldSaysWhatIsWrongInTheValueObjectsOwnWords() throws Exception {
+        try (App app = App.start()) {
+            Signup screen = new Signup();
+            View view = Ui.open(app, screen, o -> o.headless(true).size(700, 500)).join().view();
+            until(view, "not yet");
+            String type = """
+                    (() => { const input = document.querySelector('input[type=email]');
+                      const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                      set.call(input, '%s'); input.dispatchEvent(new Event('input', { bubbles: true })); })()
+                    """;
+            view.eval(type.formatted("ada@")).join();
+            for (int i = 0; i < 100 && screen.email.error().isEmpty(); i++) Thread.sleep(50);
+            String said = screen.email.error().orElseThrow();
+            until(view, said);   // the value object's own message, under the field
+            assertTrue(screen.email.value().isEmpty());
+
+            view.eval(type.formatted("ada@example.com")).join();
+            until(view, "valid ada@example.com");
+            assertTrue(screen.email.isValid());
+            assertTrue(((String) view.eval("document.body.innerHTML").join()).contains("Philippines"),
+                    "the country select lists the countries by name");
+        }
     }
 }

@@ -39,7 +39,7 @@ class ValueFieldTest {
 
         email.type("");
         assertEquals("Required", email.error().orElseThrow());
-        assertInstanceOf(TextField.class, email.field("Email"));
+        assertInstanceOf(EmailField.class, email.field("Email"));
     }
 
     @Test
@@ -52,7 +52,8 @@ class ValueFieldTest {
 
     @Test
     void eachTypeGetsTheComponentThatFitsIt() {
-        assertInstanceOf(Select.class, ValueField.country().field("Country"), "an enum is a dropdown of its constants");
+        assertInstanceOf(CountrySelect.class, ValueField.country().field("Country"), "a country is the kit's country select");
+        assertInstanceOf(Select.class, ValueField.of(io.joshuasalcedo.valueobject.identity.Gender.class).field("Gender"), "another enum is a dropdown of its constants");
         ValueField<Country> country = ValueField.country().type("PH");
         assertEquals(Country.parse("PH"), country.value().orElseThrow());
 
@@ -62,7 +63,7 @@ class ValueFieldTest {
 
         ValueField<Percentage> share = ValueField.percentage().type("12.5%");
         assertEquals(0, new BigDecimal("12.5").compareTo(share.value().orElseThrow().value()));
-        assertInstanceOf(NumberField.class, share.field("Share"));
+        assertInstanceOf(PercentField.class, share.field("Share"));
     }
 
     @Test

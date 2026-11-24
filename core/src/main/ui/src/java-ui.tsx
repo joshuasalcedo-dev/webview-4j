@@ -21,6 +21,18 @@ import { SearchField } from "./components/search-field"
 import { Swipeable } from "./components/swipeable"
 import { Tabs } from "./components/tabs"
 import { NumberField, PasswordField, TokenField } from "./components/text-inputs"
+import {
+  CardNumberField,
+  CountrySelect,
+  CurrencySelect,
+  DateField,
+  EmailField,
+  IbanField,
+  LanguageSelect,
+  PercentField,
+  PhoneField,
+  UrlField,
+} from "./components/value-fields"
 import { Button } from "./components/button"
 import { Checkbox } from "./components/checkbox"
 import { CodeBlock } from "./components/code-editor"
@@ -617,6 +629,31 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
       if (node.t === "fileGrid") return <FileGrid {...common} />
       return <FileExplorer {...common} />
     }
+    // ---- value objects ----
+    case "emailField":
+    case "phoneField":
+    case "urlField":
+    case "dateField":
+    case "percentField":
+    case "ibanField":
+    case "cardNumberField":
+      return <JavaValueField node={node} />
+    case "countrySelect":
+    case "currencySelect":
+    case "languageSelect": {
+      const props = {
+        label: str(p.label),
+        value: str(p.value),
+        optional: bool(p.optional),
+        disabled: bool(p.disabled),
+        options: p.options as { value: string; label: string }[] | undefined,
+        onValueChange: (v: string) => send(p.onChange, v),
+        style,
+      }
+      if (node.t === "countrySelect") return <CountrySelect {...props} />
+      if (node.t === "currencySelect") return <CurrencySelect {...props} />
+      return <LanguageSelect {...props} />
+    }
     default:
       return (
         <Text tone="error" style={style}>
@@ -681,6 +718,37 @@ function JavaMdi({ node }: { node: JavaNode }) {
   return (
     <MdiArea mdi={live} aria-label={str(node.p.label) ?? "Windows"} empty={str(node.p.empty)} style={{ flex: 1, minHeight: 320, ...sizing(node.p) }} />
   )
+}
+
+/** A value object's field: the text is kept here as it is typed, Java's check comes back as its error. */
+function JavaValueField({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const props = {
+    label: str(p.label),
+    hint: str(p.hint),
+    error: str(p.error),
+    disabled: bool(p.disabled),
+    value: str(p.value),
+    onValueChange: (text: string) => send(p.onChange, text),
+    style: sizing(p),
+  }
+  switch (node.t) {
+    case "emailField":
+      return <EmailField {...props} />
+    case "phoneField":
+      return <PhoneField {...props} />
+    case "urlField":
+      return <UrlField {...props} />
+    case "dateField":
+      return <DateField {...props} />
+    case "percentField":
+      return <PercentField {...props} />
+    case "ibanField":
+      return <IbanField {...props} />
+    default:
+      return <CardNumberField {...props} />
+  }
 }
 
 function JavaPasswordField({ node }: { node: JavaNode }) {

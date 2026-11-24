@@ -5,10 +5,13 @@ import static io.joshuasalcedo.webview4j.ui.Ui.*;
 import io.joshuasalcedo.valueobject.contact.Email;
 import io.joshuasalcedo.valueobject.contact.Link;
 import io.joshuasalcedo.valueobject.contact.PhoneNumber;
+import io.joshuasalcedo.valueobject.financial.CardNumber;
 import io.joshuasalcedo.valueobject.financial.FiatCurrency;
+import io.joshuasalcedo.valueobject.financial.Iban;
 import io.joshuasalcedo.valueobject.financial.Money;
 import io.joshuasalcedo.valueobject.financial.Percentage;
 import io.joshuasalcedo.valueobject.geo.Country;
+import io.joshuasalcedo.valueobject.geo.Language;
 import io.joshuasalcedo.valueobject.temporal.CalendarDate;
 import io.joshuasalcedo.webview4j.ui.Component;
 import java.lang.reflect.InvocationTargetException;
@@ -112,6 +115,12 @@ public final class ValueField<T> {
 
     public static ValueField<FiatCurrency> currency() { return of(FiatCurrency.class); }
 
+    public static ValueField<Language> language() { return of(Language.class); }
+
+    public static ValueField<Iban> iban() { return of(Iban.class); }
+
+    public static ValueField<CardNumber> cardNumber() { return of(CardNumber.class); }
+
     /** An amount of money, in {@code currency} unless the person picks another. */
     public static ValueField<Money> money(FiatCurrency currency) {
         ValueField<Money> field = of(Money.class);
@@ -197,31 +206,74 @@ public final class ValueField<T> {
 
     // ---- the field ----
 
-    /** The field, labelled {@code label}: the component that fits the type. */
+    /**
+     * The field, labelled {@code label}: the kit's component for the type ({@link EmailField}, {@link PhoneField},
+     * {@link UrlField}, {@link DateField}, {@link PercentField}, {@link IbanField}, {@link CardNumberField},
+     * {@link CountrySelect}, {@link CurrencySelect}, {@link LanguageSelect}, a money field), or a text field.
+     */
     public Component<?> field(String label) {
         String shown = label + (required ? "" : " (optional)");
         String problem = error().orElse(null);
-        if (type.isEnum()) return choice(shown);
+        String note = problem == null ? hint : null;
         if (type == Money.class) return money(shown, problem);
-        if (type == Percentage.class) {
-            Double n = value instanceof Percentage p ? p.value().doubleValue() : null;
-            var f = numberField(shown).value(n).after("%").onChange(v -> type(v == null ? "" : BigDecimal.valueOf(v).toPlainString() + "%"));
-            return problem != null ? f.error(problem) : hint != null ? f.hint(hint) : f;
+        if (type == Country.class) {
+            CountrySelect c = new CountrySelect(shown).value(code()).options(choices()).onChange(this::type);
+            return required ? c : c.optional();
         }
+        if (type == FiatCurrency.class) {
+            CurrencySelect c = new CurrencySelect(shown).value(code()).options(choices()).onChange(this::type);
+            return required ? c : c.optional();
+        }
+        if (type == Language.class) {
+            LanguageSelect c = new LanguageSelect(shown).value(code()).options(choices()).onChange(this::type);
+            return required ? c : c.optional();
+        }
+        if (type.isEnum()) return choice(shown);
+        if (type == Email.class) return new EmailField(shown).value(text).error(problem).hint(note).onChange(this::type);
+        if (type == PhoneNumber.class) return new PhoneField(shown).value(text).error(problem).hint(note).onChange(this::type);
+        if (type == Link.class) return new UrlField(shown).value(text).error(problem).hint(note).onChange(this::type);
+        if (type == CalendarDate.class) {
+            String iso = value instanceof CalendarDate d ? d.value().toString() : text;
+            return new DateField(shown).value(iso).error(problem).hint(note).onChange(this::type);
+        }
+        if (type == Percentage.class) return new PercentField(shown).value(text).error(problem).hint(note).onChange(this::type);
+        if (type == Iban.class) return new IbanField(shown).value(text).error(problem).hint(note).onChange(this::type);
+        if (type == CardNumber.class) return new CardNumberField(shown).value(text).error(problem).hint(note).onChange(this::type);
         var f = textField(shown).value(text).onChange(this::type);
-        return problem != null ? f.error(problem) : hint != null ? f.hint(hint) : f;
+        return problem != null ? f.error(problem) : note != null ? f.hint(note) : f;
+    }
+
+    /** An enum value object's code (Country PH, FiatCurrency PHP, Language en), or its name. */
+    private String code() {
+        if (value == null) return "";
+        return code(value);
+    }
+
+    private static String code(Object constant) {
+        try {
+            Object c = constant.getClass().getMethod("code").invoke(constant);
+            if (c instanceof String s && !s.isBlank()) return s;
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            // no code: its name
+        }
+        return ((Enum<?>) constant).name();
+    }
+
+    /** An enum's constants by code, with their names, without UNKNOWN. */
+    private Map<String, String> choices() {
+        Map<String, String> options = new LinkedHashMap<>();
+        for (Object constant : type.getEnumConstants()) {
+            if (((Enum<?>) constant).name().equals("UNKNOWN")) continue;
+            options.put(code(constant), ValueViews.name(constant));
+        }
+        return options;
     }
 
     private Component<?> choice(String label) {
         Map<String, String> options = new LinkedHashMap<>();
         if (!required) options.put("", "—");
-        for (Object constant : type.getEnumConstants()) {
-            if (constant instanceof io.joshuasalcedo.valueobject.geo.Country c && c.isUnknown()) continue;
-            if (constant instanceof FiatCurrency c && c.isUnknown()) continue;
-            options.put(((Enum<?>) constant).name(), ValueViews.name(constant));
-        }
-        String current = value instanceof Enum<?> e ? e.name() : "";
-        return select(label, options).value(current).onChange(v -> type(v)).width(320);
+        options.putAll(choices());
+        return select(label, options).value(code()).onChange(v -> type(v)).width(320);
     }
 
     private Component<?> money(String label, String problem) {
@@ -251,7 +303,7 @@ public final class ValueField<T> {
     }
 
     private String print(T value) {
-        if (value instanceof Enum<?> e) return e.name();
+        if (value instanceof Enum<?> e) return code(e);
         if (value instanceof Money m) return m.amount().toPlainString() + " " + m.currency().code();
         if (value instanceof PhoneNumber p) return p.formatted();
         return value.toString();
