@@ -20,5 +20,9 @@ base64 = "0.22"
 png = "0.17"
 # The app's own sounds (app.play).
 rodio = { version = "0.20.1", default-features = false, features = ["mp3", "wav", "vorbis", "flac"] }
+# Native file dialogs and message boxes (app.dialog.*). On Linux through the XDG desktop portal.
+rfd = "0.18"
+# Waits for a dialog's answer on a thread of its own.
+pollster = "1"
 
 [dev-dependencies]

@@ -107,6 +107,44 @@ class AppTest {
 
     @Test
     @Timeout(60)
+    void windowsSayWhereTheyAreAndReportTheirSize() throws Exception {
+        // Nothing here maximizes or minimizes: that would show the hidden window.
+        try (App app = App.start()) {
+            BlockingQueue<WebViewEvent> events = new LinkedBlockingQueue<>();
+            app.subscribe(WebViewEvent.class, events::add);
+            View view = app.open(WindowOptions.html("<p>geometry</p>").headless(true)
+                    .size(640, 480).minSize(320, 240).alwaysOnTop(true)).join();
+
+            Geometry geometry = view.geometry().join();
+            assertEquals(640, geometry.width(), 1);
+            assertEquals(480, geometry.height(), 1);
+            assertTrue(geometry.scaleFactor() > 0, geometry.toString());
+            assertFalse(geometry.visible() || geometry.maximized() || geometry.fullscreen(), geometry.toString());
+
+            view.setSize(700, 500).join();
+            Resized resized = next(events, Resized.class, r -> Math.abs(r.width() - 700) <= 1);
+            assertEquals(view.id(), resized.view());
+            assertEquals(500, resized.height(), 1);
+            assertEquals(700, view.geometry().join().width(), 1);
+
+            view.setMinSize(100, 100).join();
+            view.clearMinSize().join();
+            view.setAlwaysOnTop(false).join();
+            view.setResizable(false).join();
+            assertThrows(IllegalArgumentException.class, () -> view.setMinSize(0, 10));
+
+            // a dialog for a window that is not there is refused before anything shows
+            CompletionException noParent = assertThrows(CompletionException.class,
+                    () -> app.openFile(new FileDialog().parent(app.view("wv-404"))).join());
+            assertTrue(noParent.getCause().getMessage().contains("no view 'wv-404'"), noParent.getCause().getMessage());
+            CompletionException noBox = assertThrows(CompletionException.class,
+                    () -> app.message(MessageDialog.of("t", "x").parent(app.view("wv-404"))).join());
+            assertTrue(noBox.getCause().getMessage().contains("no view 'wv-404'"), noBox.getCause().getMessage());
+        }
+    }
+
+    @Test
+    @Timeout(60)
     void whatIsNotASoundIsRefused() {
         // Nothing here plays: a sound would reach the speakers.
         try (App app = App.start()) {

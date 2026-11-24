@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0 — unreleased
+
+- File dialogs: `app.openFile`, `openFiles`, `saveFile` and `pickFolder`, with filters, a start directory and a parent window
+- Message boxes: `app.message` (info, warning or error; OK, OK/Cancel, Yes/No, Yes/No/Cancel) and `app.confirm`
+- A dialog never holds the app up: other windows keep working while it is open
+- Window controls: `minimize`, `maximize`, `restore`, `setFullscreen`, `setAlwaysOnTop`, `setResizable`, `setMinSize`
+- `view.geometry()`: where a window is and how it is shown, to save its place and restore it next time
+- Window events: `Resized`, `Moved` (the last of each per round, not dozens a second while dragging) and `Focused`
+- `WindowOptions.confirmClose(true)`: the close button sends `CloseRequested` and the app decides, such as after asking about unsaved work
+- `WindowOptions.fileDrop(true)`: files dropped on a window arrive as `FileDrop` events with their paths
+- `WindowOptions.minSize`, `maximized`, `fullscreen` and `alwaysOnTop`
+- README: on macOS, run the app with `App.run` from `main` and `-XstartOnFirstThread`
+
 ## 0.1.0 — 2026-10-21
 
 - First public release on Maven Central: `io.joshuasalcedo:webview-4j-core`, `-processor` and `-devtools`

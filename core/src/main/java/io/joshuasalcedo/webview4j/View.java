@@ -92,7 +92,60 @@ public final class View {
     public CompletableFuture<Void> hide()  { return done(message("hide")); }
     public CompletableFuture<Void> focus() { return done(message("focus")); }
 
-    /** Closes the window; a {@link Closed} event follows. */
+    public CompletableFuture<Void> minimize() { return state(Map.of("minimized", true)); }
+    public CompletableFuture<Void> maximize() { return state(Map.of("maximized", true)); }
+
+    /** Back to its normal size and place: neither minimized, maximized nor fullscreen. */
+    public CompletableFuture<Void> restore() {
+        return state(Map.of("minimized", false, "maximized", false, "fullscreen", false));
+    }
+
+    /** Fullscreen on the display it is on, without borders; false leaves it. */
+    public CompletableFuture<Void> setFullscreen(boolean on) { return state(Map.of("fullscreen", on)); }
+
+    /** Above every other window, even when another has the focus. */
+    public CompletableFuture<Void> setAlwaysOnTop(boolean on) { return state(Map.of("alwaysOnTop", on)); }
+
+    public CompletableFuture<Void> setResizable(boolean on) { return state(Map.of("resizable", on)); }
+
+    /**
+     * The smallest inner size the user can resize the window to, in logical pixels.
+     *
+     * @throws IllegalArgumentException unless both are positive
+     */
+    public CompletableFuture<Void> setMinSize(double width, double height) {
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("a minimum size is positive");
+        return done(message("min-size").withJson(Map.of("width", width, "height", height)));
+    }
+
+    /** No minimum size any more. */
+    public CompletableFuture<Void> clearMinSize() {
+        return done(message("min-size").withJson(Map.of("width", 0, "height", 0)));
+    }
+
+    /** Where the window is and how it is shown now: to save its place and restore it next time. */
+    @SuppressWarnings("unchecked")
+    public CompletableFuture<Geometry> geometry() {
+        return app.request(message("geometry")).thenApply(reply -> {
+            Map<String, Object> g = (Map<String, Object>) reply.json();
+            return new Geometry(Events.decimal(g, "x"), Events.decimal(g, "y"), Events.decimal(g, "width"),
+                    Events.decimal(g, "height"), Events.decimal(g, "scaleFactor"), flag(g, "minimized"),
+                    flag(g, "maximized"), flag(g, "fullscreen"), flag(g, "focused"), flag(g, "visible"));
+        });
+    }
+
+    private CompletableFuture<Void> state(Map<String, Boolean> changes) {
+        return done(message("state").withJson(changes));
+    }
+
+    private static boolean flag(Map<String, Object> json, String key) {
+        return Boolean.TRUE.equals(json.get(key));
+    }
+
+    /**
+     * Closes the window; a {@link Closed} event follows. With {@link WindowOptions#confirmClose
+     * confirmClose}, this is how the app closes it after a {@link CloseRequested}.
+     */
     public CompletableFuture<Void> close() {
         return done(message("close"));
     }

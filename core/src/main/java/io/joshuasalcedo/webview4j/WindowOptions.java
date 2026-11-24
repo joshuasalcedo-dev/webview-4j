@@ -34,6 +34,13 @@ public final class WindowOptions {
     private ClassLoader assetLoader;
     private byte[] icon;
     private long ownerWindow;
+    private double minWidth;
+    private double minHeight;
+    private boolean maximized;
+    private boolean fullscreen;
+    private boolean alwaysOnTop;
+    private boolean confirmClose;
+    private boolean fileDrop;
 
     private WindowOptions() {}
 
@@ -125,6 +132,40 @@ public final class WindowOptions {
         return this;
     }
 
+    /**
+     * The smallest inner size the user can resize it to, in logical pixels.
+     *
+     * @throws IllegalArgumentException unless both are positive
+     */
+    public WindowOptions minSize(double width, double height) {
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("a minimum size is positive");
+        this.minWidth = width;
+        this.minHeight = height;
+        return this;
+    }
+
+    /** Opens maximized. */
+    public WindowOptions maximized(boolean value)   { this.maximized = value; return this; }
+    /** Opens fullscreen, without borders, on the main display. */
+    public WindowOptions fullscreen(boolean value)  { this.fullscreen = value; return this; }
+    /** Stays above every other window. */
+    public WindowOptions alwaysOnTop(boolean value) { this.alwaysOnTop = value; return this; }
+
+    /**
+     * True: when the user asks to close the window (its close button, Alt+F4, the dock), it stays
+     * open and a {@link CloseRequested} event goes to the app, which closes it with
+     * {@link View#close()} when it wants to, such as after asking about unsaved work. False (the
+     * default): it closes at once, and a {@link Closed} event follows.
+     */
+    public WindowOptions confirmClose(boolean value) { this.confirmClose = value; return this; }
+
+    /**
+     * True: files dragged onto the window are reported as {@link FileDrop} events, with their
+     * paths, and the page does not open them itself. False (the default): the page handles drops as
+     * a browser would, and the app hears nothing.
+     */
+    public WindowOptions fileDrop(boolean value)    { this.fileDrop = value; return this; }
+
     /** A script that runs in every page before the page's own, on every navigation. */
     public WindowOptions initializationScript(String script) {
         this.initializationScript = script;
@@ -179,6 +220,15 @@ public final class WindowOptions {
         if (assets != null) payload.put("assets", assets);
         if (icon != null) payload.put("icon", java.util.Base64.getEncoder().encodeToString(icon));
         if (ownerWindow != 0) payload.put("ownerWindow", ownerWindow);
+        if (minWidth > 0) {
+            payload.put("minWidth", minWidth);
+            payload.put("minHeight", minHeight);
+        }
+        if (maximized) payload.put("maximized", true);
+        if (fullscreen) payload.put("fullscreen", true);
+        if (alwaysOnTop) payload.put("alwaysOnTop", true);
+        if (confirmClose) payload.put("confirmClose", true);
+        if (fileDrop) payload.put("fileDrop", true);
         return payload;
     }
 

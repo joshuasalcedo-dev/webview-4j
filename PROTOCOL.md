@@ -91,6 +91,8 @@ A refused frame is never half-processed: the receiver drops it and, if it can te
 | `app.list` | none | `200`, a list of views (§5.2) |
 | `app.quit` | none | `200`, then every window closes and the loop ends |
 | `app.play` | the bytes of an MP3, WAV, Ogg Vorbis or FLAC, up to 4 MiB (§5.6) | `200` once it starts, `415` if it is not a sound |
+| `app.dialog.file` | a file dialog (§5.7) | `200`, `{"paths":[…]}` once the user chooses; empty if cancelled |
+| `app.dialog.message` | a message box (§5.7) | `200`, `{"answer":"ok|cancel|yes|no"}` once the user answers |
 | `view.<view>.navigate` | `text/plain`: the URL | `200` |
 | `view.<view>.load-html` | `text/html`: the page | `200` |
 | `view.<view>.eval` | `text/javascript`: a script | `200`, `application/json`: its value |
@@ -100,6 +102,9 @@ A refused frame is never half-processed: the receiver drops it and, if it can te
 | `view.<view>.position` | `{"x":10,"y":10}` logical pixels | `200` |
 | `view.<view>.bounds` | `{"x":0,"y":0,"width":800,"height":600}` physical pixels | `200` |
 | `view.<view>.show` / `hide` / `focus` / `close` | none | `200` |
+| `view.<view>.state` | `{"minimized":bool,"maximized":bool,"fullscreen":bool,"alwaysOnTop":bool,"resizable":bool}`, keys left out stay as they are | `200` |
+| `view.<view>.min-size` | `{"width":400,"height":300}` logical pixels; `0` for none | `200` |
+| `view.<view>.geometry` | none | `200`, where the window is and how it is shown (§5.8) |
 | `view.<view>.capture` | `{"api":true,"clicks":false,...}`, keys left out keep their setting (§5.4) | `200` |
 | `view.<view>.websocket.<socket>.send` | `text/plain`: one text frame | `200`, or `404` if the socket is unknown or not open |
 | `view.<view>.emit.<…topic>` | `application/json`: the data | `200` once handed to the page |
@@ -115,6 +120,11 @@ answers each exactly once (§4).
 | `app.ready` | none | first message; header `Protocol: 1` |
 | `app.log` | `{"level":"warn","target":"wry::…","message":"…"}` | native log records; may arrive from any thread |
 | `view.<view>.closed` | none | the window closed, by the user or `close` |
+| `view.<view>.close-requested` | none | the user asked to close a window opened with `confirmClose`; it stays open until Java sends `close` |
+| `view.<view>.resized` | `{"width":800,"height":600}` | the new inner size, logical pixels; at most one per round of the loop |
+| `view.<view>.moved` | `{"x":10,"y":10}` | the new outer position, logical pixels; at most one per round of the loop |
+| `view.<view>.focused` | `{"focused":true}` | the window gained or lost the keyboard focus |
+| `view.<view>.file-drop` | `{"kind":"enter|drop|leave","paths":["…"],"x":0,"y":0}` | files dragged onto a window opened with `fileDrop`; position in physical pixels from the page's top left |
 | `view.<view>.log` | `{"level":"warn","message":"…"}` | the page's console and uncaught errors (capture `console`) |
 | `view.<view>.api-call` | §5.5 | capture `api` |
 | `view.<view>.click` | §5.5 | capture `clicks` |
@@ -246,6 +256,10 @@ sent (`400`), so a typo fails loudly instead of being half-understood.
 | `capture` | §5.4 | console only |
 | `origins` | array of origins | the origin of `url`, or `null` |
 | `assets` | string, a class path directory Java serves the app's files from | none |
+| `minWidth`, `minHeight` | number, logical pixels: the smallest the user can resize it to | none |
+| `maximized`, `fullscreen`, `alwaysOnTop` | boolean | `false` |
+| `confirmClose` | boolean: the close button sends `close-requested` instead of closing | `false` |
+| `fileDrop` | boolean: files dropped on the window are reported (`file-drop`), not opened by the page | `false` |
 | `icon` | string, a PNG in base64 (1 MB at most): the window's icon in its title bar, the taskbar and the window switcher; one that is not a PNG is ignored with a warning | the program's icon |
 
 ### 5.2 Views (`app.list`)
@@ -278,6 +292,22 @@ As the inspector scripts write them, minus any `viewId` or `sessionKey` the page
 `app.play` plays the app's own sound once on the default output device, such as the sound that
 goes with a notification the app shows. It is decoded before the reply, so bytes that are not a
 sound are answered `415`; it then plays on a thread of its own and never holds the loop up.
+
+### 5.7 Dialogs
+
+`app.dialog.file`: `{"kind":"open|open-many|save|folder","title":"…","directory":"/abs/dir","fileName":"…",
+"filters":[{"name":"Images","extensions":["png","jpg"]}],"view":"wv-1"}`. Only `kind` is required.
+With `view`, the dialog is modal to that window (`404` if there is none). The reply comes when the
+user closes the dialog; the loop goes on meanwhile.
+
+`app.dialog.message`: `{"title":"…","text":"…","level":"info|warning|error","buttons":"ok|ok-cancel|yes-no|yes-no-cancel","view":"wv-1"}`.
+Only `text` is required. Closing the box without a button answers `cancel` (`no` for `yes-no`).
+
+### 5.8 Geometry (`view.<view>.geometry`)
+
+`{"x":…,"y":…,"width":…,"height":…,"scaleFactor":1.25,"minimized":false,"maximized":false,
+"fullscreen":false,"focused":true,"visible":true}`: the outer position and inner size in logical
+pixels, and physical pixels per logical one.
 
 ## 6. The FFM transport
 

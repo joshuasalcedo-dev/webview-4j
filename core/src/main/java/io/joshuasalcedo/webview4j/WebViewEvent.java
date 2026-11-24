@@ -7,7 +7,8 @@ package io.joshuasalcedo.webview4j;
  * <p>Page reports ({@link ApiCall}, {@link Click}, {@link DomEvent}, {@link WebSocketFrame}, and
  * page {@link LogRecord}s) arrive only while switched on for their view: see {@link Capture}.
  */
-public sealed interface WebViewEvent permits Ready, Closed, ApiCall, Click, DomEvent, WebSocketFrame, LogRecord {
+public sealed interface WebViewEvent permits Ready, Closed, CloseRequested,
+        Resized, Moved, Focused, FileDrop, ApiCall, Click, DomEvent, WebSocketFrame, LogRecord {
 
     /** The view the event happened in, or null when it is not about one view. */
     default String view() {

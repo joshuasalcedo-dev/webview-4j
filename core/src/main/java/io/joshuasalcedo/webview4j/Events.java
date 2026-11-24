@@ -1,5 +1,8 @@
 package io.joshuasalcedo.webview4j;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -33,6 +36,16 @@ final class Events {
             }
             case "websocket" -> new WebSocketFrame(view, number(json, "socket"), text(json, "url"),
                     constant(WebSocketFrame.Direction.class, json, "direction"), text(json, "frame"));
+            case "resized" -> new Resized(view, decimal(json, "width"), decimal(json, "height"));
+            case "moved" -> new Moved(view, decimal(json, "x"), decimal(json, "y"));
+            case "focused" -> new Focused(view, Boolean.TRUE.equals(json.get("focused")));
+            case "file-drop" -> {
+                List<Path> paths = new ArrayList<>();
+                if (json.get("paths") instanceof List<?> list) {
+                    for (Object path : list) if (path instanceof String s) paths.add(Path.of(s));
+                }
+                yield new FileDrop(view, constant(FileDrop.Kind.class, json, "kind"), paths, decimal(json, "x"), decimal(json, "y"));
+            }
             case "log" -> new LogRecord(LogRecord.Source.PAGE, view, constant(LogRecord.Level.class, json, "level"),
                     null, text(json, "message"));
             default -> null;
@@ -47,7 +60,7 @@ final class Events {
         return json.get(key) instanceof Number n ? n.longValue() : 0;
     }
 
-    private static double decimal(Map<String, Object> json, String key) {
+    static double decimal(Map<String, Object> json, String key) {
         return json.get(key) instanceof Number n ? n.doubleValue() : 0;
     }
 

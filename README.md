@@ -50,6 +50,45 @@ try (App app = App.start()) {
 `WindowOptions.url(...)`, `WindowOptions.html(...)` or `WindowOptions.app("web")` (your built page, from the class
 path) say what the window shows.
 
+**On macOS** the event loop must run on the process's first thread: start the JVM with `-XstartOnFirstThread` and
+hand `main`'s thread to the app with `App.run`, which works on every system:
+
+```java
+public static void main(String[] args) {
+    System.exit(App.run(app -> app.open(WindowOptions.app("web").title("My app"))));
+}
+```
+
+## Windows
+
+```java
+View view = app.open(WindowOptions.app("web").size(1280, 800).minSize(640, 480).confirmClose(true)).join();
+
+view.maximize();  view.restore();  view.setFullscreen(true);  view.setAlwaysOnTop(true);
+Geometry place = view.geometry().join();          // save it, and open there next time
+
+view.subscribe(Resized.class, r -> System.out.println(r.width() + " x " + r.height()));
+view.subscribe(CloseRequested.class, request -> {  // only with confirmClose(true)
+    if (app.confirm("Quit?", "Unsaved changes will be lost.").join()) view.close();
+});
+```
+
+`WindowOptions.fileDrop(true)` reports files dropped on the window as `FileDrop` events, with their paths.
+
+## Dialogs
+
+```java
+Optional<Path> picture = app.openFile(new FileDialog().filter("Images", "png", "jpg").parent(view)).join();
+Optional<Path> target  = app.saveFile(new FileDialog().fileName("report.pdf")).join();
+Optional<Path> folder  = app.pickFolder(new FileDialog()).join();
+
+MessageDialog.Answer answer = app.message(MessageDialog.of("Save changes?", "Or they are lost.")
+        .level(MessageDialog.Level.WARNING).buttons(MessageDialog.Buttons.YES_NO_CANCEL).parent(view)).join();
+```
+
+A dialog never holds the app up: its future completes when the user answers, and other windows keep working. On
+Linux dialogs go through the desktop portal (`xdg-desktop-portal`), message boxes through it or `zenity`.
+
 ## Calls from the page
 
 ```java

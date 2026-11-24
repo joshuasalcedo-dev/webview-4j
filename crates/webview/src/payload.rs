@@ -50,6 +50,25 @@ pub struct OpenRequest {
     /// None leaves the program's own.
     #[serde(default)]
     pub icon: Option<String>,
+    /// The smallest inner size the user can resize it to, logical pixels.
+    #[serde(default)]
+    pub min_width: Option<f64>,
+    #[serde(default)]
+    pub min_height: Option<f64>,
+    #[serde(default)]
+    pub maximized: bool,
+    #[serde(default)]
+    pub fullscreen: bool,
+    #[serde(default)]
+    pub always_on_top: bool,
+    /// `true`: the close button sends `view.<view>.close-requested` and leaves the window open;
+    /// Java closes it (`view.<view>.close`) when it wants to.
+    #[serde(default)]
+    pub confirm_close: bool,
+    /// `true`: files dragged onto the window are reported (`view.<view>.file-drop`) and the page
+    /// does not open them.
+    #[serde(default)]
+    pub file_drop: bool,
 }
 
 fn default_title() -> String {
@@ -125,6 +144,97 @@ pub struct BoundsBody {
     pub height: u32,
 }
 
+/// Payload of `view.<view>.state`: what to change; keys left out stay as they are.
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StateBody {
+    pub minimized: Option<bool>,
+    pub maximized: Option<bool>,
+    pub fullscreen: Option<bool>,
+    pub always_on_top: Option<bool>,
+    pub resizable: Option<bool>,
+}
+
+/// The reply to `view.<view>.geometry`: where the window is and how it is shown. Position and
+/// size in logical pixels (the outer position, the inner size).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Geometry {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+    pub scale_factor: f64,
+    pub minimized: bool,
+    pub maximized: bool,
+    pub fullscreen: bool,
+    pub focused: bool,
+    pub visible: bool,
+}
+
+/// Payload of `app.dialog.file`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FileDialogBody {
+    pub kind: FileDialogKind,
+    pub title: Option<String>,
+    pub directory: Option<std::path::PathBuf>,
+    pub file_name: Option<String>,
+    #[serde(default)]
+    pub filters: Vec<FileFilter>,
+    /// The view whose window the dialog belongs to (modal to it); none for a free one.
+    pub view: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FileDialogKind {
+    Open,
+    OpenMany,
+    Save,
+    Folder,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FileFilter {
+    pub name: String,
+    pub extensions: Vec<String>,
+}
+
+/// Payload of `app.dialog.message`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MessageDialogBody {
+    #[serde(default)]
+    pub title: String,
+    pub text: String,
+    #[serde(default)]
+    pub level: MessageLevel,
+    #[serde(default)]
+    pub buttons: MessageButtons,
+    pub view: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum MessageLevel {
+    #[default]
+    Info,
+    Warning,
+    Error,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum MessageButtons {
+    #[default]
+    Ok,
+    OkCancel,
+    YesNo,
+    YesNoCancel,
+}
+
 /// How an action went: a `Status` and a payload (PROTOCOL.md §4).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Outcome {
@@ -194,5 +304,29 @@ mod tests {
         assert_eq!(value(b"{oops").err().unwrap().status, 400);
         assert_eq!(value(b" ").unwrap(), Value::Null);
         assert!(json::<CaptureBody>(b"").is_ok());
+    }
+
+    #[test]
+    fn dialog_payloads() {
+        let file = json::<FileDialogBody>(
+            br#"{"kind":"open-many","title":"Pick","filters":[{"name":"Images","extensions":["png","jpg"]}],"view":"wv-1"}"#,
+        )
+        .unwrap();
+        assert_eq!(file.kind, FileDialogKind::OpenMany);
+        assert_eq!(file.filters[0].extensions, ["png", "jpg"]);
+        assert_eq!(json::<FileDialogBody>(br#"{"kind":"browse"}"#).err().unwrap().status, 400);
+
+        let message = json::<MessageDialogBody>(br#"{"text":"Sure?","buttons":"yes-no","level":"warning"}"#).unwrap();
+        assert_eq!((message.buttons, message.level), (MessageButtons::YesNo, MessageLevel::Warning));
+        assert_eq!(json::<MessageDialogBody>(br#"{"title":"no text"}"#).err().unwrap().status, 400);
+    }
+
+    #[test]
+    fn state_and_window_options() {
+        let state = json::<StateBody>(br#"{"maximized":true,"alwaysOnTop":false}"#).unwrap();
+        assert_eq!((state.maximized, state.always_on_top, state.fullscreen), (Some(true), Some(false), None));
+        let open = json::<OpenRequest>(br#"{"minWidth":400,"minHeight":300,"confirmClose":true,"fileDrop":true}"#).unwrap();
+        assert_eq!((open.min_width, open.min_height), (Some(400.0), Some(300.0)));
+        assert!(open.confirm_close && open.file_drop && !open.maximized);
     }
 }

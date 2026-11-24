@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -157,6 +158,51 @@ public final class App implements AutoCloseable {
             }
             return List.copyOf(views);
         });
+    }
+
+    // ---- dialogs ----
+
+    /** Asks for one file to open; empty if the user cancelled. */
+    public CompletableFuture<Optional<Path>> openFile(FileDialog dialog) {
+        return fileDialog(dialog, "open").thenApply(paths -> paths.stream().findFirst());
+    }
+
+    /** Asks for files to open, one or more; empty if the user cancelled. */
+    public CompletableFuture<List<Path>> openFiles(FileDialog dialog) {
+        return fileDialog(dialog, "open-many");
+    }
+
+    /** Asks where to save a file; empty if the user cancelled. The system asks before replacing a file. */
+    public CompletableFuture<Optional<Path>> saveFile(FileDialog dialog) {
+        return fileDialog(dialog, "save").thenApply(paths -> paths.stream().findFirst());
+    }
+
+    /** Asks for a directory; empty if the user cancelled. */
+    public CompletableFuture<Optional<Path>> pickFolder(FileDialog dialog) {
+        return fileDialog(dialog, "folder").thenApply(paths -> paths.stream().findFirst());
+    }
+
+    @SuppressWarnings("unchecked")
+    private CompletableFuture<List<Path>> fileDialog(FileDialog dialog, String kind) {
+        Objects.requireNonNull(dialog, "dialog");
+        return request(Message.of("app.dialog.file").withJson(dialog.toPayload(kind))).thenApply(reply -> {
+            List<Path> paths = new ArrayList<>();
+            for (Object path : (List<Object>) object(reply).get("paths")) paths.add(Path.of((String) path));
+            return List.copyOf(paths);
+        });
+    }
+
+    /** Shows a message box; completes with the button the user chose. */
+    public CompletableFuture<MessageDialog.Answer> message(MessageDialog dialog) {
+        Objects.requireNonNull(dialog, "dialog");
+        return request(Message.of("app.dialog.message").withJson(dialog.toPayload()))
+                .thenApply(reply -> MessageDialog.answer(Events.text(object(reply), "answer")));
+    }
+
+    /** An OK / Cancel question: true for OK. */
+    public CompletableFuture<Boolean> confirm(String title, String text) {
+        return message(MessageDialog.of(title, text).level(MessageDialog.Level.WARNING).buttons(MessageDialog.Buttons.OK_CANCEL))
+                .thenApply(answer -> answer == MessageDialog.Answer.OK);
     }
 
     // ---- sounds ----
@@ -517,6 +563,8 @@ public final class App implements AutoCloseable {
             String kind = tokens[2];
             if (kind.equals("closed") && tokens.length == 3) {
                 publish(new Closed(view));
+            } else if (kind.equals("close-requested") && tokens.length == 3) {
+                publish(new CloseRequested(view));
             } else if (kind.equals("request") && tokens.length == 3) {
                 request(view, message);
             } else if (kind.equals("asset") && tokens.length == 3) {

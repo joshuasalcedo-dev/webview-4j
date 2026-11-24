@@ -13,13 +13,16 @@ use tao::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
 use tao::event::{Event, StartCause, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
 use tao::platform::run_return::EventLoopExtRunReturn;
-use tao::window::{Window, WindowBuilder, WindowId};
+use tao::window::{Fullscreen, Window, WindowBuilder, WindowId};
 use wry::{WebContext, WebView, WebViewBuilder};
 
 use crate::bridge;
 use crate::frame::Message;
 use crate::inspector::{self, Capture};
-use crate::payload::{self, BoundsBody, CaptureBody, CookieRecord, OpenRequest, Outcome, PositionBody, SizeBody, WebViewInfo};
+use crate::payload::{
+    self, BoundsBody, CaptureBody, CookieRecord, FileDialogBody, Geometry, MessageDialogBody, OpenRequest, Outcome, PositionBody,
+    SizeBody, StateBody, WebViewInfo,
+};
 
 /// Receives each message as a frame (`frame`, `length` bytes), valid only during the call. Mostly
 /// called on the event loop thread (log records may come from any thread): it must return quickly.
@@ -72,6 +75,12 @@ struct Instance {
     /// before the next call answer, or once they add up to PUSH_BATCH.
     pushes: Vec<String>,
     pushes_size: usize,
+    /// The close button asks Java (`close-requested`) instead of closing.
+    confirm_close: bool,
+    /// The last size and position the window reported this round, sent once at its end: a drag
+    /// reports dozens a second.
+    resized: Option<(f64, f64)>,
+    moved: Option<(f64, f64)>,
     // Keep the context alive until after its webview has been dropped.
     context: Option<Box<WebContext>>,
 }
@@ -89,6 +98,16 @@ impl Instance {
         self.pushes.clear();
         self.pushes_size = 0;
         settle(self, &script);
+    }
+
+    /// The size and position this round left the window at, if they changed.
+    fn flush_geometry(&mut self, id: &str) {
+        if let Some((width, height)) = self.resized.take() {
+            emit(&Message::new(format!("view.{id}.resized")).payload(json!({"width": width, "height": height}).to_string()));
+        }
+        if let Some((x, y)) = self.moved.take() {
+            emit(&Message::new(format!("view.{id}.moved")).payload(json!({"x": x, "y": y}).to_string()));
+        }
     }
 }
 
@@ -137,17 +156,50 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
                     }
                 }
             }
-            Event::WindowEvent { window_id, event: WindowEvent::CloseRequested, .. } => {
-                if let Some(id) = state.ids_by_window.remove(&window_id) {
-                    state.views.remove(&id);
-                    emit(&Message::new(format!("view.{id}.closed")));
+            Event::WindowEvent { window_id, event, .. } => on_window(window_id, event, &mut state),
+            // This round's messages are handled: the pushes they made go out, one script per page,
+            // and each window's last size and position.
+            Event::MainEventsCleared => {
+                for (id, instance) in state.views.iter_mut() {
+                    instance.flush_pushes();
+                    instance.flush_geometry(id);
                 }
             }
-            // This round's messages are handled: the pushes they made go out, one script per page.
-            Event::MainEventsCleared => state.views.values_mut().for_each(Instance::flush_pushes),
             _ => {}
         }
     }))
+}
+
+/// What a window reports: closing, its size and position, focus.
+fn on_window(window_id: WindowId, event: WindowEvent, state: &mut State) {
+    let Some(id) = state.ids_by_window.get(&window_id).cloned() else {
+        return;
+    };
+    let Some(instance) = state.views.get_mut(&id) else {
+        return;
+    };
+    match event {
+        WindowEvent::CloseRequested if instance.confirm_close => {
+            emit(&Message::new(format!("view.{id}.close-requested")));
+        }
+        WindowEvent::CloseRequested => {
+            state.ids_by_window.remove(&window_id);
+            state.views.remove(&id);
+            emit(&Message::new(format!("view.{id}.closed")));
+        }
+        WindowEvent::Resized(size) => {
+            let size = size.to_logical::<f64>(instance.window.scale_factor());
+            instance.resized = Some((size.width, size.height));
+        }
+        WindowEvent::Moved(position) => {
+            let position = position.to_logical::<f64>(instance.window.scale_factor());
+            instance.moved = Some((position.x, position.y));
+        }
+        WindowEvent::Focused(focused) => {
+            emit(&Message::new(format!("view.{id}.focused")).payload(json!({"focused": focused}).to_string()));
+        }
+        _ => {}
+    }
 }
 
 /// Clears the proxy and the callback once the loop has returned, even if it unwinds.
@@ -183,6 +235,20 @@ fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut 
         },
         ["app", "list"] => Outcome::json(&list(state)),
         ["app", "play"] => crate::sound::play(&message.payload),
+        ["app", "dialog", "file"] => match payload::json::<FileDialogBody>(&message.payload) {
+            Ok(body) => match parent(body.view.as_deref(), state) {
+                Ok(window) => return answer_later(reply, crate::dialog::file(body, window)),
+                Err(error) => error,
+            },
+            Err(error) => error,
+        },
+        ["app", "dialog", "message"] => match payload::json::<MessageDialogBody>(&message.payload) {
+            Ok(body) => match parent(body.view.as_deref(), state) {
+                Ok(window) => return answer_later(reply, crate::dialog::message(body, window)),
+                Err(error) => error,
+            },
+            Err(error) => error,
+        },
         ["app", "quit"] => {
             // Webviews before their windows and contexts, while the loop is still alive.
             state.ids_by_window.clear();
@@ -197,6 +263,22 @@ fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut 
         _ => Outcome::error(404, format!("no subject '{subject}'")),
     };
     reply.send(outcome);
+}
+
+/// The window a dialog belongs to: the view's, or none.
+fn parent<'a>(view: Option<&str>, state: &'a State) -> Result<Option<&'a Window>, Outcome> {
+    match view {
+        None => Ok(None),
+        Some(view) => state.views.get(view).map(|instance| Some(&instance.window)).ok_or_else(|| not_found(view)),
+    }
+}
+
+/// Waits for a dialog on a thread of its own and replies with its answer: the loop goes on.
+fn answer_later(reply: ReplyTo, answer: crate::dialog::Answer) {
+    std::thread::Builder::new()
+        .name("webview4j-dialog".into())
+        .spawn(move || reply.send(pollster::block_on(answer)))
+        .expect("a thread for the dialog");
 }
 
 /// A message about one view. None when a script callback replies later (eval, websocket send),
@@ -313,6 +395,37 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
             instance.window.set_focus();
             Outcome::ok()
         }
+        ["state"] => match payload::json::<StateBody>(payload) {
+            Ok(body) => {
+                let window = &instance.window;
+                if let Some(on) = body.minimized {
+                    window.set_minimized(on);
+                }
+                if let Some(on) = body.maximized {
+                    window.set_maximized(on);
+                }
+                if let Some(on) = body.fullscreen {
+                    window.set_fullscreen(on.then_some(Fullscreen::Borderless(None)));
+                }
+                if let Some(on) = body.always_on_top {
+                    window.set_always_on_top(on);
+                }
+                if let Some(on) = body.resizable {
+                    window.set_resizable(on);
+                }
+                Outcome::ok()
+            }
+            Err(error) => error,
+        },
+        ["min-size"] => match payload::json::<SizeBody>(payload) {
+            Ok(body) => {
+                let size = (body.width > 0.0 && body.height > 0.0).then(|| LogicalSize::new(body.width, body.height));
+                instance.window.set_min_inner_size(size);
+                Outcome::ok()
+            }
+            Err(error) => error,
+        },
+        ["geometry"] => Outcome::json(&geometry(&instance.window)),
         ["capture"] => match payload::json::<CaptureBody>(payload) {
             Ok(body) => {
                 instance.capture.apply(body);
@@ -408,6 +521,24 @@ fn settle(instance: &Instance, script: &str) {
     }
 }
 
+fn geometry(window: &Window) -> Geometry {
+    let scale = window.scale_factor();
+    let position = window.outer_position().unwrap_or_default().to_logical::<f64>(scale);
+    let size = window.inner_size().to_logical::<f64>(scale);
+    Geometry {
+        x: position.x,
+        y: position.y,
+        width: size.width,
+        height: size.height,
+        scale_factor: scale,
+        minimized: window.is_minimized(),
+        maximized: window.is_maximized(),
+        fullscreen: window.fullscreen().is_some(),
+        focused: window.is_focused(),
+        visible: window.is_visible(),
+    }
+}
+
 fn list(state: &State) -> Vec<WebViewInfo> {
     state
         .views
@@ -465,6 +596,13 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
     if let Some(script) = &open.initialization_script {
         builder = builder.with_initialization_script(script);
     }
+    if open.file_drop {
+        let drop_view = id.clone();
+        builder = builder.with_drag_drop_handler(move |event| {
+            file_drop(&drop_view, event);
+            true // the page does not open the file itself
+        });
+    }
     if let Some(url) = &open.url {
         builder = builder.with_url(url);
     } else if let Some(html) = &open.html {
@@ -477,9 +615,36 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
     };
 
     state.ids_by_window.insert(window.id(), id.clone());
-    let instance = Instance { window, webview, title: open.title, capture, link, pushes: Vec::new(), pushes_size: 0, context };
+    let instance = Instance {
+        window,
+        webview,
+        title: open.title,
+        capture,
+        link,
+        pushes: Vec::new(),
+        pushes_size: 0,
+        confirm_close: open.confirm_close,
+        resized: None,
+        moved: None,
+        context,
+    };
     state.views.insert(id.clone(), instance);
     Outcome::json(&json!({"view": id}))
+}
+
+/// Files dragged onto a window: `enter` and `drop` with their paths, `leave`. Positions are physical
+/// pixels from the webview's top left.
+fn file_drop(view: &str, event: wry::DragDropEvent) {
+    let (kind, paths, position) = match event {
+        wry::DragDropEvent::Enter { paths, position } => ("enter", paths, Some(position)),
+        wry::DragDropEvent::Drop { paths, position } => ("drop", paths, Some(position)),
+        wry::DragDropEvent::Leave => ("leave", Vec::new(), None),
+        _ => return, // over: dozens a second, and nothing new
+    };
+    let paths: Vec<String> = paths.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+    let (x, y) = position.unwrap_or_default();
+    let report = json!({"kind": kind, "paths": paths, "x": x, "y": y});
+    emit(&Message::new(format!("view.{view}.file-drop")).payload(report.to_string()));
 }
 
 /// Windows maps the custom protocol onto `http(s)://webview4j.localhost`: https, so a secure page
@@ -541,7 +706,15 @@ fn window_builder(open: &OpenRequest) -> WindowBuilder {
         .with_inner_size(LogicalSize::new(open.width, open.height))
         .with_resizable(open.resizable)
         .with_decorations(open.decorations)
-        .with_visible(!open.headless);
+        .with_visible(!open.headless)
+        .with_maximized(open.maximized)
+        .with_always_on_top(open.always_on_top);
+    if open.fullscreen {
+        builder = builder.with_fullscreen(Some(Fullscreen::Borderless(None)));
+    }
+    if let (Some(width), Some(height)) = (open.min_width, open.min_height) {
+        builder = builder.with_min_inner_size(LogicalSize::new(width, height));
+    }
     if let Some(png) = &open.icon {
         // A picture that is not one leaves the program's icon: not worth refusing the window for.
         match crate::icon::from_png_base64(png) {
