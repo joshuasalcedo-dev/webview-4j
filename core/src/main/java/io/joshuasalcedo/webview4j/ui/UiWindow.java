@@ -46,6 +46,11 @@ public final class UiWindow {
             new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.concurrent.atomic.AtomicLong NOTICES = new java.util.concurrent.atomic.AtomicLong();
 
+    static {
+        // A value object's exception from a handler is said as a warning, in its own words.
+        io.joshuasalcedo.webview4j.ui.components.valueobject.ValueViews.install();
+    }
+
     private final View view;
     private final Screen screen;
     private Map<String, Consumer<Object>> handlers = Map.of();

@@ -5,8 +5,11 @@
  */
 module io.joshuasalcedo.webview4j {
     requires jdk.httpserver;
+    // Value objects as first-class fields and displays (ui.components.valueobject).
+    requires transitive io.joshuasalcedo.valueobject;
     exports io.joshuasalcedo.webview4j;
     exports io.joshuasalcedo.webview4j.annotation;
     exports io.joshuasalcedo.webview4j.ui;
     exports io.joshuasalcedo.webview4j.ui.components;
+    exports io.joshuasalcedo.webview4j.ui.components.valueobject;
 }
