@@ -1,7 +1,8 @@
 // Notes: Java behind a React page made with @webview4j/ui.
 //   ./gradlew run          builds web/ with Vite into the jar's web/ and opens the app
 //   ./gradlew run -Pdev    opens the Vite dev server instead (`bun run dev` in web/ first): edit, save, see it
-//   ./gradlew run -Pshowcase  also opens the showcase window from the start
+//   ./gradlew run -Pshowcase  also opens the showcase window (MDI, an embedded site) from the start
+//   ./gradlew run -Pgallery   also opens the component gallery, a window written only in Java
 // Needs Java 25 and bun (https://bun.sh).
 
 plugins {
@@ -74,4 +75,5 @@ application {
 tasks.named<JavaExec>("run") {
     if (providers.gradleProperty("dev").isPresent) systemProperty("notes.dev", "true")
     if (providers.gradleProperty("showcase").isPresent) systemProperty("notes.showcase", "true")
+    if (providers.gradleProperty("gallery").isPresent) systemProperty("notes.gallery", "true")
 }

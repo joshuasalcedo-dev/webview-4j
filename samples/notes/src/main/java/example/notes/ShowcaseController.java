@@ -40,6 +40,12 @@ public class ShowcaseController {
                 .minSize(720, 480).decorations(false)).join();
     }
 
+    /** Opens the component gallery: a window written only in Java (GalleryScreen). */
+    @Post("/gallery")
+    public void gallery(View caller) {
+        GalleryScreen.open(caller.app());
+    }
+
     /** Shows {@code url} in the page's browser panel: embeds it the first time, navigates it after. */
     @Post("/browse")
     public Opened browse(View page, @Body Browse body) {

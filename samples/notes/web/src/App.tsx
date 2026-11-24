@@ -80,9 +80,14 @@ export function App({ look, onLookChange }: { look: Look; onLookChange: (look: L
             ]}
           />
         </div>
-        <Button onClick={() => void showcase.open()} disabled={!isWebView4j()} style={{ marginBottom: 20 }}>
-          Open the showcase: every component, MDI, an embedded website and its network
-        </Button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+          <Button onClick={() => void showcase.gallery()} disabled={!isWebView4j()}>
+            Component gallery (written only in Java)
+          </Button>
+          <Button onClick={() => void showcase.open()} disabled={!isWebView4j()}>
+            MDI workspace: an embedded website and its network
+          </Button>
+        </div>
         <Text variant="title">Notes</Text>
         <Text tone="secondary">Kept by Java (NotesController), shown with @webview4j/ui.</Text>
         <form onSubmit={add} style={{ display: "flex", gap: 8, alignItems: "flex-end", margin: "16px 0" }}>

@@ -15,6 +15,43 @@ your UI is a web page, your logic is Java.
   jar for pages with no bundler, and on npm for apps with one
 - **Devtools**: a window beside your app with its log and live metrics while you develop
 
+## Three ways in
+
+**1. Only Java.** Build the screens in Java from the native components: no HTML, CSS or JavaScript, no bundler.
+Nothing is generated: core's jar carries the components, built, and Java sends what to show as data.
+
+```java
+import static io.joshuasalcedo.webview4j.ui.Ui.*;
+
+class Counter implements Screen {
+    int count;
+    public Component<?> render() {
+        return column(
+                title("Clicked " + count + " times"),
+                button("Click me").accent().onClick(() -> count++)).padding(24).gap(12);
+    }
+}
+
+App.run(app -> Ui.open(app, new Counter(), window -> window.title("Counter").size(400, 300)));
+```
+
+The fields are the screen's state; after each handler it shows again by itself (`UiWindow.refresh()` for changes
+from elsewhere). Buttons, links, text fields and areas, checkboxes, switches, selects, segmented controls,
+progress, spinners, avatars, pills, money, lists, surfaces, code, rows and columns, and the window's title bar,
+toolbar, side bar and status bar: [the gallery](samples/notes/src/main/java/example/notes/GalleryScreen.java) shows
+every one, written in Java.
+
+**2. You have a Java server and a web frontend already.** Open it in a native window; nothing to change:
+
+```java
+App.run(app -> app.open(WindowOptions.url("http://localhost:8080").title("My app")));
+```
+
+The page keeps calling your server as it does; the app gets a desktop window, dialogs, the native components and
+the rest.
+
+**3. A React app.** `@webview4j/ui` from npm in your own Vite app, built into the jar: see the sample below.
+
 ## Start from the sample
 
 [samples/notes](samples/notes) is a whole app, a Gradle build of its own: a React page made with the native

@@ -44,5 +44,7 @@ public final class NotesApp {
 
         // ./gradlew run -Pshowcase: the showcase too, from the start.
         if (Boolean.getBoolean("notes.showcase")) new ShowcaseController().open(view);
+        // ./gradlew run -Pgallery: the component gallery, written only in Java.
+        if (Boolean.getBoolean("notes.gallery")) GalleryScreen.open(app);
     }
 }

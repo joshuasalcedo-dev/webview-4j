@@ -7,4 +7,5 @@ module io.joshuasalcedo.webview4j {
     requires jdk.httpserver;
     exports io.joshuasalcedo.webview4j;
     exports io.joshuasalcedo.webview4j.annotation;
+    exports io.joshuasalcedo.webview4j.ui;
 }

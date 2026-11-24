@@ -23,6 +23,8 @@
 - `MdiArea` and `useMdi` in `@webview4j/ui`: windows inside the app's window (move, resize, minimize, maximize, cascade, tile, Ctrl+F6)
 - `WindowOptions.app(...).page("other.html")`: another page of the app's own files
 - `TitleBar dragsWindow={false}`: a title bar that is not the window's own
+- `io.joshuasalcedo.webview4j.ui`: screens built only in Java from the native components (`Ui`, `Screen`, `UiWindow`): Java sends what to show as data, core's jar draws it, the user's actions run Java handlers; nothing is generated
+- The sample's component gallery, written only in Java (`./gradlew run -Pgallery`)
 - The build reuses a native library already built from the current Rust sources instead of running cargo again (`-PrebuildNative` forces it)
 
 ## 0.1.0 — 2026-10-21
