@@ -24,6 +24,17 @@ val webview4j = "0.2.0-SNAPSHOT"
 dependencies {
     implementation("io.joshuasalcedo:webview-4j-core:$webview4j")
     annotationProcessor("io.joshuasalcedo:webview-4j-processor:$webview4j")
+
+    testImplementation(platform("org.junit:junit-bom:6.0.1"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+// The gallery's test: every component has a demo, and every page draws (-Pgallery.section=Layout for one category).
+tasks.test {
+    useJUnitPlatform()
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    providers.gradleProperty("gallery.section").orNull?.let { systemProperty("gallery.section", it) }
 }
 
 val web = layout.projectDirectory.dir("web")
