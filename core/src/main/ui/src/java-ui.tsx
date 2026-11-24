@@ -33,7 +33,11 @@ import {
   PhoneField,
   UrlField,
 } from "./components/value-fields"
-import { DataTable, type DataColumn, type DataRow } from "./components/usecase/data-table"
+import { DataTable, type DataColumn, type DataRow } from "./components/usecase/collection/data-table"
+import { DataGrid } from "./components/usecase/collection/data-grid"
+import { DataList } from "./components/usecase/collection/data-list"
+import { DataMap } from "./components/usecase/collection/data-map"
+import { DataTree } from "./components/usecase/collection/data-tree"
 import { Button } from "./components/button"
 import { Checkbox } from "./components/checkbox"
 import { CodeBlock } from "./components/code-editor"
@@ -658,6 +662,11 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     // ---- use cases ----
     case "dataTable":
       return <JavaDataTable node={node} />
+    case "dataList":
+    case "dataGrid":
+    case "dataTree":
+    case "dataMap":
+      return <JavaCollection node={node} />
     default:
       return (
         <Text tone="error" style={style}>
@@ -790,6 +799,92 @@ function JavaDataTable({ node }: { node: JavaNode }) {
       style={{ minHeight: 0, ...sizing(p) }}
     />
   )
+}
+
+/** DataList, DataGrid, DataTree and DataMap: their data from Java; what the person does goes back as events. */
+function JavaCollection({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const sendAndWait = React.useContext(SendAndWaitContext)
+  const p = node.p
+  const has = (name: string) => typeof p[name] === "string"
+  const keyOf = str(p.itemKey) ?? str(p.rowKey) ?? "id"
+  const menu = (node.c ?? []).filter((c) => c.p.slot === "menu")
+  const itemMenu = menu.length
+    ? (item: DataRow) => menu.map((m) => ({ label: str(m.p.label) ?? "", onSelect: () => send(m.p.onSelect, String(item[keyOf])) }))
+    : undefined
+  const common = {
+    "aria-label": str(p.label) ?? "Items",
+    selected: p.selected as string[] | undefined,
+    onSelectionChange: has("onSelectionChange") ? (ids: string[]) => send(p.onSelectionChange, ids) : undefined,
+    empty: str(p.empty),
+    style: { minHeight: 0, ...sizing(p) },
+  }
+  switch (node.t) {
+    case "dataList":
+      return (
+        <DataList
+          {...common}
+          items={(p.items as DataRow[]) ?? []}
+          itemKey={keyOf}
+          title={str(p.title) ?? "title"}
+          subtitle={str(p.subtitle)}
+          avatar={str(p.avatar)}
+          pill={str(p.pill)}
+          trailing={str(p.trailing)}
+          search={bool(p.search)}
+          multiple={bool(p.multiple)}
+          pageSize={num(p.pageSize)}
+          hasMore={bool(p.hasMore)}
+          onLoadMore={has("onLoadMore") ? () => sendAndWait(p.onLoadMore) : undefined}
+          onOpen={has("onOpen") ? (id) => send(p.onOpen, id) : undefined}
+          itemMenu={itemMenu}
+        />
+      )
+    case "dataGrid":
+      return (
+        <DataGrid
+          {...common}
+          items={(p.items as DataRow[]) ?? []}
+          itemKey={keyOf}
+          title={str(p.title) ?? "title"}
+          subtitle={str(p.subtitle)}
+          image={str(p.image)}
+          pill={str(p.pill)}
+          footer={str(p.footer)}
+          minWidth={num(p.minWidth)}
+          multiple={bool(p.multiple)}
+          onOpen={has("onOpen") ? (id) => send(p.onOpen, id) : undefined}
+          itemMenu={itemMenu}
+        />
+      )
+    case "dataTree":
+      return (
+        <DataTree
+          {...common}
+          columns={(p.columns as DataColumn[]) ?? []}
+          rows={(p.rows as DataRow[]) ?? []}
+          rowKey={keyOf}
+          expanded={p.expanded as string[] | undefined}
+          onExpandedChange={has("onExpandedChange") ? (ids) => send(p.onExpandedChange, ids) : undefined}
+          onExpand={has("onExpand") ? (id) => send(p.onExpand, id) : undefined}
+          selectable={bool(p.selectable)}
+          onRowOpen={has("onRowOpen") ? (id) => send(p.onRowOpen, id) : undefined}
+          rowMenu={itemMenu}
+        />
+      )
+    default:
+      return (
+        <DataMap
+          aria-label={common["aria-label"]}
+          value={(p.value as Record<string, unknown>) ?? {}}
+          depth={num(p.depth)}
+          onEdit={has("onEdit") ? (path, value) => send(p.onEdit, { path, value }) : undefined}
+          onAdd={has("onAdd") ? (key, value) => send(p.onAdd, { key, value }) : undefined}
+          onRemove={has("onRemove") ? (path) => send(p.onRemove, path) : undefined}
+          style={common.style}
+        />
+      )
+  }
 }
 
 function JavaPasswordField({ node }: { node: JavaNode }) {

@@ -11,13 +11,13 @@ import {
 } from "@tanstack/react-table"
 import * as React from "react"
 
-import { Button } from "../button"
-import { Checkbox } from "../checkbox"
-import { type MenuEntry, useContextMenu } from "../context-menu"
-import { Spinner } from "../infinite-scroll"
-import { Money } from "../money"
-import { Pill } from "../pill"
-import { SearchField } from "../search-field"
+import { Button } from "../../button"
+import { Checkbox } from "../../checkbox"
+import { type MenuEntry, useContextMenu } from "../../context-menu"
+import { Spinner } from "../../infinite-scroll"
+import { Money } from "../../money"
+import { Pill } from "../../pill"
+import { SearchField } from "../../search-field"
 import "./data-table.css"
 
 /**
@@ -405,5 +405,5 @@ function CellValue({ column, row, value }: { column: DataColumn; row: DataRow; v
   }
 }
 
-export { DataTable }
+export { CellValue, DataTable }
 export type { ColumnType, DataColumn, DataRow, DataSort, DataTableProps }

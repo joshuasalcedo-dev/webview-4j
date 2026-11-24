@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import * as React from "react"
 
-import { NativeProvider } from "../provider"
+import { NativeProvider } from "../../provider"
 import { DataTable, type DataRow, type DataSort } from "./data-table"
 
 const ORDERS: DataRow[] = Array.from({ length: 42 }, (_, i) => ({

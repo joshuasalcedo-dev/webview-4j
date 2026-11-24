@@ -1,4 +1,4 @@
-package io.joshuasalcedo.webview4j.ui.components.usecase.datatable;
+package io.joshuasalcedo.webview4j.ui.components.usecase.collection;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 import static org.junit.jupiter.api.Assertions.*;

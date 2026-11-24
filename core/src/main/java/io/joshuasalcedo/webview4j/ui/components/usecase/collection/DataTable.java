@@ -1,4 +1,4 @@
-package io.joshuasalcedo.webview4j.ui.components.usecase.datatable;
+package io.joshuasalcedo.webview4j.ui.components.usecase.collection;
 
 import io.joshuasalcedo.valueobject.financial.Money;
 import io.joshuasalcedo.webview4j.ui.Component;
@@ -56,7 +56,7 @@ public final class DataTable extends Component<DataTable> {
         DataTable table = new DataTable(label);
         if (!records.isEmpty()) {
             for (RecordComponent c : records.getFirst().getClass().getRecordComponents()) {
-                table.column(c.getName(), words(c.getName()), typeOf(c.getType()));
+                table.column(c.getName(), Rows.words(c.getName()), typeOf(c.getType()));
             }
         }
         return table.rows(records);
@@ -125,9 +125,7 @@ public final class DataTable extends Component<DataTable> {
      * value objects their text.
      */
     public DataTable rows(List<?> rows) {
-        List<Map<String, Object>> out = new ArrayList<>(rows.size());
-        for (Object row : rows) out.add(row(row));
-        return prop("rows", out);
+        return prop("rows", Rows.rows(rows));
     }
 
     /** The field that tells rows apart: "id" unless set. */
@@ -135,45 +133,7 @@ public final class DataTable extends Component<DataTable> {
         return prop("rowKey", key);
     }
 
-    private static Map<String, Object> row(Object row) {
-        Map<String, Object> fields = new LinkedHashMap<>();
-        if (row instanceof Map<?, ?> map) {
-            map.forEach((k, v) -> put(fields, String.valueOf(k), v));
-        } else if (row instanceof Record record) {
-            for (RecordComponent c : record.getClass().getRecordComponents()) {
-                try {
-                    var accessor = c.getAccessor();
-                    accessor.setAccessible(true);
-                    put(fields, c.getName(), accessor.invoke(record));
-                } catch (ReflectiveOperationException | RuntimeException e) {
-                    fields.put(c.getName(), null);
-                }
-            }
-        } else {
-            fields.put("value", String.valueOf(row));
-        }
-        return fields;
-    }
-
-    private static void put(Map<String, Object> fields, String key, Object value) {
-        switch (value) {
-            case null -> fields.put(key, null);
-            case Money m -> {
-                fields.put(key, m.amount().movePointRight(m.currency().decimalPlaces()).longValue());
-                fields.put(key + "Currency", m.currency().code());
-            }
-            case Number n when !(n instanceof BigDecimal) -> fields.put(key, n);
-            case BigDecimal d -> fields.put(key, d.doubleValue());
-            case Boolean b -> fields.put(key, b);
-            case String s -> fields.put(key, s);
-            case Enum<?> e -> fields.put(key, e.name());
-            case Temporal t -> fields.put(key, t.toString());
-            case java.util.Optional<?> o -> put(fields, key, o.orElse(null));
-            default -> fields.put(key, value.toString());
-        }
-    }
-
-    private static ColumnType typeOf(Class<?> type) {
+    static ColumnType typeOf(Class<?> type) {
         if (type == Money.class) return ColumnType.MONEY;
         if (type == boolean.class || type == Boolean.class) return ColumnType.BOOLEAN;
         if (type.isPrimitive() || Number.class.isAssignableFrom(type)) return ColumnType.NUMBER;
@@ -181,11 +141,6 @@ public final class DataTable extends Component<DataTable> {
         if (Temporal.class.isAssignableFrom(type)) return ColumnType.DATETIME;
         if (type.isEnum()) return ColumnType.PILL;
         return ColumnType.TEXT;
-    }
-
-    private static String words(String name) {
-        String spaced = name.replaceAll("([a-z0-9])([A-Z])", "$1 $2").toLowerCase(Locale.ROOT);
-        return Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
     }
 
     // ---- choosing rows ----
@@ -200,12 +155,12 @@ public final class DataTable extends Component<DataTable> {
     }
 
     public DataTable onSelectionChange(Consumer<List<String>> action) {
-        return on("onSelectionChange", v -> action.accept(texts(v)));
+        return on("onSelectionChange", v -> action.accept(Rows.texts(v)));
     }
 
     /** A button above the table acting on the chosen rows; call again for each. */
     public DataTable action(String label, Consumer<List<String>> action) {
-        Element button = new Element("tableAction").set("label", label).handle("onSelect", v -> action.accept(texts(v)));
+        Element button = new Element("tableAction").set("label", label).handle("onSelect", v -> action.accept(Rows.texts(v)));
         return add(slot(button, "action"));
     }
 
@@ -283,12 +238,6 @@ public final class DataTable extends Component<DataTable> {
     /** Said when there are no rows. */
     public DataTable empty(String text) {
         return prop("empty", text);
-    }
-
-    private static List<String> texts(Object value) {
-        List<String> list = new ArrayList<>();
-        if (value instanceof List<?> items) for (Object item : items) list.add(String.valueOf(item));
-        return List.copyOf(list);
     }
 
     /** The columns, for tests and tools. */
