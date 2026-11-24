@@ -1,6 +1,6 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
-import static example.notes.gallery.Demos.ordered;
+import static io.joshuasalcedo.webview4j.sampler.pages.Demos.ordered;
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
 import io.joshuasalcedo.webview4j.ui.Component;
@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** The gallery's pages: How a window is laid out: rows and columns, the frame (title bar, toolbar, status bar), side bars, splits, tabs, dialogs, inspectors. */
+/** The Sampler's pages: How a window is laid out: rows and columns, the frame (title bar, toolbar, status bar), side bars, splits, tabs, dialogs, inspectors. */
 final class LayoutDemos implements Demos {
 
     // Split and side bar

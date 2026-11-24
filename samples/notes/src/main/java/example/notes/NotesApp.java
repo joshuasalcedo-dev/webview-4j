@@ -42,12 +42,7 @@ public final class NotesApp {
         });
         view.subscribe(Closed.class, closed -> app.quit());
 
-        // What's new after an update, and (with an update manifest in the release) updates: see the build's release tasks.
-        io.joshuasalcedo.webview4j.ui.components.usecase.autoupdate.AutoUpdate.start(app);
-
         // ./gradlew run -Pshowcase: the showcase too, from the start.
         if (Boolean.getBoolean("notes.showcase")) new ShowcaseController().open(view);
-        // ./gradlew run -Pgallery: the component gallery, written only in Java.
-        if (Boolean.getBoolean("notes.gallery")) GalleryScreen.open(app);
     }
 }

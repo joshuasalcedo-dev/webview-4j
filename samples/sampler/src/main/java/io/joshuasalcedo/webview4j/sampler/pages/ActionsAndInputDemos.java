@@ -1,13 +1,13 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
-import static example.notes.gallery.Demos.ordered;
+import static io.joshuasalcedo.webview4j.sampler.pages.Demos.ordered;
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
 import io.joshuasalcedo.webview4j.ui.components.*;
 import java.util.List;
 import java.util.Map;
 
-/** The gallery's pages: Buttons, links and every field and choice a person fills in. */
+/** The Sampler's pages: Buttons, links and every field and choice a person fills in. */
 final class ActionsAndInputDemos implements Demos {
 
     private int clicks;

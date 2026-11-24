@@ -1,4 +1,4 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
@@ -12,7 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** The gallery's pages: Files (chips, icons, lists, grids, trees, the explorer), editors (code), messaging (the composer, bubbles) and logs. */
+/** The Sampler's pages: Files (chips, icons, lists, grids, trees, the explorer), editors (code), messaging (the composer, bubbles) and logs. */
 final class FilesAndEditorsDemos implements Demos {
 
     private static final Instant NOW = Instant.parse("2026-11-25T09:30:00Z");

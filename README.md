@@ -38,7 +38,7 @@ App.run(app -> Ui.open(app, new Counter(), window -> window.title("Counter").siz
 The fields are the screen's state; after each handler it shows again by itself (`UiWindow.refresh()` for changes
 from elsewhere). Buttons, links, text fields and areas, checkboxes, switches, selects, segmented controls,
 progress, spinners, avatars, pills, money, lists, surfaces, code, rows and columns, and the window's title bar,
-toolbar, side bar and status bar: [the gallery](samples/notes/src/main/java/example/notes/GalleryScreen.java) shows
+toolbar, side bar and status bar: [the Sampler](samples/sampler) shows
 every one, written in Java.
 
 **2. A Spring Boot app: add one dependency.** When the app is ready, it opens in a native window, with no code

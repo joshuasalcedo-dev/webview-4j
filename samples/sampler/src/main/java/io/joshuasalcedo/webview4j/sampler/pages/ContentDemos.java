@@ -1,6 +1,6 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
-import static example.notes.gallery.Demos.ordered;
+import static io.joshuasalcedo.webview4j.sampler.pages.Demos.ordered;
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
 import io.joshuasalcedo.webview4j.ui.components.*;
@@ -9,7 +9,7 @@ import io.joshuasalcedo.webview4j.ui.components.usecase.autoupdate.UpdatePrompt;
 import java.util.List;
 import java.util.Map;
 
-/** The gallery's pages: What a page shows: text, avatars and pills, money and quantities, code, progress, lists, surfaces. */
+/** The Sampler's pages: What a page shows: text, avatars and pills, money and quantities, code, progress, lists, surfaces. */
 final class ContentDemos implements Demos {
 
     private static final String CHANGELOG = """
@@ -121,7 +121,7 @@ final class ContentDemos implements Demos {
                         toggle("Sync").checked(sync).onChange(v -> sync = v))""",
                 Surface.class);
         gallery.page("Content", "Code", () -> code("""
-                        App.run(app -> Ui.open(app, new GalleryScreen()));""", "java"),
+                        App.run(app -> Ui.open(app, new SamplerScreen()));""", "java"),
                 """
                 code("App.run(app -> ...);", "java")""",
                 CodeBlock.class);

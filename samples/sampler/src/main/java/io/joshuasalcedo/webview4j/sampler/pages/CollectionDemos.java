@@ -1,6 +1,6 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
-import static example.notes.gallery.Demos.ordered;
+import static io.joshuasalcedo.webview4j.sampler.pages.Demos.ordered;
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
 import io.joshuasalcedo.valueobject.financial.FiatCurrency;
@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** The gallery's pages: The collections (table, list, tree, map, grid) with their query, pages and states, and the MDI area. */
+/** The Sampler's pages: The collections (table, list, tree, map, grid) with their query, pages and states, and the MDI area. */
 final class CollectionDemos implements Demos {
 
     enum Status { NEW, PACKED, SHIPPED, DELIVERED }

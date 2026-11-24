@@ -81,9 +81,6 @@ export function App({ look, onLookChange }: { look: Look; onLookChange: (look: L
           />
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-          <Button onClick={() => void showcase.gallery()} disabled={!isWebView4j()}>
-            Component gallery (written only in Java)
-          </Button>
           <Button onClick={() => void showcase.open()} disabled={!isWebView4j()}>
             MDI workspace: an embedded website and its network
           </Button>

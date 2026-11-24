@@ -9,19 +9,23 @@ bench:
     ./gradlew :core:test --tests '*Benchmark' -Pbenchmark --rerun --console=plain
     Select-String -Path core/build/test-results/test/TEST-*Benchmark.xml -Pattern 'BENCH ' | ForEach-Object { $_.Line -replace '^.*?BENCH ', '' }
 
-# The component gallery: every component, written only in Java, with the Java for each (samples/notes)
-gallery:
-    cd samples/notes; ./gradlew run -Pgallery -PcargoProfile=dev --console=plain
+# The Sampler: every component, working, with the Java for each, in one app (samples/sampler)
+sampler:
+    cd samples/sampler; ./gradlew run -PcargoProfile=dev --console=plain
 
-# The component gallery on the web: the same Java screens in a browser, http://localhost:8080/
-gallery-web port="8080":
-    cd samples/notes; ./gradlew runWeb -Pport={{port}} -PcargoProfile=dev --console=plain
+# The Sampler on the web: the same Java screens in a browser, http://localhost:8080/
+sampler-web port="8080":
+    cd samples/sampler; ./gradlew runWeb -Pport={{port}} -PcargoProfile=dev --console=plain
 
-# The sample app (Notes) and its showcase window: sidebar, MDI, an embedded site
+# The Sampler as a native executable (GraalVM native-image): samples/sampler/build/native/
+sampler-native:
+    cd samples/sampler; ./gradlew nativeCompile --console=plain
+
+# The Notes template (a React page with Java behind it) and its showcase window
 showcase:
     cd samples/notes; ./gradlew run -Pshowcase -PcargoProfile=dev --console=plain
 
-# The sample app (Notes) on its own
+# The Notes template on its own: how an app with a React page is made
 notes:
     cd samples/notes; ./gradlew run -PcargoProfile=dev --console=plain
 
@@ -29,6 +33,6 @@ notes:
 storybook:
     cd core/src/main/ui; bun install; bun run storybook
 
-# Checks the gallery: every component has a page, every page draws (one category: just gallery-check Layout)
-gallery-check section="":
-    bash samples/notes/gallery-check.sh {{section}}
+# Checks the Sampler: every component has a page, every page draws (one section: just sampler-check Panes)
+sampler-check section="":
+    bash samples/sampler/sampler-check.sh {{section}}

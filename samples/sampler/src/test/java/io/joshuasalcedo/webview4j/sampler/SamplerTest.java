@@ -1,8 +1,8 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import example.notes.GalleryScreen;
+import io.joshuasalcedo.webview4j.sampler.SamplerScreen;
 import io.joshuasalcedo.webview4j.App;
 import io.joshuasalcedo.webview4j.View;
 import io.joshuasalcedo.webview4j.ui.Ui;
@@ -16,9 +16,9 @@ import org.junit.jupiter.api.condition.OS;
 
 /**
  * The gallery shows every component: each component class is covered by a page, and each page draws in a real
- * window without a component the page cannot show. Only one category: {@code -Dgallery.section=Layout}.
+ * window without a component the page cannot show. Only one category: {@code -Dsampler.section=Layout}.
  */
-class GalleryTest {
+class SamplerTest {
 
     @Test
     void everyComponentHasADemo() {
@@ -39,9 +39,9 @@ class GalleryTest {
     @EnabledOnOs(OS.WINDOWS)
     @Timeout(600)
     void everyPageDraws() throws Exception {
-        String only = System.getProperty("gallery.section", "");
+        String only = System.getProperty("sampler.section", "");
         try (App app = App.start()) {
-            GalleryScreen screen = new GalleryScreen();
+            SamplerScreen screen = new SamplerScreen();
             UiWindow window = Ui.open(app, screen, o -> o.headless(true).size(1180, 900)).join();
             View view = window.view();
             List<String> broken = new ArrayList<>();
@@ -66,9 +66,9 @@ class GalleryTest {
     @EnabledOnOs(OS.WINDOWS)
     @Timeout(900)
     void everyPageDrawsOnTheWebToo() throws Exception {
-        String only = System.getProperty("gallery.section", "");
+        String only = System.getProperty("sampler.section", "");
         try (App app = App.start();
-             io.joshuasalcedo.webview4j.ui.WebHost host = io.joshuasalcedo.webview4j.ui.WebHost.of(GalleryScreen::new).title("Gallery").start()) {
+             io.joshuasalcedo.webview4j.ui.WebHost host = io.joshuasalcedo.webview4j.ui.WebHost.of(SamplerScreen::new).title("Sampler").start()) {
             View view = app.open(io.joshuasalcedo.webview4j.WindowOptions.url(host.url().toString()).headless(true).size(1180, 900)).join();
             List<String> broken = new ArrayList<>();
             for (Gallery.Page page : new Gallery().pages()) {

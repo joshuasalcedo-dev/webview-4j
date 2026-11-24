@@ -1,4 +1,4 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
@@ -23,7 +23,7 @@ import io.joshuasalcedo.webview4j.ui.components.layout.VPos;
 import java.util.ArrayList;
 import java.util.List;
 
-/** The gallery's pages: the layout panes, named as JavaFX's (HBox, VBox, GridPane...), and Swing's CardLayout. */
+/** The Sampler's pages: the layout panes, named as JavaFX's (HBox, VBox, GridPane...), and Swing's CardLayout. */
 final class PanesDemos implements Demos {
 
     private String name = "";

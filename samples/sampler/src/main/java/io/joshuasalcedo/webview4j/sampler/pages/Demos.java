@@ -1,4 +1,4 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

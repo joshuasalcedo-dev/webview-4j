@@ -1,4 +1,4 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.components.Element;
@@ -21,7 +21,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
- * The gallery's pages, each one a component (or a few that go together) working, the Java that makes it, and the
+ * The Sampler's pages, each one a component (or a few that go together) working, the Java that makes it, and the
  * component classes it shows. Each category of components adds its pages from a {@link Demos} of its own.
  */
 public final class Gallery {
@@ -46,7 +46,7 @@ public final class Gallery {
     }
 
     /**
-     * Adds a page. {@code covers} are the component classes it shows: the gallery's test fails while a component
+     * Adds a page. {@code covers} are the component classes it shows: the Sampler's test fails while a component
      * class has no page covering it.
      */
     public void page(String section, String name, Supplier<Component<?>> demo, String java, Class<?>... covers) {

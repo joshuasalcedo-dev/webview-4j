@@ -1,4 +1,4 @@
-package example.notes.gallery;
+package io.joshuasalcedo.webview4j.sampler.pages;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
@@ -18,7 +18,7 @@ import io.joshuasalcedo.webview4j.ui.components.valueobject.*;
 import java.util.Optional;
 import java.util.function.Function;
 
-/** The gallery's pages: Value objects as fields and as text: email, phone, link, date, percentage, IBAN, card number, country, currency, language. */
+/** The Sampler's pages: Value objects as fields and as text: email, phone, link, date, percentage, IBAN, card number, country, currency, language. */
 final class ValueObjectDemos implements Demos {
 
     // Each field keeps what was typed, its value and its error: the page draws them again after every change.

@@ -1,9 +1,9 @@
-package example.notes;
+package io.joshuasalcedo.webview4j.sampler;
 
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
-import example.notes.gallery.Demos;
-import example.notes.gallery.Gallery;
+import io.joshuasalcedo.webview4j.sampler.pages.Demos;
+import io.joshuasalcedo.webview4j.sampler.pages.Gallery;
 import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.Screen;
 import io.joshuasalcedo.webview4j.ui.Ui;
@@ -15,10 +15,10 @@ import java.util.Map;
 
 /**
  * Every webview-4j component, working, written only in Java: a side bar of them by category, and for each one the
- * component itself and the Java that makes it. The pages are in {@code example.notes.gallery}, a file per category;
- * a component with no page yet is listed under "No demo yet". Open it with {@code Ui.open(app, new GalleryScreen())}.
+ * component itself and the Java that makes it. The pages are in {@code io.joshuasalcedo.webview4j.sampler.pages}, a file per category;
+ * a component with no page yet is listed under "No demo yet". Open it with {@code Ui.open(app, new SamplerScreen())}.
  */
-public final class GalleryScreen implements Screen {
+public final class SamplerScreen implements Screen {
 
     private final Gallery gallery = new Gallery();
     private final List<Class<?>> missing = gallery.missing();
@@ -60,12 +60,12 @@ public final class GalleryScreen implements Screen {
                         surface("The Java", code(page.java(), "java"))).padding(24).gap(16).scroll()
                 : column(
                         text(selected).variant(TextVariant.LARGE_TITLE),
-                        text("No demo yet: add a page that covers it in example.notes.gallery.").tone(Tone.SECONDARY)).padding(24).gap(16);
+                        text("No demo yet: add a page that covers it in io.joshuasalcedo.webview4j.sampler.pages.").tone(Tone.SECONDARY)).padding(24).gap(16);
 
         return frame(split(sidebar, content))
                 .platform(platform)
                 .scheme(theme)
-                .titleBar(titleBar("Component gallery"))
+                .titleBar(titleBar("webview-4j Sampler"))
                 .toolbar(toolbar(selected,
                         spacer(),
                         segmented("Look", Demos.ordered("AUTO", "This system", "WINDOWS", "Windows 11", "MAC", "macOS"))
@@ -79,8 +79,9 @@ public final class GalleryScreen implements Screen {
                                 + (gallery.covered().size() + missing.size()) + " components")));
     }
 
-    /** Opens the gallery on its own: {@code ./gradlew run -Pgallery}. */
-    static void open(io.joshuasalcedo.webview4j.App app) {
-        Ui.open(app, new GalleryScreen(), o -> o.title("Component gallery").size(1180, 780).minSize(760, 480).decorations(false));
+    /** Opens the gallery on its own: {@code ./gradlew run}. */
+    public static java.util.concurrent.CompletableFuture<io.joshuasalcedo.webview4j.ui.UiWindow> open(io.joshuasalcedo.webview4j.App app) {
+        return Ui.open(app, new SamplerScreen(), o -> o.title("webview-4j Sampler").size(1180, 780).minSize(760, 480)
+                .decorations(false).remember("sampler"));
     }
 }
