@@ -55,6 +55,12 @@ public class WebView4jProperties {
      */
     private Boolean apiExplorer;
 
+    /** A desktop client's server ({@code @WebViewApplication}): the base URL of every HTTP service client it imports. */
+    private String clientUrl;
+
+    public String getClientUrl() { return clientUrl; }
+    public void setClientUrl(String clientUrl) { this.clientUrl = clientUrl; }
+
     /** Where the description is on the app's own server. Unset: the first of /v3/api-docs, /openapi.json, /q/openapi, /openapi that is one. */
     private String apiDocs;
 

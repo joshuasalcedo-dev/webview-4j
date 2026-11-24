@@ -226,6 +226,37 @@ public final class Ui {
         return new ListItem().prop("title", title);
     }
 
+    /**
+     * Pages of a long list: Previous, the page numbers (the first, the last and those around {@code page}), Next.
+     * {@code page} counts from 1. With a {@link Router}, keep the page in the query:
+     * <pre>{@code
+     * int n = page.queryInt("page", 1);
+     * pagination(n, pages, next -> page.navigate(page.withQuery("page", next)))
+     * }</pre>
+     */
+    public static Box pagination(int page, int pages, java.util.function.IntConsumer go) {
+        Objects.requireNonNull(go, "go");
+        int last = Math.max(1, pages);
+        int current = Math.max(1, Math.min(page, last));
+        List<Component<?>> parts = new ArrayList<>();
+        parts.add(button("Previous").subtle().disabled(current <= 1).onClick(() -> go.accept(current - 1)).key("previous"));
+        int shownBefore = 0;
+        for (int n = 1; n <= last; n++) {
+            boolean show = n == 1 || n == last || Math.abs(n - current) <= 2;
+            if (!show) {
+                if (shownBefore != -1) parts.add(text("…").tone(Tone.SECONDARY).key("gap" + n));
+                shownBefore = -1;
+                continue;
+            }
+            shownBefore = n;
+            int target = n;
+            Button b = button(String.valueOf(n)).key("page" + n).onClick(() -> go.accept(target));
+            parts.add(n == current ? b.accent() : b.subtle());
+        }
+        parts.add(button("Next").subtle().disabled(current >= last).onClick(() -> go.accept(current + 1)).key("next"));
+        return row(parts).gap(4).prop("role", "navigation");
+    }
+
     /** A coloured, copyable snippet of code. */
     public static CodeBlock code(String code, String language) {
         return new CodeBlock().prop("code", code).prop("language", language);

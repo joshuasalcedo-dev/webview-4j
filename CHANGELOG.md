@@ -29,6 +29,8 @@
 - devtools `ApiExplorer`: an API from its OpenAPI description (Spring's /v3/api-docs, any server, local or not): every endpoint with example values, sent from Java; every endpoint at once; a `MockServer` that answers from the description; the project's JUnit tests run from a button (`TestRunner`)
 - `Json` is public: a small JSON reader and writer
 - `webview-4j-spring-boot-starter`: a Spring Boot app opens in a native window when it is ready, with no code: titled after the app, its page at `/`, the API explorer found by itself (as the window, for an API with no page); `webview4j.*` overrides; quiet while tests run; `App` and `WebView4jWindow` beans
+- `Router`, `PageView`, `LayoutView`, `PageContext`: apps of several pages the way Next.js does them: pages at paths with slugs (`/users/{id}`, `/docs/{*rest}`), nested layouts, query parameters, back and forward, `load(...)` for slow data, each page's errors kept to it, "not found"; a default frame with the navigation; `pagination(...)`
+- `@WebViewApplication` (with `WebViewApplications.run`): a desktop client of a server; its `@Page` and `@Layout` beans are the main window; the `@HttpExchange` interfaces it imports (`@ImportHttpServices`, `webview4j.client-url`) are its clients, and in development a second window shows each endpoint as a form, checked with Jakarta Validation and sent for real
 - The build reuses a native library already built from the current Rust sources instead of running cargo again (`-PrebuildNative` forces it)
 
 ## 0.1.0 — 2026-10-21

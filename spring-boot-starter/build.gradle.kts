@@ -20,12 +20,17 @@ val springBoot = "4.2.0"
 dependencies {
     api(project(":core"))
     api("org.springframework.boot:spring-boot-autoconfigure:$springBoot")
-    // The API explorer, when the app has devtools too (webview4j.api-explorer=true).
+    // The API explorer, when the app has devtools too.
     compileOnly(project(":devtools"))
+    // A desktop client of a server (@WebViewApplication): Spring's HTTP service clients, and Jakarta Validation to
+    // check a call before it is sent. The app brings them; the starter works without them.
+    compileOnly("org.springframework:spring-web:7.1.0")
+    compileOnly("jakarta.validation:jakarta.validation-api:3.1.1")
 
     testImplementation(project(":devtools"))
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc:$springBoot")
     testImplementation("org.springframework.boot:spring-boot-starter-test:$springBoot")
+    testImplementation("org.springframework.boot:spring-boot-starter-validation:$springBoot")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

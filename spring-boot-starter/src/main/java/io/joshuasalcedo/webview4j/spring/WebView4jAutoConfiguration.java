@@ -18,6 +18,7 @@ import org.springframework.util.ClassUtils;
 @AutoConfiguration
 @Conditional(WebView4jAutoConfiguration.Enabled.class)
 @EnableConfigurationProperties(WebView4jProperties.class)
+@org.springframework.context.annotation.Import(ClientUrlConfiguration.class)
 public class WebView4jAutoConfiguration {
 
     @Bean(destroyMethod = "close")

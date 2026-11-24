@@ -67,6 +67,21 @@ public class WebView4jWindow implements ApplicationListener<ApplicationReadyEven
                 : environment.getProperty("spring.application.name", "App");
         boolean ownServer = properties.getUrl() == null || properties.getUrl().isBlank();
 
+        if (ownServer && environment.getProperty("local.server.port") == null) {
+            // No web server of its own: a desktop client (@WebViewApplication), made from its screens and clients.
+            // The main window: the app's pages; in development, the developer window beside it.
+            boolean development = development(environment, context);
+            var router = io.joshuasalcedo.webview4j.spring.client.PagesWindow.router(context, title, development);
+            watch(io.joshuasalcedo.webview4j.spring.client.PagesWindow.open(app, router,
+                    properties.getWidth(), properties.getHeight(), properties.isHeadless()), context);
+            // The developer window needs Spring's HTTP service clients (spring-web); an app of pages only has none.
+            if (development && io.joshuasalcedo.webview4j.spring.client.ClientWindow.available()) {
+                io.joshuasalcedo.webview4j.spring.client.ClientWindow.open(app, context, title + ": developer",
+                        properties.getWidth(), properties.getHeight(), properties.isHeadless());
+            }
+            return;
+        }
+
         // What the app has: a page to show, and a description of its API.
         boolean page = !ownServer || properties.getPath() != null || isPage(server(environment) + "/");
         boolean wantExplorer = !Boolean.FALSE.equals(properties.getApiExplorer()) && ApiExplorerLauncher.available();
@@ -88,6 +103,11 @@ public class WebView4jWindow implements ApplicationListener<ApplicationReadyEven
             // An API with no page: the API explorer is the app's window.
             main = ApiExplorerLauncher.open(app, docs.get(), title, properties.isHeadless());
         }
+        watch(main, context);
+    }
+
+    /** The app's window: kept for view(), and closing it stops the app (webview4j.quit-on-close). */
+    private void watch(CompletableFuture<View> main, ConfigurableApplicationContext context) {
         main.whenComplete((opened, error) -> {
             if (error != null) {
                 LOG.log(System.Logger.Level.ERROR, "the app's window could not open", error);
@@ -101,6 +121,23 @@ public class WebView4jWindow implements ApplicationListener<ApplicationReadyEven
                         System.exit(SpringApplication.exit(context))));
             }
         });
+    }
+
+    /**
+     * Whether the app runs in development: {@code webview4j.dev} when set; otherwise whether it runs from compiled
+     * classes (an IDE, {@code spring-boot:run}, {@code bootRun}) rather than a packaged jar.
+     */
+    static boolean development(Environment environment, ConfigurableApplicationContext context) {
+        String dev = environment.getProperty("webview4j.dev");
+        if (dev != null) return Boolean.parseBoolean(dev);
+        if (Boolean.getBoolean("webview4j.dev") || "true".equalsIgnoreCase(System.getenv("WEBVIEW4J_DEV"))) return true;
+        for (String name : context.getBeanNamesForAnnotation(org.springframework.boot.autoconfigure.SpringBootApplication.class)) {
+            Class<?> type = org.springframework.aop.support.AopUtils.getTargetClass(context.getBean(name));
+            var source = type.getProtectionDomain().getCodeSource();
+            if (source != null && source.getLocation() != null) return !source.getLocation().getPath().endsWith(".jar")
+                    && !source.getLocation().getPath().contains(".jar!");
+        }
+        return false;
     }
 
     /** Whether {@code url} answers with a page (HTML), as a browser would ask for it. */
