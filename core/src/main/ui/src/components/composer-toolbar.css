@@ -1,0 +1,269 @@
+/* The composer's row of tools (format, emoji, attach, GIF, mention, voice, more), and its formatting bar. */
+
+.nt-ctoolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nt-ctoolbar-spacer {
+  flex: 1;
+}
+
+.nt-ctool-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nt-ctool {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-ctool svg {
+  width: 17px;
+  height: 17px;
+}
+
+.nt-ctool:hover:not(:disabled) {
+  color: var(--nt-text);
+  background: var(--nt-subtle-hover);
+}
+
+.nt-ctool[aria-pressed="true"] {
+  color: var(--nt-accent);
+  background: var(--nt-subtle-pressed);
+}
+
+.nt-ctool:disabled {
+  color: var(--nt-text-disabled);
+}
+
+/* A Mac: Messages-like, smaller and quieter. */
+.nt-root[data-platform="mac"] .nt-ctool {
+  width: 26px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.nt-root[data-platform="mac"] .nt-ctool svg {
+  width: 15px;
+  height: 15px;
+}
+
+.nt-ctool-popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  padding: 6px;
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius-large);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.nt-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 32px);
+  gap: 2px;
+}
+
+.nt-emoji-grid button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 18px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: default;
+}
+
+.nt-emoji-grid button:hover,
+.nt-emoji-grid button:focus-visible {
+  background: var(--nt-subtle-hover);
+}
+
+/* Voice: while recording, a red dot and the time beside the button. */
+.nt-voice-rec[data-recording] .nt-ctool {
+  color: #ffffff;
+  background: var(--nt-error);
+}
+
+.nt-voice-rec-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--nt-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--nt-error);
+}
+
+.nt-voice-rec-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--nt-error);
+  border-radius: 999px;
+  animation: nt-rec 1s infinite ease-in-out;
+}
+
+@keyframes nt-rec {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-voice-rec-dot {
+    animation: none;
+  }
+}
+
+/* The formatting bar: markdown marks around the selection. */
+.nt-formatbar {
+  display: flex;
+  gap: 2px;
+  padding: 0 2px 4px;
+  border-bottom: 1px solid var(--nt-separator, var(--nt-surface-border));
+}
+
+.nt-formatbar button {
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
+  font: inherit;
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.nt-formatbar button:hover {
+  color: var(--nt-text);
+  background: var(--nt-subtle-hover);
+}
+
+/* With tools, Windows puts Send at the end of the tools row (Teams); the send button sits on the row. */
+.nt-composer[data-tools] .nt-ctoolbar {
+  padding: 2px 2px 0;
+}
+
+.nt-send-wrap {
+  display: inline-flex;
+}
+
+.nt-ctool {
+  position: relative;
+}
+
+.nt-ctool[aria-disabled="true"] {
+  color: var(--nt-text-disabled);
+}
+
+.nt-ctool[aria-disabled="true"]:hover {
+  background: transparent;
+}
+
+.nt-ctool-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  color: var(--nt-on-accent);
+  background: var(--nt-accent);
+  border-radius: 999px;
+}
+
+.nt-ctool-badge[data-dot] {
+  min-width: 8px;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+}
+
+.nt-ctoolbar-end {
+  display: inline-flex;
+  margin-left: 4px;
+}
+
+.nt-gif,
+.nt-mention {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 260px;
+}
+
+.nt-gif-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.nt-gif-grid button {
+  padding: 0;
+  overflow: hidden;
+  background: var(--nt-subtle-hover);
+  border: none;
+  border-radius: 4px;
+  aspect-ratio: 1;
+}
+
+.nt-gif-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nt-gif-note {
+  grid-column: 1 / -1;
+  padding: 8px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-mention-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.nt-mention-list [role="option"] {
+  padding: 5px 8px;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-mention-list [aria-selected="true"] {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-tipform {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 240px;
+}

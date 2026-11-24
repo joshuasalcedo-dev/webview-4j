@@ -28,6 +28,8 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '25' }
       - uses: gradle/actions/setup-gradle@v4
+      # core's jar carries @webview4j/ui, built with bun
+      - uses: oven-sh/setup-bun@v2
       # The tests open real (headless) windows: on Linux GTK still needs a display, so a virtual one.
       - run: ${{ runner.os == 'Linux' && 'xvfb-run -a ' || '' }}./gradlew build --console=plain
         shell: bash

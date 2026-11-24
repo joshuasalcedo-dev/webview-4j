@@ -1,0 +1,1656 @@
+/*
+ * The chat kit: conversation list, header, messages, composer bars.
+ * Windows: Teams / Phone Link (Fluent): own messages in a light accent tint, others on the card colour,
+ * small corners. macOS: Messages: own messages filled with the accent colour in white, others grey, round
+ * capsules whose corners tighten where a run of messages joins.
+ */
+
+.nt-root {
+  --nt-chat-own: color-mix(in srgb, var(--nt-accent) 16%, var(--nt-surface));
+  --nt-chat-own-text: var(--nt-text);
+  --nt-chat-other: var(--nt-surface);
+  --nt-chat-other-text: var(--nt-text);
+  --nt-chat-online: #13a10e;
+}
+
+.nt-root[data-platform="mac"] {
+  --nt-chat-own: var(--nt-accent);
+  --nt-chat-own-text: #ffffff;
+  --nt-chat-other: #e9e9eb;
+  --nt-chat-online: #34c759;
+}
+
+.nt-root[data-platform="mac"][data-theme="dark"] {
+  --nt-chat-other: #3a3a3c;
+  --nt-chat-online: #30d158;
+}
+
+.nt-root[data-platform="windows"][data-theme="dark"] {
+  --nt-chat-own: color-mix(in srgb, var(--nt-accent) 22%, var(--nt-surface));
+  --nt-chat-online: #6ccb5f;
+}
+
+.nt-chat-empty {
+  padding: 32px 16px;
+  color: var(--nt-text-secondary);
+  text-align: center;
+}
+
+/* --- badges and the online dot ---------------------------------------------------------------- */
+
+.nt-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--nt-on-accent);
+  background: var(--nt-accent);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nt-badge[data-muted] {
+  color: var(--nt-window);
+  background: var(--nt-text-disabled);
+}
+
+.nt-badge-dot {
+  min-width: 10px;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+}
+
+.nt-conv-avatar {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.nt-online-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
+  background: var(--nt-chat-online);
+  border: 2px solid var(--nt-window);
+  border-radius: 999px;
+}
+
+/* --- ConversationList --------------------------------------------------------------------------- */
+
+.nt-convlist {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.nt-convlist-head {
+  display: flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+}
+
+.nt-convlist-head .nt-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.nt-convlist-rows {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.nt-conv.nt-list-item {
+  gap: 10px;
+}
+
+.nt-conv .nt-list-item-text {
+  min-width: 0;
+}
+
+.nt-conv-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nt-conv-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nt-conv[data-unread] .nt-conv-name {
+  font-weight: 600;
+}
+
+.nt-conv-mark {
+  display: inline-grid;
+  flex: none;
+  color: var(--nt-text-secondary);
+}
+
+.nt-conv-mark svg {
+  width: 12px;
+  height: 12px;
+}
+
+.nt-conv-preview {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nt-conv-preview[data-typing] {
+  color: var(--nt-accent);
+  font-style: italic;
+}
+
+.nt-conv-draft {
+  color: var(--nt-error);
+}
+
+.nt-conv-you {
+  color: var(--nt-text);
+}
+
+.nt-conv-attachment {
+  display: inline-grid;
+  margin-right: 3px;
+  vertical-align: -2px;
+}
+
+.nt-conv-attachment svg {
+  width: 13px;
+  height: 13px;
+}
+
+.nt-conv-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  align-self: stretch;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.nt-conv-time {
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+  white-space: nowrap;
+}
+
+.nt-conv[data-unread] .nt-conv-time {
+  color: var(--nt-accent);
+}
+
+/* A chosen row on a Mac is accent-filled: its contents take the accent surface's tokens (see the own bubble). */
+
+/* --- ChatHeader --------------------------------------------------------------------------------- */
+
+.nt-chatheader {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 52px;
+  padding: 0 8px 0 12px;
+}
+
+.nt-titlebar .nt-chatheader {
+  flex: 1;
+  align-self: stretch;
+  height: auto;
+  padding-left: 4px;
+}
+
+/* In a title bar the header is the title: the bar grows to its two lines and drops its own title. */
+.nt-titlebar:has(.nt-chatheader) .nt-titlebar-content {
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+  margin-left: 0;
+}
+
+.nt-root[data-platform="windows"] .nt-titlebar:has(.nt-chatheader) {
+  height: 48px;
+}
+
+.nt-root[data-platform="mac"] .nt-titlebar:has(.nt-chatheader) {
+  height: 52px;
+}
+
+.nt-root[data-platform="mac"]
+  .nt-titlebar:has(.nt-chatheader)
+  .nt-titlebar-title {
+  display: none;
+}
+
+.nt-chatheader-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 6px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-chatheader-who:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-chatheader-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nt-chatheader-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.nt-chatheader-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nt-chatheader-status {
+  overflow: hidden;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nt-chatheader-status[data-online] {
+  color: var(--nt-chat-online);
+}
+
+.nt-chatheader-status[data-typing] {
+  color: var(--nt-accent);
+  font-style: italic;
+}
+
+.nt-chatheader-spacer {
+  flex: 1;
+  align-self: stretch;
+}
+
+.nt-chatheader-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+/* Windows' header buttons are icon-only here (Teams), like a Mac's. */
+.nt-root[data-platform="windows"]
+  .nt-chatheader-actions
+  .nt-tool
+  .nt-tool-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.nt-root[data-platform="windows"] .nt-chatheader-actions .nt-tool {
+  min-width: 36px;
+  height: 32px;
+  padding: 0 9px;
+}
+
+/* --- MessageList ---------------------------------------------------------------------------------- */
+
+.nt-messages {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* The list is a size container: pictures, voice notes, cards and code are sized by its width (cqi), so a
+   narrow window never gets a message wider than itself. */
+.nt-messages-scroll {
+  flex: 1;
+  min-height: 0;
+  container-type: inline-size;
+  padding: 8px 16px 12px;
+  overflow-y: auto;
+  overflow-anchor: none;
+}
+
+.nt-messages-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+.nt-messages-older {
+  min-height: 24px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+  text-align: center;
+}
+
+.nt-day-line,
+.nt-unread-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 6px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-day-line::before,
+.nt-day-line::after,
+.nt-unread-line::before,
+.nt-unread-line::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--nt-separator, var(--nt-surface-border));
+}
+
+.nt-unread-line {
+  color: var(--nt-error);
+  font-weight: 600;
+}
+
+.nt-unread-line::before,
+.nt-unread-line::after {
+  background: color-mix(in srgb, var(--nt-error) 60%, transparent);
+}
+
+.nt-root[data-platform="mac"] .nt-day-line {
+  font-weight: 600;
+}
+
+.nt-root[data-platform="mac"] .nt-day-line::before,
+.nt-root[data-platform="mac"] .nt-day-line::after {
+  background: transparent;
+}
+
+.nt-system-message {
+  align-self: center;
+  max-width: 80%;
+  margin: 8px 0;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+  text-align: center;
+}
+
+/* --- one message ------------------------------------------------------------------------------------ */
+
+.nt-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.nt-msg[data-position="first"],
+.nt-msg[data-position="single"] {
+  margin-top: 10px;
+}
+
+.nt-msg[data-mine] {
+  justify-content: flex-end;
+}
+
+.nt-msg-avatar {
+  flex: none;
+  width: 28px;
+}
+
+.nt-msg-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: min(72%, 560px);
+}
+
+.nt-msg[data-mine] .nt-msg-column {
+  align-items: flex-end;
+}
+
+.nt-msg-name {
+  margin: 0 0 2px 4px;
+  line-height: 16px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-msg-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.nt-msg[data-mine] .nt-msg-row {
+  flex-direction: row-reverse;
+}
+
+.nt-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px 11px;
+  color: var(--nt-chat-other-text);
+  background: var(--nt-chat-other);
+  outline: none;
+  overflow-wrap: anywhere;
+  transition: box-shadow 200ms ease;
+}
+
+.nt-msg[data-mine] .nt-bubble {
+  color: var(--nt-chat-own-text);
+  background: var(--nt-chat-own);
+}
+
+/* A Mac's own bubble is filled with the accent colour: inside it, text is white and everything that would
+   use the accent or a grey (links, quotes, file chips, the voice note's button, controls) uses white-alpha
+   instead. --nt-chat-own was resolved at the root, so it is still the accent colour here. */
+.nt-root[data-platform="mac"] .nt-msg[data-mine] .nt-bubble,
+.nt-root[data-platform="mac"] .nt-conv[aria-selected="true"] > * {
+  --nt-text: #ffffff;
+  --nt-text-secondary: rgba(255, 255, 255, 0.82);
+  --nt-text-disabled: rgba(255, 255, 255, 0.55);
+  --nt-accent: #ffffff;
+  --nt-on-accent: var(--nt-chat-own);
+  --nt-surface: rgba(255, 255, 255, 0.16);
+  --nt-surface-border: rgba(255, 255, 255, 0.28);
+  --nt-group: rgba(255, 255, 255, 0.16);
+  --nt-group-border: rgba(255, 255, 255, 0.28);
+  --nt-control: rgba(255, 255, 255, 0.2);
+  --nt-control-hover: rgba(255, 255, 255, 0.26);
+  --nt-control-border: rgba(255, 255, 255, 0.3);
+  --nt-subtle-hover: rgba(255, 255, 255, 0.14);
+  --nt-subtle-pressed: rgba(255, 255, 255, 0.22);
+  --nt-separator: rgba(255, 255, 255, 0.3);
+  --nt-error: #ffd5d1;
+  /* Pills inside: white on translucent white, whatever their own colour. */
+  --nt-pill-grey: #ffffff;
+  --nt-pill-red: #ffffff;
+  --nt-pill-orange: #ffffff;
+  --nt-pill-yellow: #ffffff;
+  --nt-pill-green: #ffffff;
+  --nt-pill-teal: #ffffff;
+  --nt-pill-blue: #ffffff;
+  --nt-pill-purple: #ffffff;
+  --nt-pill-pink: #ffffff;
+  color: var(--nt-text);
+}
+
+/* A filled pill on an accent surface: white with the accent's colour for its text. */
+.nt-root[data-platform="mac"] .nt-msg[data-mine] .nt-bubble .nt-pill[data-variant="filled"],
+.nt-root[data-platform="mac"] .nt-conv[aria-selected="true"] .nt-pill[data-variant="filled"] {
+  color: var(--nt-chat-own);
+}
+
+/* The name keeps its room; pills get what is left (and measure themselves into it). */
+.nt-conv-name,
+.nt-chatheader-name {
+  flex: 0 1 auto;
+}
+
+.nt-conv-mark {
+  flex: none;
+}
+
+.nt-msg[data-state="sending"] .nt-bubble {
+  opacity: 0.75;
+}
+
+.nt-msg[data-state="failed"] .nt-bubble {
+  box-shadow: 0 0 0 1px var(--nt-error);
+}
+
+.nt-bubble:focus-visible {
+  box-shadow: 0 0 0 2px var(--nt-focus, var(--nt-accent));
+}
+
+.nt-msg-lit .nt-bubble {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nt-accent) 55%, transparent);
+}
+
+.nt-bubble[data-media] {
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.nt-msg-text {
+  white-space: pre-wrap;
+}
+
+/* Code, files and link cards keep their own colours inside a coloured bubble (a Mac's blue one). */
+/* Code sits under its bubble on its own surface (its colours are a code theme's, not the bubble's). */
+.nt-msg-code {
+  width: min(520px, 78cqi);
+  max-width: 100%;
+  margin-top: 4px;
+}
+
+/* Windows: Teams-like cards with small corners; others get the card's thin border. */
+.nt-root[data-platform="windows"] .nt-bubble {
+  border-radius: 6px;
+}
+
+.nt-root[data-platform="windows"]
+  .nt-msg:not([data-mine])
+  .nt-bubble:not([data-media]) {
+  box-shadow:
+    0 0 0 1px var(--nt-surface-border),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.nt-root[data-platform="windows"] .nt-msg-lit .nt-bubble {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nt-accent) 55%, transparent);
+}
+
+/* macOS: Messages' capsules; where a run joins, the corners on the sender's side tighten. */
+.nt-root[data-platform="mac"] .nt-bubble {
+  padding: 6px 12px;
+  border-radius: 18px;
+}
+
+.nt-root[data-platform="mac"]
+  .nt-msg:not([data-mine])[data-position="first"]
+  .nt-bubble {
+  border-bottom-left-radius: 6px;
+}
+
+.nt-root[data-platform="mac"]
+  .nt-msg:not([data-mine])[data-position="middle"]
+  .nt-bubble {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+.nt-root[data-platform="mac"]
+  .nt-msg:not([data-mine])[data-position="last"]
+  .nt-bubble {
+  border-top-left-radius: 6px;
+}
+
+.nt-root[data-platform="mac"]
+  .nt-msg[data-mine][data-position="first"]
+  .nt-bubble {
+  border-bottom-right-radius: 6px;
+}
+
+.nt-root[data-platform="mac"]
+  .nt-msg[data-mine][data-position="middle"]
+  .nt-bubble {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.nt-root[data-platform="mac"]
+  .nt-msg[data-mine][data-position="last"]
+  .nt-bubble {
+  border-top-right-radius: 6px;
+}
+
+/* --- the quoted message a reply answers ------------------------------------------------------------ */
+
+.nt-msg-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: var(--nt-small);
+  color: inherit;
+  text-align: left;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border: none;
+  border-left: 3px solid var(--nt-accent);
+  border-radius: 4px;
+  cursor: default;
+}
+
+.nt-msg-quote-name {
+  font-weight: 600;
+}
+
+.nt-msg-quote-text {
+  display: -webkit-box;
+  overflow: hidden;
+  opacity: 0.85;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* --- pictures, voice, link card ------------------------------------------------------------------------ */
+
+.nt-msg-images {
+  display: grid;
+  gap: 2px;
+  width: min(300px, 62cqi);
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.nt-bubble:not([data-media]) .nt-msg-images {
+  margin: -3px -7px 0;
+  width: calc(100% + 14px);
+  min-width: min(220px, 55cqi);
+  border-radius: 4px;
+}
+
+.nt-msg-images[data-count="2"],
+.nt-msg-images[data-count="4"] {
+  grid-template-columns: 1fr 1fr;
+}
+
+.nt-msg-images[data-count="3"] {
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.nt-msg-images[data-count="3"] .nt-msg-image:first-child {
+  grid-row: span 2;
+}
+
+.nt-msg-image {
+  position: relative;
+  display: block;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--nt-subtle-hover);
+  border: none;
+  cursor: default;
+}
+
+.nt-msg-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 320px;
+  min-height: 110px;
+  object-fit: cover;
+}
+
+.nt-msg-images:not([data-count="1"]) .nt-msg-image img {
+  aspect-ratio: 1;
+}
+
+.nt-msg-image-more {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.nt-voice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(240px, 55cqi);
+}
+
+.nt-voice-play {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--nt-on-accent);
+  background: var(--nt-accent);
+  border: none;
+  border-radius: 999px;
+  cursor: default;
+}
+
+.nt-voice-play svg {
+  width: 14px;
+  height: 14px;
+}
+
+.nt-voice-bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 999px;
+}
+
+.nt-voice-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: currentColor;
+  border-radius: inherit;
+}
+
+.nt-voice-time {
+  flex: none;
+  font-size: var(--nt-small);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.nt-linkcard {
+  display: flex;
+  flex-direction: column;
+  max-width: min(320px, 62cqi);
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.nt-linkcard img {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+}
+
+.nt-linkcard-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.nt-linkcard-site {
+  font-size: var(--nt-small);
+  opacity: 0.75;
+}
+
+.nt-linkcard-title {
+  font-weight: 600;
+}
+
+.nt-linkcard-description {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--nt-small);
+  opacity: 0.85;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.nt-bubble .nt-filechip {
+  max-width: 100%;
+}
+
+/* --- reactions, time, delivery ----------------------------------------------------------------------- */
+
+.nt-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.nt-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 7px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: 999px;
+  cursor: default;
+}
+
+.nt-reaction[data-mine] {
+  background: color-mix(in srgb, var(--nt-accent) 16%, var(--nt-surface));
+  border-color: color-mix(in srgb, var(--nt-accent) 60%, transparent);
+}
+
+.nt-reaction:hover:not(:disabled) {
+  border-color: var(--nt-accent);
+}
+
+.nt-reaction-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.nt-msg-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 3px 4px 0;
+  font-size: 11px;
+  color: var(--nt-text-secondary);
+}
+
+.nt-msg-pinned svg,
+.nt-msg-state svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+}
+
+.nt-msg-state[data-state="read"] {
+  color: var(--nt-accent);
+}
+
+.nt-msg-state[data-state="failed"] {
+  color: var(--nt-error);
+}
+
+.nt-msg-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 3px 4px 0;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--nt-error);
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+.nt-msg-failed svg {
+  width: 13px;
+  height: 13px;
+}
+
+.nt-msg-failed:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* --- the bar on hover: react, reply, more ------------------------------------------------------------- */
+
+.nt-msg-hoverbar {
+  position: relative;
+  display: flex;
+  flex: none;
+  gap: 1px;
+  padding: 2px;
+  visibility: hidden;
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.nt-msg-row:hover .nt-msg-hoverbar,
+.nt-msg-row:focus-within .nt-msg-hoverbar,
+.nt-msg-hoverbar[data-open] {
+  visibility: visible;
+}
+
+.nt-msg-hoverbar > button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.nt-msg-hoverbar > button:hover {
+  color: var(--nt-text);
+  background: var(--nt-subtle-hover);
+}
+
+.nt-msg-hoverbar svg {
+  width: 15px;
+  height: 15px;
+}
+
+.nt-reaction-picker {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  z-index: 20;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+}
+
+.nt-reaction-picker[data-side="theirs"] {
+  left: 0;
+}
+
+.nt-reaction-picker[data-side="mine"] {
+  right: 0;
+}
+
+.nt-reaction-picker button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 18px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: default;
+  transition: transform 100ms ease;
+}
+
+.nt-reaction-picker button:hover,
+.nt-reaction-picker button:focus-visible {
+  background: var(--nt-subtle-hover);
+  transform: scale(1.15);
+  outline: none;
+}
+
+/* --- typing, jump to latest -------------------------------------------------------------------------- */
+
+.nt-typing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-left: 36px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-typing-dots {
+  display: inline-flex;
+  gap: 3px;
+  padding: 8px 10px;
+  background: var(--nt-chat-other);
+  border-radius: 999px;
+}
+
+.nt-typing-dots span {
+  width: 6px;
+  height: 6px;
+  background: var(--nt-text-secondary);
+  border-radius: 999px;
+  animation: nt-typing 1.2s infinite ease-in-out;
+}
+
+.nt-typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.nt-typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes nt-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-typing-dots span {
+    animation: none;
+  }
+}
+
+.nt-jump {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  cursor: default;
+}
+
+.nt-jump svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nt-jump .nt-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+}
+
+/* --- the composer's bars: replying to, editing ---------------------------------------------------------- */
+
+.nt-chatcomposer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nt-composer-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 10px;
+  border-left: 3px solid var(--nt-accent);
+  border-radius: 4px;
+  background: var(--nt-subtle-hover);
+}
+
+.nt-composer-context-icon {
+  display: grid;
+  color: var(--nt-accent);
+}
+
+.nt-composer-context-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nt-composer-context-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--nt-small);
+}
+
+.nt-composer-context-title {
+  font-weight: 600;
+  color: var(--nt-accent);
+}
+
+.nt-composer-context-quote {
+  overflow: hidden;
+  color: var(--nt-text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* --- conversation rows in their swipe wrappers; tags and filters ------------------------------------ */
+
+.nt-conv-swipe {
+  border-radius: var(--nt-radius);
+}
+
+.nt-conv-tags {
+  flex: 0 1 auto;
+  margin-left: 2px;
+}
+
+.nt-convlist-filters {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 8px 6px;
+}
+
+/* The keyboard's ring on a row sits inside it and follows its rounded corners, so the list's edge never
+   cuts it off. */
+.nt-root .nt-conv:focus-visible {
+  outline-offset: -2px;
+}
+
+.nt-messages-older {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 1px;
+}
+
+.nt-messages-older[data-shown] {
+  min-height: 24px;
+}
+
+.nt-messages-retry {
+  padding: 0;
+  font: inherit;
+  color: var(--nt-accent);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+/* Where the box to write in would be, when nothing can be sent here: the reason, quietly. */
+.nt-composer-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+  text-align: center;
+  background: var(--nt-subtle-hover);
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-composer-notice svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* --- slots above and below a bubble, on its side ------------------------------------------------- */
+
+.nt-msg-slot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+  margin: 4px 0 2px;
+}
+
+.nt-msg[data-mine] .nt-msg-slot {
+  justify-content: flex-end;
+}
+
+.nt-reaction-icon {
+  display: inline-grid;
+}
+
+.nt-reaction-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* --- paywall: paid content, locked --------------------------------------------------------------- */
+
+.nt-paywall {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nt-msg-images[data-blurred] img {
+  filter: blur(18px) saturate(1.2);
+  transform: scale(1.1);
+}
+
+.nt-msg-images[data-blurred] .nt-msg-image {
+  cursor: default;
+}
+
+.nt-paywall-lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: min(260px, 60cqi);
+  height: 120px;
+  color: var(--nt-text-secondary);
+  background: var(--nt-subtle-hover);
+  border-radius: 6px;
+}
+
+.nt-paywall-lock svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nt-paywall-unlock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--nt-on-accent);
+  background: var(--nt-accent);
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-paywall-unlock svg {
+  width: 14px;
+  height: 14px;
+}
+
+.nt-paywall-unlock:disabled {
+  opacity: 0.75;
+}
+
+.nt-root[data-platform="mac"] .nt-paywall-unlock {
+  border-radius: 999px;
+}
+
+.nt-category-count {
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.nt-category-more {
+  height: 22px;
+  padding: 0 9px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: 1px solid var(--nt-separator, var(--nt-surface-border));
+  border-radius: 999px;
+  cursor: default;
+}
+
+.nt-category-more[data-on] {
+  color: var(--nt-accent);
+  border-color: var(--nt-accent);
+}
+
+.nt-convlist-filters[data-platform-bar="mac"] {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+/* --- a tip: money sent, as its own card ----------------------------------------------------------- */
+
+.nt-bubble[data-tip] {
+  min-width: min(200px, 60cqi);
+}
+
+.nt-tip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.nt-tip-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--nt-text-secondary);
+}
+
+.nt-tip-head svg {
+  width: 15px;
+  height: 15px;
+  color: var(--nt-accent);
+}
+
+.nt-tip-amount {
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.nt-tip-note {
+  margin-top: 2px;
+  color: var(--nt-text-secondary);
+}
+
+/* Incoming: an accent-tinted card, with one shimmer as it arrives. */
+.nt-msg:not([data-mine]) .nt-bubble[data-tip] {
+  background: color-mix(in srgb, var(--nt-accent) 14%, var(--nt-chat-other));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--nt-accent) 35%, transparent);
+}
+
+.nt-tip[data-incoming]::after {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% -60%;
+  width: 40%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  transform: skewX(-15deg);
+  animation: nt-tip-shimmer 1.2s ease-out 0.2s 1 both;
+  pointer-events: none;
+}
+
+@keyframes nt-tip-shimmer {
+  to {
+    left: 130%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-tip[data-incoming]::after {
+    display: none;
+  }
+}
+
+/* --- ChatDetails --------------------------------------------------------------------------------- */
+
+.nt-details-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 16px;
+  text-align: center;
+}
+
+.nt-details-profile .nt-online-dot {
+  width: 16px;
+  height: 16px;
+  border-width: 3px;
+}
+
+.nt-details-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.nt-details-actions button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 64px;
+  padding: 8px 6px;
+  font: inherit;
+  font-size: var(--nt-small);
+  color: var(--nt-text);
+  background: var(--nt-subtle-hover);
+  border: none;
+  border-radius: var(--nt-radius-large);
+  cursor: default;
+}
+
+.nt-details-actions button svg {
+  width: 18px;
+  height: 18px;
+  color: var(--nt-accent);
+}
+
+.nt-details-actions button:hover {
+  background: var(--nt-subtle-pressed);
+}
+
+.nt-details-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: var(--nt-small);
+  color: var(--nt-accent);
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-details-small svg {
+  width: 12px;
+  height: 12px;
+}
+
+.nt-details-small:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-details-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nt-details-shared {
+  display: grid;
+  gap: 10px;
+}
+
+.nt-details-photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.nt-details-photos img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.nt-details-files {
+  display: grid;
+  gap: 6px;
+}
+
+.nt-details-files .nt-filechip {
+  width: 100%;
+}
+
+.nt-details-links,
+.nt-details-pinned {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nt-details-pinned button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--nt-text);
+  text-align: left;
+  background: var(--nt-subtle-hover);
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-details-pinned svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--nt-text-secondary);
+}
+
+.nt-details-pinned-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nt-details-pinned-time {
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-details-danger {
+  display: grid;
+  gap: 2px;
+  padding: 12px 8px 0;
+  border-top: 1px solid var(--nt-separator, var(--nt-surface-border));
+}
+
+.nt-details-danger button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--nt-error);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-details-danger button:hover {
+  background: color-mix(in srgb, var(--nt-error) 10%, transparent);
+}
+
+.nt-details-danger svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* --- ChatWindow: list | conversation | details ------------------------------------------------------ */
+
+.nt-chatwindow {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--nt-window);
+}
+
+.nt-chatwindow-body {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.nt-chatwindow-list {
+  flex: 0 0 clamp(200px, 30%, 300px);
+  min-height: 0;
+  border-right: 1px solid var(--nt-separator, var(--nt-surface-border));
+}
+
+.nt-chatwindow-main {
+  display: grid;
+  flex: 1;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.nt-chatwindow-messages {
+  grid-row: 2;
+  min-height: 0;
+}
+
+.nt-chatwindow-composer {
+  grid-row: 3;
+  padding: 6px 12px 12px;
+}
+
+.nt-chatwindow-none {
+  grid-row: 2;
+  align-self: center;
+}
+
+/* The Events story's log and notification box. */
+.nt-events-notes {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--nt-subtle-hover);
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-events-log {
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  font: 11px/15px var(--nt-mono, ui-monospace, monospace);
+  white-space: pre-wrap;
+  color: var(--nt-text-secondary);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius);
+  user-select: text;
+}
+
+/* The category row stays on one line (what doesn't fit is under More, measured). */
+.nt-convlist-filters {
+  position: relative;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.nt-category-ruler {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  display: inline-flex;
+  gap: 4px;
+  white-space: nowrap;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.nt-category-ruler-seg {
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.nt-category-more {
+  flex: none;
+  white-space: nowrap;
+}

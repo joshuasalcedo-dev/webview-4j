@@ -61,7 +61,21 @@ public final class App implements AutoCloseable {
     /** A request waiting for its reply: what it asked, for error messages, and when, for its timing. */
     private record Pending(String subject, long sentAt, CompletableFuture<Message> reply) {}
 
+    /**
+     * Where core's jar keeps {@code @webview4j/ui}, built: every window loads it from {@code <base>ui/}
+     * ({@link #UI_URL}). Not a package name, so the module system leaves it readable.
+     */
+    static final String UI_ROOT = "webview4j-ui";
+
+    /**
+     * Where a page finds webview-4j's own components, the {@code @webview4j/ui} kit, built into
+     * core's jar: {@code <UI_URL>ui.js} (the components, with React) and {@code <UI_URL>native.css}.
+     * Any page in any window may load them; no bundler is needed.
+     */
+    public static final String UI_URL = Assets.baseUrl() + "ui/";
+
     private App() {
+        assets.serve(UI_ROOT, App.class.getClassLoader());
         Thread.ofVirtual().name("webview4j-dispatcher").start(this::dispatch);
     }
 

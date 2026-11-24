@@ -1,0 +1,66 @@
+{
+  "name": "@webview4j/ui",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "webview-4j's native components: desktop controls that look like the system's own (Windows 11 / macOS, light or dark), for React. Plain CSS, no Tailwind.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joshuasalcedo-dev/webview-4j",
+    "directory": "core/src/main/ui"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    "./native.css": "./dist/styles/native.css",
+    "./components/*": {
+      "types": "./dist/types/src/components/*.d.ts",
+      "default": "./dist/components/*.js"
+    },
+    "./lib/*": {
+      "types": "./dist/types/src/lib/*.d.ts",
+      "default": "./dist/lib/*.js"
+    },
+    "./chat": {
+      "types": "./dist/types/src/components/chat/index.d.ts",
+      "default": "./dist/components/chat/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "bundle": "vite build -c vite.bundle.ts",
+    "typecheck": "tsc --noEmit",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build -o storybook-static"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "4.7.0",
+    "@tiptap/extension-placeholder": "3.31.4",
+    "@tiptap/pm": "3.31.4",
+    "@tiptap/react": "3.31.4",
+    "@tiptap/starter-kit": "3.31.4",
+    "cn": "^0.5.0",
+    "material-icon-theme": "5.38.1",
+    "monaco-editor": "0.57.0"
+  },
+  "devDependencies": {
+    "@storybook/react-vite": "10.6.2",
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "storybook": "10.6.2",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.4"
+  }
+}

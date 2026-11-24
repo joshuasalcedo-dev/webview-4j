@@ -11,6 +11,8 @@ your UI is a web page, your logic is Java.
 - **Java 25**, the Foreign Function & Memory API (no JNI), virtual threads for every callback
 - **The native library is inside the jar** for Windows x64, Linux x64, macOS x64 and Apple silicon: add the dependency and run
 - **Typed calls from the page**: `@WebViewController` classes become a TypeScript client at compile time (no reflection)
+- **Native-looking components**: `@webview4j/ui`, React controls that look like Windows 11 or macOS, built into the
+  jar for pages with no bundler, and on npm for apps with one
 - **Devtools**: a window beside your app with its log and live metrics while you develop
 
 ## Add it
@@ -108,6 +110,22 @@ in the page.
 Events go the other way: `view.emit("topic", data)`. `app.subscribe(LogRecord.class, ...)` hears the page's console,
 and its clicks, fetches and WebSockets when you turn them on (`view.capture(Capture.API, true)`).
 
+## Native components
+
+Core's jar carries `@webview4j/ui`, built: controls that look like the system's own (Windows 11 or macOS, light or
+dark as the system is set), React included. Any page in any window loads them from `App.UI_URL`, no bundler needed:
+
+```html
+<link rel="stylesheet" href="https://webview4j.localhost/ui/ui.css">   <!-- webview4j://localhost/ui/ on macOS and Linux -->
+<script type="module">
+  import { React, createRoot, NativeProvider, TitleBar, Button } from "https://webview4j.localhost/ui/ui.js"
+</script>
+```
+
+An app with a bundler imports them from npm instead (`@webview4j/ui/components/button`); see
+[core/src/main/ui](core/src/main/ui/README.md). In a window opened with `decorations(false)`, `TitleBar` is the
+window's title bar: dragging it moves the window, and its buttons minimize, maximize and close it, with no code.
+
 ## The same routes over HTTP
 
 ```java
@@ -136,7 +154,7 @@ DevWindow.attachIfDev(app);   // with -Dwebview4j.dev=true or WEBVIEW4J_DEV=true
 
 ## Build it yourself
 
-Needs Java 25 and Rust (cargo). On Linux also `libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev`.
+Needs Java 25, Rust (cargo) and [bun](https://bun.sh) (for the components). On Linux also `libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev`.
 
 ```shell
 ./gradlew build                 # the jar carries the native library for this machine

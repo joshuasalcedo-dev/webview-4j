@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { InvokeError, invoke, isWebView4j, listen } from "./index.ts";
+import { InvokeError, currentWindow, invoke, isWebView4j, listen } from "./index.ts";
 
 const BASE = "https://webview4j.localhost/";
 
@@ -48,6 +48,16 @@ describe("inside a webview-4j window", () => {
     requests[0]!.answer(new Response('{"name":"Ada"}', { status: 200 }));
     expect((await user).name).toBe("Ada");
     expect(isWebView4j()).toBe(true);
+  });
+
+  test("the page's window actions go to the native side over IPC", () => {
+    const posted: string[] = [];
+    (window as unknown as { ipc: { postMessage(m: string): void } }).ipc = { postMessage: (m) => posted.push(m) };
+    currentWindow.minimize();
+    currentWindow.toggleMaximize();
+    currentWindow.startDrag();
+    currentWindow.close();
+    expect(posted).toEqual(["WIN minimize", "WIN toggle-maximize", "WIN drag", "WIN close"]);
   });
 
   test("a failed command rejects with an InvokeError naming it, with its status", async () => {

@@ -1,0 +1,345 @@
+/*
+ * RichTextEditor: formatted text with a formatting bar. Windows: WordPad's and Notepad's formatting bar
+ * (subtle icon buttons, a paragraph style box) over a text field with the accent line when focused. Mac:
+ * TextEdit's format bar (compact, B I U and the others as joined segments) over a white text area with the
+ * focus ring.
+ */
+
+.nt-rt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nt-rt[data-fill] {
+  height: 100%;
+  min-height: 0;
+}
+
+.nt-rt-toolbar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.nt-rt-group {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nt-rt-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  padding: 0;
+  font: inherit;
+  color: var(--nt-text);
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+.nt-rt-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nt-rt-button:disabled {
+  color: var(--nt-text-disabled);
+}
+
+.nt-rt-style select {
+  min-width: 112px;
+}
+
+.nt-rt-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: var(--nt-rt-min, 160px);
+  overflow: auto;
+}
+
+.nt-rt[data-fill] .nt-rt-scroll {
+  min-height: 0;
+}
+
+/* TipTap's wrapper and the editable text inside it fill the area, so a click anywhere in it types. */
+.nt-rt-scroll > div {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+/* --- the text ------------------------------------------------------------------------------------------- */
+
+.nt-rt-content {
+  flex: 1 1 auto;
+  padding: 10px 12px;
+  font-family: var(--nt-font);
+  font-size: var(--nt-font-size);
+  line-height: 1.5;
+  color: var(--nt-text);
+  overflow-wrap: anywhere;
+  outline: none;
+  /* The window does not select its labels; text people write and read can be. */
+  user-select: text;
+  cursor: text;
+}
+
+.nt-rt[data-readonly] .nt-rt-content {
+  cursor: auto;
+}
+
+.nt-rt-content > :first-child {
+  margin-top: 0;
+}
+
+.nt-rt-content > :last-child {
+  margin-bottom: 0;
+}
+
+.nt-rt-content p {
+  margin: 0 0 0.6em;
+}
+
+.nt-rt-content h1,
+.nt-rt-content h2,
+.nt-rt-content h3 {
+  margin: 0.9em 0 0.4em;
+  font-weight: 600;
+}
+
+.nt-rt-content ul,
+.nt-rt-content ol {
+  margin: 0 0 0.6em;
+  padding-left: 1.6em;
+}
+
+.nt-rt-content li > p {
+  margin: 0 0 0.2em;
+}
+
+.nt-rt-content blockquote {
+  margin: 0 0 0.6em;
+  padding: 0 0 0 12px;
+  color: var(--nt-text-secondary);
+  border-left: 3px solid var(--nt-strong);
+}
+
+.nt-rt-content code {
+  padding: 1px 4px;
+  font-family:
+    ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--nt-subtle-hover);
+  border-radius: 4px;
+}
+
+.nt-rt-content pre {
+  margin: 0 0 0.6em;
+  padding: 10px 12px;
+  overflow: auto;
+  background: var(--nt-subtle-hover);
+  border-radius: var(--nt-radius);
+}
+
+.nt-rt-content pre code {
+  padding: 0;
+  font-size: 0.875em;
+  background: none;
+}
+
+.nt-rt-content a {
+  color: var(--nt-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.nt-rt-content hr {
+  margin: 1em 0;
+  border: none;
+  border-top: 1px solid var(--nt-strong);
+}
+
+/* The greyed hint while it is empty (TipTap marks the empty first paragraph). */
+.nt-rt-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--nt-text-secondary);
+  pointer-events: none;
+}
+
+/* --- Windows: WordPad / Notepad ------------------------------------------------------------------------- */
+
+.nt-root[data-platform="windows"] .nt-rt {
+  background: var(--nt-control);
+  border: 1px solid var(--nt-control-border);
+  border-bottom-color: var(--nt-input-bottom);
+  border-radius: var(--nt-radius);
+}
+
+.nt-root[data-platform="windows"] .nt-rt:focus-within {
+  background: var(--nt-input-focused);
+  border-bottom-color: var(--nt-accent);
+  box-shadow: inset 0 -1px 0 var(--nt-accent);
+}
+
+.nt-root[data-platform="windows"] .nt-rt[data-readonly] {
+  background: transparent;
+  border-bottom-color: var(--nt-control-border);
+  box-shadow: none;
+}
+
+.nt-root[data-platform="windows"] .nt-rt-toolbar {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--nt-control-border);
+}
+
+.nt-root[data-platform="windows"] .nt-rt-group + .nt-rt-group,
+.nt-root[data-platform="windows"] .nt-rt-style + .nt-rt-group,
+.nt-root[data-platform="windows"] .nt-rt-group + .nt-rt-style {
+  padding-left: 5px;
+  border-left: 1px solid var(--nt-control-border);
+}
+
+.nt-root[data-platform="windows"] .nt-rt-group {
+  gap: 2px;
+}
+
+.nt-root[data-platform="windows"] .nt-rt-button {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--nt-radius);
+}
+
+.nt-root[data-platform="windows"] .nt-rt-button:hover:not(:disabled) {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-rt-button:active:not(:disabled) {
+  background: var(--nt-subtle-pressed);
+}
+
+/* On: tinted with the accent, as WordPad's pressed bold. */
+.nt-root[data-platform="windows"] .nt-rt-button[aria-pressed="true"] {
+  color: var(--nt-accent);
+  background: color-mix(in srgb, var(--nt-accent) 14%, transparent);
+}
+
+.nt-root[data-platform="windows"] .nt-rt-content h1 {
+  font-size: 28px;
+  line-height: 36px;
+}
+
+.nt-root[data-platform="windows"] .nt-rt-content h2 {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.nt-root[data-platform="windows"] .nt-rt-content h3 {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+/* --- Mac: TextEdit -------------------------------------------------------------------------------------- */
+
+.nt-root[data-platform="mac"] .nt-rt {
+  background: var(--nt-input);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 0.5px var(--nt-input-border),
+    inset 0 0.5px 1px rgba(0, 0, 0, 0.06);
+}
+
+.nt-root[data-platform="mac"] .nt-rt:focus-within {
+  outline: 3.5px solid color-mix(in srgb, var(--nt-accent) 50%, transparent);
+  outline-offset: 0;
+}
+
+.nt-root[data-platform="mac"] .nt-rt[data-readonly] {
+  outline: none;
+}
+
+.nt-root[data-platform="mac"] .nt-rt-toolbar {
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--nt-window);
+  border-bottom: 0.5px solid var(--nt-input-border);
+}
+
+/* The joined segments of TextEdit's bar: one rounded track, the pressed one lighter and raised. */
+.nt-root[data-platform="mac"] .nt-rt-group {
+  height: 22px;
+  padding: 1px;
+  background: var(--nt-segment-track);
+  border-radius: 6px;
+}
+
+.nt-root[data-platform="mac"] .nt-rt-button {
+  width: 26px;
+  height: 20px;
+  color: var(--nt-text);
+  border-radius: 5px;
+}
+
+.nt-root[data-platform="mac"] .nt-rt-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.nt-root[data-platform="mac"] .nt-rt-button + .nt-rt-button {
+  box-shadow: -0.5px 0 0 var(--nt-group-border);
+}
+
+.nt-root[data-platform="mac"] .nt-rt-button:active:not(:disabled) {
+  background: var(--nt-subtle-pressed);
+}
+
+.nt-root[data-platform="mac"] .nt-rt-button[aria-pressed="true"] {
+  background: var(--nt-segment-selected);
+  box-shadow: var(--nt-control-shadow);
+}
+
+.nt-root[data-platform="mac"] .nt-rt-content {
+  padding: 8px 10px;
+}
+
+.nt-root[data-platform="mac"] .nt-rt-content h1 {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.nt-root[data-platform="mac"] .nt-rt-content h2 {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.nt-root[data-platform="mac"] .nt-rt-content h3 {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+/* Lists show their bullets and numbers (ui-native takes them off its own lists, e.g. the sidebar's). */
+.nt-rt-content ul {
+  list-style: disc;
+}
+
+.nt-rt-content ul ul {
+  list-style: circle;
+}
+
+.nt-rt-content ol {
+  list-style: decimal;
+}
+
+.nt-rt-content li::marker {
+  color: var(--nt-text-secondary);
+}

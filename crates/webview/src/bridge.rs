@@ -93,6 +93,11 @@ pub fn settle_script(page_call: u64, status: u16, value: &Value, fetch: Option<&
     format!("window.__webview4j && window.__webview4j.settle({page_call}, {status}, {value}, {fetch});")
 }
 
+/// Where core's jar keeps webview-4j's own components (`@webview4j/ui`, built), served to every
+/// window at `<base>ui/`. Not a package name, so the module system leaves it readable; Java serves
+/// this class path directory from the start.
+pub const UI_ROOT: &str = "webview4j-ui";
+
 /// One view's side of the bridge: its open calls, its listener, and who may use it.
 pub struct Link {
     view: String,
@@ -175,8 +180,19 @@ impl Link {
         if let Some(path) = request.uri().path().strip_prefix("/app/") {
             // The app's own files: a page loading itself and what it links to sends no Origin, so
             // these answer before the origin check. They are the app's code, not its data.
+            let Some(root) = self.assets.clone() else {
+                responder.respond(response(404, None, "text/plain", b"this window serves no files".to_vec()));
+                return None;
+            };
             let path = path.to_string();
-            return self.asset_request(&request, path, origin, responder);
+            return self.asset_request(&request, root, path, origin, responder);
+        }
+        if let Some(path) = request.uri().path().strip_prefix("/ui/") {
+            // webview-4j's own components, from core's jar: public library code, so any page in the
+            // window may load them, from any origin.
+            let origin = if origin.is_empty() { origin } else { "*".to_string() };
+            let path = path.to_string();
+            return self.asset_request(&request, UI_ROOT.to_string(), path, origin, responder);
         }
         if !self.allows(&origin) {
             responder.respond(response(403, None, "text/plain", format!("origin '{origin}' may not use this window's bridge").into_bytes()));
@@ -249,11 +265,14 @@ impl Link {
     /// with `Root` (the assets the window was opened with) and `Path` headers; Java's answer is the
     /// response. A path that climbs out (`..`), has a backslash, a drive or a control character is
     /// refused here; an empty path is `index.html`.
-    fn asset_request(&mut self, request: &Request<Vec<u8>>, path: String, origin: String, responder: RequestAsyncResponder) -> Option<Message> {
-        let Some(root) = self.assets.clone() else {
-            responder.respond(response(404, None, "text/plain", b"this window serves no files".to_vec()));
-            return None;
-        };
+    fn asset_request(
+        &mut self,
+        request: &Request<Vec<u8>>,
+        root: String,
+        path: String,
+        origin: String,
+        responder: RequestAsyncResponder,
+    ) -> Option<Message> {
         if !matches!(request.method().as_str(), "GET" | "HEAD") {
             responder.respond(response(405, None, "text/plain", b"GET only".to_vec()));
             return None;

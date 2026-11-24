@@ -1,0 +1,595 @@
+/*
+ * More text inputs: TextArea, PasswordField, NumberField, TokenField. They reuse TextField's .nt-input look;
+ * the ones with buttons inside are a box (.nt-input-box) around a borderless input.
+ */
+
+.nt-field-foot {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.nt-field-foot .nt-field-hint {
+  flex: 1;
+}
+
+.nt-field-count {
+  margin-left: auto;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.nt-field-count[data-full] {
+  color: var(--nt-error);
+}
+
+/* --- TextArea ---------------------------------------------------------------------------------- */
+
+.nt-textarea.nt-input {
+  height: auto;
+  min-height: var(--nt-control-height);
+  resize: vertical;
+}
+
+.nt-root[data-platform="windows"] .nt-textarea.nt-input {
+  padding: 6px 10px;
+  line-height: 20px;
+}
+
+.nt-root[data-platform="mac"] .nt-textarea.nt-input {
+  padding: 4px 6px;
+  line-height: 16px;
+}
+
+/* --- a box with buttons inside --------------------------------------------------------------------- */
+
+.nt-input-box.nt-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 2px;
+}
+
+.nt-input-box input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.nt-input-box input::placeholder {
+  color: var(--nt-text-secondary);
+}
+
+/* The box looks focused while its input is (the same as a TextField's focus). */
+.nt-root[data-platform="windows"] .nt-input-box:focus-within {
+  background: var(--nt-input-focused);
+  border-bottom-color: var(--nt-accent);
+  box-shadow: inset 0 -1px 0 var(--nt-accent);
+}
+
+.nt-root[data-platform="windows"] .nt-input-box:has([aria-invalid="true"]) {
+  border-bottom-color: var(--nt-error);
+  box-shadow: inset 0 -1px 0 var(--nt-error);
+}
+
+.nt-root[data-platform="windows"] .nt-input-box:hover:not(:focus-within, [data-disabled]) {
+  background: var(--nt-control-hover);
+}
+
+.nt-root[data-platform="mac"] .nt-input-box:focus-within {
+  outline: 3.5px solid color-mix(in srgb, var(--nt-accent) 50%, transparent);
+  outline-offset: 0;
+}
+
+.nt-root[data-platform="mac"] .nt-input-box:has([aria-invalid="true"]) {
+  outline: 3px solid color-mix(in srgb, var(--nt-error) 55%, transparent);
+}
+
+.nt-input-box[data-disabled] {
+  color: var(--nt-text-disabled);
+}
+
+.nt-input-button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: calc(100% - 6px);
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: default;
+}
+
+.nt-input-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nt-input-button:hover {
+  color: var(--nt-text);
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="mac"] .nt-input-button {
+  width: 22px;
+}
+
+.nt-root[data-platform="mac"] .nt-input-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.nt-capslock {
+  flex: none;
+  padding: 0 4px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+/* --- NumberField: Windows' arrows inside, a Mac's stepper outside ----------------------------------- */
+
+.nt-stepper {
+  display: flex;
+  flex: none;
+}
+
+.nt-stepper button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+.nt-stepper button:disabled {
+  color: var(--nt-text-disabled);
+}
+
+.nt-stepper svg {
+  width: 10px;
+  height: 10px;
+}
+
+.nt-root[data-platform="windows"] .nt-stepper {
+  gap: 2px;
+}
+
+.nt-root[data-platform="windows"] .nt-stepper button {
+  width: 26px;
+  height: 24px;
+  border-radius: 3px;
+}
+
+.nt-root[data-platform="windows"] .nt-stepper button:hover:not(:disabled) {
+  color: var(--nt-text);
+  background: var(--nt-subtle-hover);
+}
+
+/* A Mac: the stepper is its own little control just right of the box: two halves, one above the other. */
+.nt-root[data-platform="mac"] .nt-number.nt-input {
+  margin-right: 20px;
+  overflow: visible;
+}
+
+.nt-root[data-platform="mac"] .nt-stepper {
+  position: absolute;
+  top: 50%;
+  right: -19px;
+  flex-direction: column;
+  width: 13px;
+  height: 22px;
+  overflow: hidden;
+  background: var(--nt-control);
+  border-radius: 4px;
+  box-shadow: var(--nt-control-shadow);
+  transform: translateY(-50%);
+}
+
+.nt-root[data-platform="mac"] .nt-stepper button {
+  flex: 1;
+  width: 100%;
+}
+
+.nt-root[data-platform="mac"] .nt-stepper button:active:not(:disabled) {
+  background: var(--nt-control-pressed);
+}
+
+.nt-root[data-platform="mac"] .nt-stepper svg {
+  width: 8px;
+  height: 8px;
+}
+
+/* --- TokenField: entries as chips ------------------------------------------------------------------ */
+
+.nt-tokens.nt-input {
+  flex-wrap: wrap;
+  gap: 4px;
+  height: auto;
+  min-height: var(--nt-control-height);
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.nt-tokens input {
+  flex: 1 0 80px;
+  height: 22px;
+}
+
+.nt-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 2px 0 8px;
+  font-size: var(--nt-small);
+  border-radius: 999px;
+}
+
+.nt-token-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nt-token button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  opacity: 0.7;
+  cursor: default;
+}
+
+.nt-token button:hover {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.nt-token button svg {
+  width: 8px;
+  height: 8px;
+}
+
+.nt-root[data-platform="windows"] .nt-token {
+  background: var(--nt-subtle-hover);
+  border: 1px solid var(--nt-control-border);
+}
+
+/* A Mac's tokens are light accent-tinted capsules (Mail's To: line). */
+.nt-root[data-platform="mac"] .nt-token {
+  height: 18px;
+  color: var(--nt-text);
+  background: color-mix(in srgb, var(--nt-accent) 20%, transparent);
+  border-radius: 4px;
+}
+
+.nt-root[data-platform="mac"] .nt-tokens.nt-input {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.nt-token-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 200px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius-large);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14);
+}
+
+.nt-token-suggestions li {
+  padding: 5px 10px;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-token-suggestions li[aria-selected="true"] {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="mac"] .nt-token-suggestions li[aria-selected="true"] {
+  color: #ffffff;
+  background: var(--nt-accent);
+}
+
+/* --- Composer: the box a chat message is written in --------------------------------------------- */
+
+.nt-composer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  color: var(--nt-text);
+}
+
+.nt-composer-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 2px 0;
+}
+
+.nt-composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.nt-composer-input {
+  flex: 1;
+  min-width: 0;
+  max-height: 50vh;
+  padding: 6px 4px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+}
+
+.nt-composer-input::placeholder {
+  color: var(--nt-text-secondary);
+}
+
+.nt-composer-button,
+.nt-composer-send {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+.nt-composer-button svg,
+.nt-composer-send svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nt-composer-button:hover:not(:disabled) {
+  color: var(--nt-text);
+  background: var(--nt-subtle-hover);
+}
+
+.nt-composer-send:not(:disabled) {
+  color: var(--nt-accent);
+}
+
+.nt-composer-send:disabled {
+  color: var(--nt-text-disabled);
+}
+
+.nt-composer-send[data-busy] {
+  cursor: progress;
+}
+
+.nt-composer-foot {
+  display: flex;
+  gap: 8px;
+  padding: 0 6px;
+}
+
+.nt-composer-drop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--nt-accent);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--nt-surface) 85%, transparent);
+  border: 2px dashed var(--nt-accent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Windows: a TextBox-like card, the accent line along the bottom while writing; the send button an accent
+   square when there is something to send. */
+.nt-root[data-platform="windows"] .nt-composer {
+  background: var(--nt-control);
+  border: 1px solid var(--nt-control-border);
+  border-bottom-color: var(--nt-input-bottom);
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-root[data-platform="windows"] .nt-composer:focus-within {
+  background: var(--nt-input-focused);
+  border-bottom-color: var(--nt-accent);
+  box-shadow: inset 0 -1px 0 var(--nt-accent);
+}
+
+.nt-root[data-platform="windows"] .nt-composer-button,
+.nt-root[data-platform="windows"] .nt-composer-send {
+  border-radius: var(--nt-radius);
+}
+
+.nt-root[data-platform="windows"] .nt-composer-send:not(:disabled) {
+  color: var(--nt-on-accent);
+  background: var(--nt-accent);
+}
+
+/* macOS: Messages' rounded capsule; the send button a round accent arrow. */
+.nt-root[data-platform="mac"] .nt-composer {
+  background: var(--nt-input);
+  border-radius: 18px;
+  box-shadow: 0 0 0 0.5px var(--nt-input-border);
+}
+
+.nt-root[data-platform="mac"] .nt-composer:focus-within {
+  box-shadow: 0 0 0 0.5px var(--nt-input-border), 0 0 0 3.5px color-mix(in srgb, var(--nt-accent) 40%, transparent);
+}
+
+.nt-root[data-platform="mac"] .nt-composer-input {
+  padding: 5px 4px;
+}
+
+.nt-root[data-platform="mac"] .nt-composer-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.nt-root[data-platform="mac"] .nt-composer-send {
+  width: 26px;
+  height: 26px;
+  margin: 1px;
+  border-radius: 999px;
+}
+
+.nt-root[data-platform="mac"] .nt-composer-send svg {
+  width: 14px;
+  height: 14px;
+}
+
+.nt-root[data-platform="mac"] .nt-composer-send:not(:disabled) {
+  color: #ffffff;
+  background: var(--nt-accent);
+}
+
+/* --- Things inside a number box: a currency symbol, a unit, a currency or unit picker --------------- */
+
+.nt-input-affix {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 100%;
+  color: var(--nt-text-secondary);
+  white-space: nowrap;
+}
+
+.nt-input-affix:first-child {
+  margin-right: 4px;
+}
+
+.nt-input-affix:not(:first-child) {
+  margin-left: 4px;
+}
+
+.nt-number input {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A picker for the currency or unit: plain text with a small chevron, a line before it. */
+.nt-input-unit {
+  height: calc(100% - 6px);
+  padding: 0 18px 0 8px;
+  font: inherit;
+  color: var(--nt-text);
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='m2.5 3.75 2.5 2.5 2.5-2.5' fill='none' stroke='%23888' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 4px center / 10px;
+  border: none;
+  border-left: 1px solid var(--nt-separator, var(--nt-control-border));
+  border-radius: 0;
+  outline: none;
+  appearance: none;
+  cursor: default;
+}
+
+.nt-input-unit:hover:not(:disabled) {
+  background-color: var(--nt-subtle-hover);
+}
+
+.nt-input-unit:disabled {
+  color: var(--nt-text-disabled);
+}
+
+/* --- Money and Quantity shown as text -------------------------------------------------------------- */
+
+.nt-money,
+.nt-quantity {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nt-money[data-negative][data-colour] {
+  color: var(--nt-error);
+}
+
+.nt-money[data-positive][data-colour] {
+  color: var(--nt-success);
+}
+
+/* --- IconPicker -------------------------------------------------------------------------------- */
+
+.nt-iconpicker {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nt-iconpicker-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.nt-iconpicker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--nt-icon-cell), 1fr));
+  align-content: start;
+  gap: 2px;
+  padding: 4px;
+  overflow: auto;
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-iconpicker-cell {
+  display: grid;
+  place-items: center;
+  height: var(--nt-icon-cell);
+  padding: 0;
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-iconpicker-cell:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-iconpicker-cell[aria-selected="true"] {
+  background: color-mix(in srgb, var(--nt-accent) 20%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--nt-accent);
+}
+
+.nt-iconpicker-foot {
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}

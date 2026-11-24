@@ -12,6 +12,10 @@
 - `WindowOptions.fileDrop(true)`: files dropped on a window arrive as `FileDrop` events with their paths
 - `WindowOptions.minSize`, `maximized`, `fullscreen` and `alwaysOnTop`
 - README: on macOS, run the app with `App.run` from `main` and `-XstartOnFirstThread`
+- `@webview4j/ui`: native-looking React components (Windows 11 or macOS, light or dark), from `core/src/main/ui`; an npm library for apps with a bundler
+- Core's jar carries the kit built (`ui.js` with React, `ui.css`): every window loads it from `<base>ui/` (`App.UI_URL`), no bundler needed
+- The page's own window: `data-webview4j-drag-region` moves it, a double click maximizes it, and `currentWindow` (`@webview4j/api`) minimizes, maximizes and closes it; `TitleBar` uses them by itself
+- Building core needs bun, for the kit
 
 ## 0.1.0 — 2026-10-21
 

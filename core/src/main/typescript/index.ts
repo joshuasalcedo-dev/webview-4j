@@ -19,6 +19,19 @@ export interface Bridge {
   invoke(command: string, args?: unknown): Promise<unknown>;
   request(method: HttpMethod, path: string, query?: Record<string, unknown>, body?: unknown): Promise<unknown>;
   listen(topic: string, handler: (data: unknown) => void): () => void;
+  /** The page's own window (see {@link currentWindow}). */
+  window: NativeWindow;
+}
+
+/** What a page can do to its own window: for a title bar of its own, in a window without the system's frame. */
+export interface NativeWindow {
+  minimize(): void;
+  /** Maximizes the window, or restores it if it is maximized. */
+  toggleMaximize(): void;
+  /** As the close button does: with `WindowOptions.confirmClose(true)`, Java decides. */
+  close(): void;
+  /** Starts moving the window with the mouse: call it on a mouse-down. */
+  startDrag(): void;
 }
 
 /**
@@ -168,3 +181,15 @@ export async function request<T = unknown>(
 export function listen<T = unknown>(topic: string, handler: (data: T) => void): () => void {
   return bridge().listen(topic, handler as (data: unknown) => void);
 }
+
+/**
+ * The window this page is in. Outside a webview-4j window (a browser) every action does nothing. Elements with
+ * `data-webview4j-drag-region` move the window when dragged, and maximize or restore it on a double click, without
+ * any code.
+ */
+export const currentWindow: NativeWindow = {
+  minimize: () => window.__webview4j?.window?.minimize(),
+  toggleMaximize: () => window.__webview4j?.window?.toggleMaximize(),
+  close: () => window.__webview4j?.window?.close(),
+  startDrag: () => window.__webview4j?.window?.startDrag(),
+};

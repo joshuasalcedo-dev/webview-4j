@@ -36,6 +36,8 @@ pub const PROTOCOL: &str = "1";
 pub enum ToLoop {
     Message(Message),
     Refuse { view: String, script: String },
+    /// The page asked its own window to move, minimize, maximize or close (bridge.js `window`).
+    Window { view: String, action: String },
 }
 
 /// Set while the loop runs: how other threads reach it.
@@ -156,6 +158,7 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
                     }
                 }
             }
+            Event::UserEvent(ToLoop::Window { view, action }) => page_window_action(&view, &action, &mut state),
             Event::WindowEvent { window_id, event, .. } => on_window(window_id, event, &mut state),
             // This round's messages are handled: the pushes they made go out, one script per page,
             // and each window's last size and position.
@@ -199,6 +202,29 @@ fn on_window(window_id: WindowId, event: WindowEvent, state: &mut State) {
             emit(&Message::new(format!("view.{id}.focused")).payload(json!({"focused": focused}).to_string()));
         }
         _ => {}
+    }
+}
+
+/// What a page asked of its own window. Closing goes the way the close button does: with
+/// `confirmClose`, it asks Java first.
+fn page_window_action(view: &str, action: &str, state: &mut State) {
+    let Some(instance) = state.views.get(view) else {
+        return;
+    };
+    let window = &instance.window;
+    match action {
+        "drag" => {
+            if let Err(error) = window.drag_window() {
+                log::debug!("the window could not be dragged: {error}");
+            }
+        }
+        "minimize" => window.set_minimized(true),
+        "toggle-maximize" => window.set_maximized(!window.is_maximized()),
+        "close" => {
+            let id = window.id();
+            on_window(id, WindowEvent::CloseRequested, state);
+        }
+        _ => log::debug!("a page asked its window for '{action}', which there is not"),
     }
 }
 
@@ -490,7 +516,15 @@ fn send_script(socket: u64, data: &str) -> String {
 /// What a page sends over IPC: a small call (a frame, bridge.rs), or an inspector report.
 fn from_page(request: &wry::http::Request<String>, view: &str, capture: &Capture, link: &Mutex<bridge::Link>) {
     let raw = request.body();
-    if raw.starts_with("MSG ") {
+    if let Some(action) = raw.strip_prefix("WIN ") {
+        // Only a page the bridge allows moves or closes its window.
+        let page = bridge::page_origin(&request.uri().to_string());
+        if link.lock().unwrap().allows(&page) {
+            if let Some(proxy) = PROXY.lock().unwrap().clone() {
+                let _ = proxy.send_event(ToLoop::Window { view: view.to_string(), action: action.to_string() });
+            }
+        }
+    } else if raw.starts_with("MSG ") {
         let page_url = request.uri().to_string();
         let outcome = link.lock().unwrap().from_ipc(raw, &page_url);
         match outcome {

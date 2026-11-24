@@ -74,8 +74,39 @@ val natives = tasks.register<Sync>("natives") {
     into(layout.buildDirectory.dir("generated/natives"))
 }
 
+// ---- webview-4j's own components (src/main/ui, @webview4j/ui) ----
+//
+// bun builds the kit for the browser, React inside, into webview4j-ui/ (ui.js, ui.css and the chunks they load):
+// the jar carries it, and every window loads it from <base>ui/. Needs bun (https://bun.sh).
+
+val uiDir = layout.projectDirectory.dir("src/main/ui")
+val uiOut = layout.buildDirectory.dir("generated/ui")
+
+val uiInstall = tasks.register<Exec>("uiInstall") {
+    description = "Installs @webview4j/ui's dependencies with bun."
+    group = "build"
+    workingDir = uiDir.asFile
+    commandLine("bun", "install", "--frozen-lockfile")
+    inputs.files(uiDir.file("package.json"), uiDir.file("bun.lock"))
+    outputs.dir(uiDir.dir("node_modules"))
+}
+
+val uiBundle = tasks.register<Exec>("uiBundle") {
+    description = "Builds @webview4j/ui for the browser into the jar's webview4j-ui/."
+    group = "build"
+    dependsOn(uiInstall)
+    workingDir = uiDir.asFile
+    commandLine("bun", "run", "bundle")
+    val target = uiOut.get().dir("webview4j-ui").asFile
+    environment("WEBVIEW4J_UI_OUT", target.absolutePath)
+    inputs.dir(uiDir.dir("src"))
+    inputs.files(uiDir.file("vite.bundle.ts"), uiDir.file("vite.lib.ts"), uiDir.file("package.json"), uiDir.file("bun.lock"))
+    outputs.dir(uiOut)
+}
+
 sourceSets.main {
     resources.srcDir(natives)
+    resources.srcDir(files(uiOut).builtBy(uiBundle))
 }
 
 tasks.test {

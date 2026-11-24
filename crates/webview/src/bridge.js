@@ -240,5 +240,29 @@
     }
   }
 
-  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, request, listen, settle, deliver }) });
+  // The page's own window, for a window without the system's frame (a title bar of its own): only a page
+  // the window's bridge allows is heard. Dragging an empty part of a drag region moves the window; a
+  // double click on it maximizes or restores it, as on a system title bar.
+  function windowAction(action) {
+    if (window.ipc && typeof window.ipc.postMessage === 'function') window.ipc.postMessage('WIN ' + action);
+  }
+  const currentWindow = Object.freeze({
+    minimize: () => windowAction('minimize'),
+    toggleMaximize: () => windowAction('toggle-maximize'),
+    close: () => windowAction('close'),
+    startDrag: () => windowAction('drag'),
+  });
+  const DRAG_REGION = '[data-webview4j-drag-region], [data-tauri-drag-region]';
+  const NOT_DRAGGED = 'button, a, input, select, textarea, label, [role="button"], [role="tab"], [contenteditable=""], [contenteditable="true"], [data-no-drag]';
+  if (typeof document !== 'undefined') {
+    document.addEventListener('mousedown', (event) => {
+      if (event.button !== 0 || !(event.target instanceof Element)) return;
+      const region = event.target.closest(DRAG_REGION);
+      if (!region || event.target.closest(NOT_DRAGGED)) return;
+      if (event.detail === 2) currentWindow.toggleMaximize();
+      else currentWindow.startDrag();
+    });
+  }
+
+  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, request, listen, settle, deliver, window: currentWindow }) });
 })();

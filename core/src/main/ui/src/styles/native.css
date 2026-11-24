@@ -1,0 +1,1407 @@
+/*
+ * @webview4j/ui: desktop controls that look like the system's own.
+ *
+ * NativeProvider puts data-platform (windows | mac) and data-theme (light | dark) on its root, .nt-root.
+ * Each platform and theme is a set of tokens (--nt-*); the controls below only read tokens, and say
+ * where the two systems differ in shape (not just colour) with [data-platform="..."] rules.
+ *
+ * Windows: Windows 11 (Fluent 2) metrics and colours. macOS: Sonoma's (AppKit) metrics and colours.
+ * Plain CSS, no Tailwind: the look must not depend on an app's Tailwind theme.
+ */
+
+/* --- tokens -------------------------------------------------------------------------------- */
+
+.nt-root[data-platform="windows"] {
+  --nt-font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --nt-font-size: 14px;
+  --nt-line: 20px;
+  --nt-small: 12px;
+  --nt-radius: 4px;
+  --nt-radius-large: 8px;
+  --nt-control-height: 32px;
+  --nt-control-padding: 11px;
+
+  --nt-accent: #005fb8;
+  --nt-on-accent: #ffffff;
+  --nt-window: #f3f3f3;
+  --nt-surface: #fbfbfb;
+  --nt-surface-border: rgba(0, 0, 0, 0.0578);
+  --nt-text: rgba(0, 0, 0, 0.896);
+  --nt-text-secondary: rgba(0, 0, 0, 0.606);
+  --nt-text-disabled: rgba(0, 0, 0, 0.361);
+  --nt-control: rgba(255, 255, 255, 0.7);
+  --nt-control-hover: rgba(249, 249, 249, 0.5);
+  --nt-control-pressed: rgba(249, 249, 249, 0.3);
+  --nt-control-disabled: rgba(249, 249, 249, 0.3);
+  --nt-control-border: rgba(0, 0, 0, 0.0578);
+  --nt-control-border-bottom: rgba(0, 0, 0, 0.1622);
+  --nt-input-focused: #ffffff;
+  --nt-input-bottom: rgba(0, 0, 0, 0.4458);
+  --nt-subtle-hover: rgba(0, 0, 0, 0.0373);
+  --nt-subtle-pressed: rgba(0, 0, 0, 0.0241);
+  --nt-strong: rgba(0, 0, 0, 0.6063);
+  --nt-track: rgba(0, 0, 0, 0.4458);
+  --nt-error: #c42b1c;
+  --nt-focus: rgba(0, 0, 0, 0.896);
+  --nt-focus-inner: #ffffff;
+}
+
+.nt-root[data-platform="windows"][data-theme="dark"] {
+  --nt-accent: #60cdff;
+  --nt-on-accent: #000000;
+  --nt-window: #202020;
+  --nt-surface: #2b2b2b;
+  --nt-surface-border: rgba(0, 0, 0, 0.1);
+  --nt-text: #ffffff;
+  --nt-text-secondary: rgba(255, 255, 255, 0.786);
+  --nt-text-disabled: rgba(255, 255, 255, 0.3628);
+  --nt-control: rgba(255, 255, 255, 0.0605);
+  --nt-control-hover: rgba(255, 255, 255, 0.0837);
+  --nt-control-pressed: rgba(255, 255, 255, 0.0326);
+  --nt-control-disabled: rgba(255, 255, 255, 0.0419);
+  --nt-control-border: rgba(255, 255, 255, 0.0698);
+  --nt-control-border-bottom: rgba(255, 255, 255, 0.0465);
+  --nt-input-focused: #1f1f1f;
+  --nt-input-bottom: rgba(255, 255, 255, 0.5442);
+  --nt-subtle-hover: rgba(255, 255, 255, 0.0605);
+  --nt-subtle-pressed: rgba(255, 255, 255, 0.0419);
+  --nt-strong: rgba(255, 255, 255, 0.5442);
+  --nt-track: rgba(255, 255, 255, 0.5442);
+  --nt-error: #ff99a4;
+  --nt-focus: #ffffff;
+  --nt-focus-inner: rgba(0, 0, 0, 0.7);
+}
+
+.nt-root[data-platform="mac"] {
+  --nt-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --nt-font-size: 13px;
+  --nt-line: 16px;
+  --nt-small: 11px;
+  --nt-radius: 6px;
+  --nt-radius-large: 10px;
+  --nt-control-height: 22px;
+  --nt-control-padding: 10px;
+
+  --nt-accent: #007aff;
+  --nt-on-accent: #ffffff;
+  --nt-window: #ececec;
+  --nt-surface: #ffffff;
+  --nt-surface-border: rgba(0, 0, 0, 0.1);
+  --nt-text: rgba(0, 0, 0, 0.85);
+  --nt-text-secondary: rgba(0, 0, 0, 0.5);
+  --nt-text-disabled: rgba(0, 0, 0, 0.25);
+  --nt-control: #ffffff;
+  --nt-control-hover: #ffffff;
+  --nt-control-pressed: #e5e5e5;
+  --nt-control-disabled: rgba(255, 255, 255, 0.5);
+  --nt-control-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 0.5px 2.5px rgba(0, 0, 0, 0.16);
+  --nt-input: #ffffff;
+  --nt-input-border: rgba(0, 0, 0, 0.15);
+  --nt-group: rgba(0, 0, 0, 0.03);
+  --nt-group-border: rgba(0, 0, 0, 0.06);
+  --nt-segment-track: rgba(0, 0, 0, 0.06);
+  --nt-segment-selected: #ffffff;
+  --nt-switch-track: rgba(0, 0, 0, 0.09);
+  --nt-subtle-hover: rgba(0, 0, 0, 0.05);
+  --nt-subtle-pressed: rgba(0, 0, 0, 0.1);
+  --nt-strong: rgba(0, 0, 0, 0.25);
+  --nt-track: rgba(0, 0, 0, 0.08);
+  --nt-error: #ff3b30;
+}
+
+.nt-root[data-platform="mac"][data-theme="dark"] {
+  --nt-accent: #0a84ff;
+  --nt-window: #323232;
+  --nt-surface: #1e1e1e;
+  --nt-surface-border: rgba(0, 0, 0, 0.5);
+  --nt-text: rgba(255, 255, 255, 0.85);
+  --nt-text-secondary: rgba(255, 255, 255, 0.55);
+  --nt-text-disabled: rgba(255, 255, 255, 0.25);
+  --nt-control: rgba(255, 255, 255, 0.2);
+  --nt-control-hover: rgba(255, 255, 255, 0.24);
+  --nt-control-pressed: rgba(255, 255, 255, 0.32);
+  --nt-control-disabled: rgba(255, 255, 255, 0.08);
+  --nt-control-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.3), inset 0 0.5px 0 rgba(255, 255, 255, 0.15), 0 1px 1.5px rgba(0, 0, 0, 0.2);
+  --nt-input: rgba(255, 255, 255, 0.05);
+  --nt-input-border: rgba(255, 255, 255, 0.12);
+  --nt-group: rgba(255, 255, 255, 0.04);
+  --nt-group-border: rgba(255, 255, 255, 0.07);
+  --nt-segment-track: rgba(0, 0, 0, 0.2);
+  --nt-segment-selected: rgba(255, 255, 255, 0.25);
+  --nt-switch-track: rgba(255, 255, 255, 0.1);
+  --nt-subtle-hover: rgba(255, 255, 255, 0.07);
+  --nt-subtle-pressed: rgba(255, 255, 255, 0.12);
+  --nt-strong: rgba(255, 255, 255, 0.3);
+  --nt-track: rgba(255, 255, 255, 0.1);
+  --nt-error: #ff453a;
+}
+
+/* --- the root ------------------------------------------------------------------------------ */
+
+.nt-root {
+  font-family: var(--nt-font);
+  font-size: var(--nt-font-size);
+  line-height: var(--nt-line);
+  color: var(--nt-text);
+  background: var(--nt-window);
+  -webkit-font-smoothing: antialiased;
+  /* Desktop apps show the arrow, not a hand, and do not select their labels. */
+  cursor: default;
+  user-select: none;
+}
+
+/* What the browser draws itself (a Select's open list, scroll bars, the search box's ×) follows the theme. */
+.nt-root[data-theme="light"] {
+  color-scheme: light;
+}
+
+.nt-root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+.nt-root option {
+  color: var(--nt-text);
+  background: var(--nt-surface);
+}
+
+.nt-root *,
+.nt-root *::before,
+.nt-root *::after {
+  box-sizing: border-box;
+}
+
+/* The icons' lines lie right on their edges (a window button's square, a chevron's tip). With display
+   scaling (125%, 150%) an icon can land between screen pixels and the browser would cut the edge line off;
+   the lines are never cut. */
+.nt-root svg {
+  overflow: visible;
+}
+
+.nt-root :focus {
+  outline: none;
+}
+
+/* Keyboard focus: Windows draws a two-tone rectangle around the control, macOS a soft accent ring. Not on
+   places text is typed: browsers count every click into them as keyboard focus, and they show focus their own
+   way (Windows' accent line, the Mac's ring on the whole box, not on an input inside it). */
+.nt-root[data-platform="windows"] :focus-visible:not(:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"], [type="color"], [type="file"]), textarea, [contenteditable=""], [contenteditable="true"])) {
+  outline: 2px solid var(--nt-focus);
+  outline-offset: 1px;
+}
+
+.nt-root[data-platform="mac"] :focus-visible:not(:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"], [type="color"], [type="file"]), textarea, [contenteditable=""], [contenteditable="true"])) {
+  outline: 3.5px solid color-mix(in srgb, var(--nt-accent) 50%, transparent);
+  outline-offset: 0;
+}
+
+.nt-secondary {
+  color: var(--nt-text-secondary);
+}
+
+/* --- Button -------------------------------------------------------------------------------- */
+
+.nt-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--nt-control-height);
+  min-width: 64px;
+  padding: 0 var(--nt-control-padding);
+  font: inherit;
+  color: var(--nt-text);
+  white-space: nowrap;
+  border-radius: var(--nt-radius);
+  cursor: default;
+}
+
+.nt-button svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.nt-button:disabled {
+  color: var(--nt-text-disabled);
+}
+
+.nt-root[data-platform="windows"] .nt-button {
+  min-width: 96px;
+  background: var(--nt-control);
+  border: 1px solid var(--nt-control-border);
+  border-bottom-color: var(--nt-control-border-bottom);
+}
+
+.nt-root[data-platform="windows"] .nt-button:hover:not(:disabled) {
+  background: var(--nt-control-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-button:active:not(:disabled) {
+  background: var(--nt-control-pressed);
+  border-bottom-color: var(--nt-control-border);
+  color: var(--nt-text-secondary);
+}
+
+.nt-root[data-platform="windows"] .nt-button:disabled {
+  background: var(--nt-control-disabled);
+}
+
+.nt-root[data-platform="windows"] .nt-button[data-variant="accent"] {
+  background: var(--nt-accent);
+  color: var(--nt-on-accent);
+  border-color: rgba(255, 255, 255, 0.08);
+  border-bottom-color: rgba(0, 0, 0, 0.4);
+}
+
+.nt-root[data-platform="windows"] .nt-button[data-variant="accent"]:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--nt-accent) 90%, var(--nt-window));
+}
+
+.nt-root[data-platform="windows"] .nt-button[data-variant="accent"]:active:not(:disabled) {
+  background: color-mix(in srgb, var(--nt-accent) 80%, var(--nt-window));
+  color: color-mix(in srgb, var(--nt-on-accent) 80%, transparent);
+}
+
+.nt-root[data-platform="windows"] .nt-button[data-variant="accent"]:disabled {
+  background: var(--nt-text-disabled);
+  color: var(--nt-window);
+  border-color: transparent;
+}
+
+.nt-root[data-platform="windows"] .nt-button[data-variant="subtle"] {
+  min-width: 0;
+  background: transparent;
+  border-color: transparent;
+}
+
+.nt-root[data-platform="windows"] .nt-button[data-variant="subtle"]:hover:not(:disabled) {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-button[data-variant="subtle"]:active:not(:disabled) {
+  background: var(--nt-subtle-pressed);
+}
+
+.nt-root[data-platform="mac"] .nt-button {
+  min-width: 70px;
+  padding: 0 var(--nt-control-padding);
+  background: var(--nt-control);
+  border: none;
+  box-shadow: var(--nt-control-shadow);
+}
+
+.nt-root[data-platform="mac"] .nt-button:active:not(:disabled) {
+  background: var(--nt-control-pressed);
+}
+
+.nt-root[data-platform="mac"] .nt-button:disabled {
+  background: var(--nt-control-disabled);
+}
+
+.nt-root[data-platform="mac"] .nt-button[data-variant="accent"] {
+  color: var(--nt-on-accent);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--nt-accent) 82%, #ffffff), var(--nt-accent));
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 0.5px 2.5px rgba(0, 0, 0, 0.2);
+}
+
+.nt-root[data-platform="mac"] .nt-button[data-variant="accent"]:active:not(:disabled) {
+  background: color-mix(in srgb, var(--nt-accent) 85%, #000000);
+}
+
+.nt-root[data-platform="mac"] .nt-button[data-variant="accent"]:disabled {
+  color: var(--nt-text-disabled);
+  background: var(--nt-control-disabled);
+}
+
+.nt-root[data-platform="mac"] .nt-button[data-variant="subtle"] {
+  min-width: 0;
+  padding: 0 6px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.nt-root[data-platform="mac"] .nt-button[data-variant="subtle"]:hover:not(:disabled) {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="mac"] .nt-button[data-variant="subtle"]:active:not(:disabled) {
+  background: var(--nt-subtle-pressed);
+}
+
+/* --- Field: a label, a control, a hint or error --------------------------------------------- */
+
+.nt-field {
+  display: grid;
+  gap: 6px;
+}
+
+.nt-root[data-platform="mac"] .nt-field {
+  gap: 4px;
+}
+
+.nt-field-label {
+  font-size: var(--nt-font-size);
+}
+
+.nt-field-hint {
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-field-hint[data-error] {
+  color: var(--nt-error);
+}
+
+/* --- TextField ----------------------------------------------------------------------------- */
+
+.nt-input {
+  width: 100%;
+  height: var(--nt-control-height);
+  font: inherit;
+  color: var(--nt-text);
+  user-select: text;
+  cursor: text;
+}
+
+.nt-input::placeholder {
+  color: var(--nt-text-secondary);
+}
+
+.nt-input:disabled {
+  color: var(--nt-text-disabled);
+}
+
+.nt-root[data-platform="windows"] .nt-input {
+  padding: 0 10px;
+  background: var(--nt-control);
+  border: 1px solid var(--nt-control-border);
+  border-bottom-color: var(--nt-input-bottom);
+  border-radius: var(--nt-radius);
+}
+
+.nt-root[data-platform="windows"] .nt-input:hover:not(:disabled, :focus) {
+  background: var(--nt-control-hover);
+}
+
+/* Windows marks the focused field with an accent line along its bottom edge, not an outline. */
+.nt-root[data-platform="windows"] .nt-input:focus {
+  background: var(--nt-input-focused);
+  border-bottom-color: var(--nt-accent);
+  box-shadow: inset 0 -1px 0 var(--nt-accent);
+  outline: none;
+}
+
+.nt-root[data-platform="windows"] .nt-input[aria-invalid="true"] {
+  border-bottom-color: var(--nt-error);
+  box-shadow: inset 0 -1px 0 var(--nt-error);
+}
+
+.nt-root[data-platform="windows"] .nt-input:disabled {
+  background: var(--nt-control-disabled);
+  border-bottom-color: var(--nt-control-border);
+}
+
+.nt-root[data-platform="mac"] .nt-input {
+  padding: 0 6px;
+  background: var(--nt-input);
+  border: none;
+  border-radius: 5px;
+  box-shadow: 0 0 0 0.5px var(--nt-input-border), inset 0 0.5px 1px rgba(0, 0, 0, 0.06);
+}
+
+.nt-root[data-platform="mac"] .nt-input:focus {
+  outline: 3.5px solid color-mix(in srgb, var(--nt-accent) 50%, transparent);
+  outline-offset: 0;
+}
+
+.nt-root[data-platform="mac"] .nt-input[aria-invalid="true"] {
+  outline: 3px solid color-mix(in srgb, var(--nt-error) 55%, transparent);
+}
+
+/* --- Checkbox ------------------------------------------------------------------------------ */
+
+.nt-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nt-check-box {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+}
+
+.nt-check-box input {
+  appearance: none;
+  margin: 0;
+  cursor: default;
+}
+
+.nt-check-box svg {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  color: var(--nt-on-accent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nt-check-box input:checked + svg {
+  opacity: 1;
+}
+
+.nt-check:has(input:disabled) {
+  color: var(--nt-text-disabled);
+}
+
+.nt-root[data-platform="windows"] .nt-check-box input {
+  width: 20px;
+  height: 20px;
+  background: var(--nt-control);
+  border: 1px solid var(--nt-strong);
+  border-radius: var(--nt-radius);
+}
+
+.nt-root[data-platform="windows"] .nt-check-box input:hover:not(:disabled, :checked) {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-check-box input:checked {
+  background: var(--nt-accent);
+  border-color: var(--nt-accent);
+}
+
+.nt-root[data-platform="windows"] .nt-check-box svg {
+  width: 12px;
+  height: 12px;
+}
+
+.nt-root[data-platform="windows"] .nt-check-box input:disabled {
+  border-color: var(--nt-text-disabled);
+  background: transparent;
+}
+
+.nt-root[data-platform="windows"] .nt-check-box input:disabled:checked {
+  background: var(--nt-text-disabled);
+  border-color: transparent;
+}
+
+.nt-root[data-platform="mac"] .nt-check {
+  gap: 6px;
+}
+
+.nt-root[data-platform="mac"] .nt-check-box input {
+  width: 14px;
+  height: 14px;
+  background: var(--nt-input);
+  border-radius: 3.5px;
+  box-shadow: 0 0 0 0.5px var(--nt-strong), inset 0 0.5px 1px rgba(0, 0, 0, 0.08);
+}
+
+.nt-root[data-platform="mac"] .nt-check-box input:checked {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--nt-accent) 82%, #ffffff), var(--nt-accent));
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+}
+
+.nt-root[data-platform="mac"] .nt-check-box svg {
+  width: 10px;
+  height: 10px;
+}
+
+.nt-root[data-platform="mac"] .nt-check-box input:disabled {
+  opacity: 0.5;
+}
+
+/* --- Switch -------------------------------------------------------------------------------- */
+
+.nt-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nt-switch-track {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+}
+
+.nt-switch-track input {
+  appearance: none;
+  margin: 0;
+  cursor: default;
+}
+
+.nt-switch-thumb {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+  transition: transform 150ms ease, width 120ms ease, height 120ms ease;
+}
+
+.nt-switch:has(input:disabled) {
+  color: var(--nt-text-disabled);
+}
+
+.nt-root[data-platform="windows"] .nt-switch-track input {
+  width: 40px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--nt-control);
+  border: 1px solid var(--nt-strong);
+}
+
+.nt-root[data-platform="windows"] .nt-switch-thumb {
+  top: 5px;
+  left: 5px;
+  width: 10px;
+  height: 10px;
+  background: var(--nt-text-secondary);
+}
+
+.nt-root[data-platform="windows"] .nt-switch-track:hover input:not(:disabled) + .nt-switch-thumb {
+  top: 4px;
+  left: 4px;
+  width: 12px;
+  height: 12px;
+}
+
+.nt-root[data-platform="windows"] .nt-switch-track input:checked {
+  background: var(--nt-accent);
+  border-color: var(--nt-accent);
+}
+
+.nt-root[data-platform="windows"] .nt-switch-track input:checked + .nt-switch-thumb {
+  transform: translateX(20px);
+  background: var(--nt-on-accent);
+}
+
+.nt-root[data-platform="windows"] .nt-switch-track input:disabled {
+  border-color: var(--nt-text-disabled);
+  background: transparent;
+}
+
+.nt-root[data-platform="windows"] .nt-switch-track input:disabled + .nt-switch-thumb {
+  background: var(--nt-text-disabled);
+}
+
+.nt-root[data-platform="mac"] .nt-switch {
+  gap: 8px;
+}
+
+.nt-root[data-platform="mac"] .nt-switch-track input {
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--nt-switch-track);
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.1);
+  transition: background 150ms ease;
+}
+
+.nt-root[data-platform="mac"] .nt-switch-thumb {
+  top: 1px;
+  left: 1px;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.nt-root[data-platform="mac"] .nt-switch-track input:checked {
+  background: var(--nt-accent);
+}
+
+.nt-root[data-platform="mac"] .nt-switch-track input:checked + .nt-switch-thumb {
+  transform: translateX(16px);
+}
+
+.nt-root[data-platform="mac"] .nt-switch-track input:disabled,
+.nt-root[data-platform="mac"] .nt-switch-track input:disabled + .nt-switch-thumb {
+  opacity: 0.5;
+}
+
+/* --- Select: the system's own dropdown, in the system's own button ---------------------------- */
+
+.nt-select {
+  position: relative;
+  display: inline-grid;
+  min-width: 120px;
+}
+
+.nt-select select {
+  appearance: none;
+  width: 100%;
+  height: var(--nt-control-height);
+  margin: 0;
+  font: inherit;
+  color: var(--nt-text);
+  cursor: default;
+}
+
+.nt-select select:disabled {
+  color: var(--nt-text-disabled);
+}
+
+.nt-select-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Windows: a chevron; macOS: two chevrons on an accent tile. Both are in the markup; each system shows its own. */
+.nt-root[data-platform="windows"] .nt-select-icon[data-for="mac"],
+.nt-root[data-platform="mac"] .nt-select-icon[data-for="windows"] {
+  display: none;
+}
+
+.nt-root[data-platform="windows"] .nt-select select {
+  padding: 0 34px 0 11px;
+  background: var(--nt-control);
+  border: 1px solid var(--nt-control-border);
+  border-bottom-color: var(--nt-control-border-bottom);
+  border-radius: var(--nt-radius);
+}
+
+.nt-root[data-platform="windows"] .nt-select select:hover:not(:disabled) {
+  background: var(--nt-control-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-select-icon {
+  right: 11px;
+  width: 12px;
+  height: 12px;
+  color: var(--nt-text-secondary);
+}
+
+.nt-root[data-platform="mac"] .nt-select select {
+  padding: 0 26px 0 8px;
+  background: var(--nt-control);
+  border: none;
+  border-radius: 5px;
+  box-shadow: var(--nt-control-shadow);
+}
+
+.nt-root[data-platform="mac"] .nt-select-icon {
+  right: 3px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: #ffffff;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--nt-accent) 82%, #ffffff), var(--nt-accent));
+  border-radius: 4px;
+}
+
+.nt-root[data-platform="mac"] .nt-select-icon svg {
+  width: 9px;
+  height: 11px;
+}
+
+.nt-root[data-platform="mac"] .nt-select:has(select:disabled) .nt-select-icon {
+  opacity: 0.4;
+}
+
+/* --- SegmentedControl ---------------------------------------------------------------------- */
+
+.nt-segmented {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.nt-segment {
+  font: inherit;
+  color: var(--nt-text);
+  background: transparent;
+  border: none;
+  cursor: default;
+  white-space: nowrap;
+}
+
+/* Windows: a row of words; the chosen one is bolder and has an accent pill under it (SelectorBar). */
+.nt-root[data-platform="windows"] .nt-segmented {
+  gap: 4px;
+}
+
+.nt-root[data-platform="windows"] .nt-segment {
+  position: relative;
+  padding: 6px 12px 8px;
+  color: var(--nt-text-secondary);
+  border-radius: var(--nt-radius);
+}
+
+.nt-root[data-platform="windows"] .nt-segment:hover {
+  background: var(--nt-subtle-hover);
+  color: var(--nt-text);
+}
+
+.nt-root[data-platform="windows"] .nt-segment[aria-checked="true"] {
+  color: var(--nt-text);
+  font-weight: 600;
+}
+
+.nt-root[data-platform="windows"] .nt-segment[aria-checked="true"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 16px;
+  height: 3px;
+  margin-left: -8px;
+  background: var(--nt-accent);
+  border-radius: 2px;
+}
+
+/* macOS: a sunken track; the chosen segment is a raised white piece. */
+.nt-root[data-platform="mac"] .nt-segmented {
+  height: var(--nt-control-height);
+  padding: 1px;
+  background: var(--nt-segment-track);
+  border-radius: 6px;
+}
+
+.nt-root[data-platform="mac"] .nt-segment {
+  min-width: 48px;
+  padding: 0 10px;
+  border-radius: 5px;
+}
+
+.nt-root[data-platform="mac"] .nt-segment[aria-checked="true"] {
+  background: var(--nt-segment-selected);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 1px 1.5px rgba(0, 0, 0, 0.15);
+}
+
+/* --- List: a column of rows, one can be chosen (a chat list, a sidebar) ------------------------ */
+
+.nt-list {
+  display: grid;
+  align-content: start;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.nt-list-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  cursor: default;
+}
+
+.nt-list-item[data-leading="false"] {
+  grid-template-columns: 1fr auto;
+}
+
+.nt-list-item-text {
+  display: grid;
+  min-width: 0;
+}
+
+.nt-list-item-title,
+.nt-list-item-subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nt-list-item-subtitle,
+.nt-list-item-trailing {
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-root[data-platform="windows"] .nt-list-item {
+  min-height: 40px;
+  margin: 2px 4px;
+  padding: 6px 12px;
+  border-radius: var(--nt-radius);
+}
+
+.nt-root[data-platform="windows"] .nt-list-item:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-list-item[aria-selected="true"] {
+  background: var(--nt-subtle-hover);
+}
+
+/* The accent pill at the start of the chosen row (NavigationView). */
+.nt-root[data-platform="windows"] .nt-list-item[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 16px;
+  margin-top: -8px;
+  background: var(--nt-accent);
+  border-radius: 2px;
+}
+
+.nt-root[data-platform="mac"] .nt-list-item {
+  min-height: 28px;
+  margin: 1px 10px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* macOS fills the chosen row with the accent, white text on it (a source list). */
+.nt-root[data-platform="mac"] .nt-list-item[aria-selected="true"] {
+  background: var(--nt-accent);
+  color: #ffffff;
+}
+
+.nt-root[data-platform="mac"] .nt-list-item[aria-selected="true"] .nt-list-item-subtitle,
+.nt-root[data-platform="mac"] .nt-list-item[aria-selected="true"] .nt-list-item-trailing {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* --- Avatar: a round picture, or initials --------------------------------------------------- */
+
+.nt-avatar {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex: none;
+  font-size: var(--nt-small);
+  font-weight: 600;
+  color: var(--nt-on-accent);
+  background: color-mix(in srgb, var(--nt-accent) 75%, var(--nt-window));
+  border-radius: 999px;
+}
+
+.nt-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* --- Surface: a card / group box ----------------------------------------------------------- */
+
+.nt-surface {
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-surface-title {
+  margin: 0 0 8px;
+  font-size: var(--nt-font-size);
+  font-weight: 600;
+}
+
+.nt-root[data-platform="windows"] .nt-surface {
+  padding: 16px;
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+}
+
+.nt-root[data-platform="mac"] .nt-surface {
+  padding: 12px;
+  background: var(--nt-group);
+  border: 1px solid var(--nt-group-border);
+}
+
+.nt-root[data-platform="mac"] .nt-surface-title {
+  font-size: var(--nt-font-size);
+  font-weight: 600;
+  color: var(--nt-text-secondary);
+}
+
+/* --- TitleBar: the window's top edge, with the system's own window buttons ------------------- */
+
+.nt-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.nt-titlebar-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.nt-titlebar-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nt-titlebar button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+.nt-root[data-platform="windows"] .nt-titlebar {
+  height: 32px;
+  padding-left: 12px;
+}
+
+/* Windows 11: the app's icon at the left edge, 16px, before the title. */
+.nt-root[data-platform="windows"] .nt-titlebar-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 12px;
+  pointer-events: none;
+}
+
+.nt-root[data-platform="windows"] .nt-titlebar-icon > * {
+  width: 16px;
+  height: 16px;
+}
+
+.nt-root[data-platform="mac"] .nt-titlebar-icon {
+  display: none;
+}
+
+.nt-root[data-platform="windows"] .nt-titlebar-title {
+  font-size: 12px;
+  margin-right: 12px;
+}
+
+.nt-root[data-platform="windows"] .nt-titlebar-content {
+  flex: 1;
+}
+
+.nt-root[data-platform="windows"] .nt-titlebar-controls {
+  display: flex;
+  align-self: stretch;
+  margin-left: auto;
+}
+
+.nt-root[data-platform="windows"] .nt-caption {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 100%;
+}
+
+.nt-root[data-platform="windows"] .nt-caption svg {
+  width: 10px;
+  height: 10px;
+}
+
+.nt-root[data-platform="windows"] .nt-caption:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-caption[data-action="close"]:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}
+
+.nt-root[data-platform="windows"] .nt-lights {
+  display: none;
+}
+
+.nt-root[data-platform="mac"] .nt-titlebar {
+  height: 28px;
+  padding: 0 12px;
+}
+
+.nt-root[data-platform="mac"] .nt-titlebar-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 50%;
+  font-weight: 600;
+  color: var(--nt-text-secondary);
+}
+
+.nt-root[data-platform="mac"] .nt-titlebar-content {
+  margin-left: auto;
+}
+
+.nt-root[data-platform="mac"] .nt-titlebar-controls {
+  display: none;
+}
+
+.nt-root[data-platform="mac"] .nt-lights {
+  display: flex;
+  gap: 8px;
+  margin-right: 12px;
+}
+
+.nt-light {
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.15);
+}
+
+.nt-light svg {
+  width: 8px;
+  height: 8px;
+  color: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+}
+
+.nt-lights:hover .nt-light svg {
+  opacity: 1;
+}
+
+.nt-light[data-action="close"] {
+  background: #ff5f57 !important;
+}
+
+.nt-light[data-action="minimize"] {
+  background: #febc2e !important;
+}
+
+.nt-light[data-action="maximize"] {
+  background: #28c840 !important;
+}
+
+/* --- ProgressBar --------------------------------------------------------------------------- */
+
+.nt-progress {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.nt-progress-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--nt-accent);
+  border-radius: 999px;
+  transition: width 200ms ease;
+}
+
+.nt-progress[data-indeterminate] .nt-progress-bar {
+  width: 40%;
+  animation: nt-progress-slide 1.6s ease-in-out infinite;
+}
+
+@keyframes nt-progress-slide {
+  from {
+    left: -40%;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+/* Windows: a thin line, the bar over it 3px tall. */
+.nt-root[data-platform="windows"] .nt-progress {
+  height: 3px;
+}
+
+.nt-root[data-platform="windows"] .nt-progress::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1px;
+  height: 1px;
+  background: var(--nt-track);
+}
+
+/* macOS: a rounded groove, the bar filling it. */
+.nt-root[data-platform="mac"] .nt-progress {
+  height: 6px;
+  background: var(--nt-track);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-progress[data-indeterminate] .nt-progress-bar {
+    animation-duration: 4s;
+  }
+
+  .nt-switch-thumb {
+    transition: none;
+  }
+}
+
+/* --- the pointer ---------------------------------------------------------------------------- */
+
+/* The arrow everywhere (set on .nt-root above); the I-beam where text can be typed or selected. */
+.nt-root input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"]),
+.nt-root textarea,
+.nt-root [contenteditable="true"],
+.nt-root .nt-selectable {
+  cursor: text;
+}
+
+/* Text people can select and copy (a message, an address); everything else is not, as in a native app. */
+.nt-root .nt-selectable {
+  user-select: text;
+}
+
+/* While the app works: the arrow with a spinner (it still answers), or the spinner alone (it does not). */
+.nt-root[data-busy="progress"],
+.nt-root[data-busy="progress"] * {
+  cursor: progress !important;
+}
+
+.nt-root[data-busy="wait"],
+.nt-root[data-busy="wait"] * {
+  cursor: wait !important;
+}
+
+/* --- ContextMenu ---------------------------------------------------------------------------- */
+
+.nt-root[data-platform="windows"] {
+  --nt-menu: rgba(249, 249, 249, 0.92);
+  --nt-menu-border: rgba(0, 0, 0, 0.0578);
+  --nt-menu-separator: rgba(0, 0, 0, 0.0803);
+}
+
+.nt-root[data-platform="windows"][data-theme="dark"] {
+  --nt-menu: rgba(44, 44, 44, 0.96);
+  --nt-menu-border: rgba(0, 0, 0, 0.2);
+  --nt-menu-separator: rgba(255, 255, 255, 0.0837);
+}
+
+.nt-root[data-platform="mac"] {
+  --nt-menu: rgba(246, 246, 246, 0.82);
+  --nt-menu-separator: rgba(0, 0, 0, 0.1);
+}
+
+.nt-root[data-platform="mac"][data-theme="dark"] {
+  --nt-menu: rgba(40, 40, 40, 0.78);
+  --nt-menu-separator: rgba(255, 255, 255, 0.12);
+}
+
+.nt-menu {
+  position: fixed;
+  z-index: 1000;
+  display: grid;
+  min-width: 180px;
+  max-width: 320px;
+  /* Placed (and shown) once measured: see context-menu.tsx. */
+  visibility: hidden;
+  /* It can be drawn inside anything (a dialog, a centred alert, a heading): it takes none of their text
+     settings, only its own. */
+  font-family: var(--nt-font);
+  font-size: var(--nt-font-size);
+  font-weight: 400;
+  font-style: normal;
+  line-height: var(--nt-line);
+  letter-spacing: normal;
+  text-align: start;
+  text-transform: none;
+  white-space: normal;
+  cursor: default;
+  user-select: none;
+  color: var(--nt-text);
+  outline: none;
+  backdrop-filter: blur(30px) saturate(1.6);
+  -webkit-backdrop-filter: blur(30px) saturate(1.6);
+}
+
+.nt-menu-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 24px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.nt-menu[data-gutter="true"] .nt-menu-item {
+  grid-template-columns: 16px 1fr auto;
+  column-gap: 8px;
+}
+
+.nt-menu[data-gutter="true"] .nt-menu-shortcut {
+  margin-left: 16px;
+}
+
+.nt-menu-gutter {
+  display: grid;
+  place-items: center;
+}
+
+.nt-menu-gutter svg {
+  width: 12px;
+  height: 12px;
+}
+
+.nt-menu-shortcut {
+  color: var(--nt-text-secondary);
+}
+
+.nt-menu-item[aria-disabled="true"],
+.nt-menu-item[aria-disabled="true"] .nt-menu-shortcut {
+  color: var(--nt-text-disabled);
+}
+
+/* Windows 11: a flyout with rounded corners that slides down into place; the row under the pointer is tinted. */
+.nt-root[data-platform="windows"] .nt-menu {
+  padding: 4px 0;
+  background: var(--nt-menu);
+  border: 1px solid var(--nt-menu-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14);
+  animation: nt-menu-in 167ms cubic-bezier(0, 0, 0, 1);
+}
+
+.nt-root[data-platform="windows"] .nt-menu-item {
+  height: 30px;
+  margin: 1px 4px;
+  padding: 0 11px;
+  border-radius: 4px;
+}
+
+.nt-root[data-platform="windows"] .nt-menu-shortcut {
+  font-size: var(--nt-small);
+}
+
+.nt-root[data-platform="windows"] .nt-menu-item[data-active] {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-menu-separator {
+  height: 1px;
+  margin: 3px 0;
+  background: var(--nt-menu-separator);
+}
+
+@keyframes nt-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* macOS: a translucent menu that appears at once; the row under the pointer is filled with the accent. */
+.nt-root[data-platform="mac"] .nt-menu {
+  padding: 5px;
+  background: var(--nt-menu);
+  border-radius: 8px;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.22), 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.nt-root[data-platform="mac"][data-theme="dark"] .nt-menu {
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.6), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.nt-root[data-platform="mac"] .nt-menu-item {
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 4px;
+}
+
+.nt-root[data-platform="mac"] .nt-menu-item[data-active] {
+  color: #ffffff;
+  background: var(--nt-accent);
+}
+
+.nt-root[data-platform="mac"] .nt-menu-item[data-active] .nt-menu-shortcut {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.nt-root[data-platform="mac"] .nt-menu-separator {
+  height: 1px;
+  margin: 5px 10px;
+  background: var(--nt-menu-separator);
+}
+
+/* macOS rings what was right-clicked while its menu is open (Mail, Messages, Finder). */
+.nt-root[data-platform="mac"] .nt-list-item[data-context-target] {
+  outline: 2px solid var(--nt-accent);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-root[data-platform="windows"] .nt-menu {
+    animation: none;
+  }
+}
+
+/* The menu takes the focus to read the keys; the highlighted row shows where it is, not an outline. */
+.nt-root .nt-menu:focus-visible {
+  outline: none;
+}
+
+/* --- Scroll bars: the systems' own kind, everywhere inside the provider -----------------------------
+   Windows 11: a thin rounded bar with no arrows, a little thicker while the pointer is on it. A Mac: a slim
+   rounded bar on a clear track. (Without this the webview draws the old bar with arrows on Windows.) */
+
+.nt-root[data-platform="windows"] {
+  --nt-scroll-thumb: rgba(0, 0, 0, 0.42);
+  --nt-scroll-thumb-hover: rgba(0, 0, 0, 0.6);
+}
+
+.nt-root[data-platform="windows"][data-theme="dark"] {
+  --nt-scroll-thumb: rgba(255, 255, 255, 0.45);
+  --nt-scroll-thumb-hover: rgba(255, 255, 255, 0.65);
+}
+
+.nt-root[data-platform="mac"] {
+  --nt-scroll-thumb: rgba(0, 0, 0, 0.3);
+  --nt-scroll-thumb-hover: rgba(0, 0, 0, 0.5);
+}
+
+.nt-root[data-platform="mac"][data-theme="dark"] {
+  --nt-scroll-thumb: rgba(255, 255, 255, 0.3);
+  --nt-scroll-thumb-hover: rgba(255, 255, 255, 0.5);
+}
+
+.nt-root::-webkit-scrollbar,
+.nt-root ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+  background: transparent;
+}
+
+.nt-root::-webkit-scrollbar-button,
+.nt-root ::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.nt-root::-webkit-scrollbar-track,
+.nt-root ::-webkit-scrollbar-track,
+.nt-root::-webkit-scrollbar-corner,
+.nt-root ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.nt-root::-webkit-scrollbar-thumb,
+.nt-root ::-webkit-scrollbar-thumb {
+  min-width: 32px;
+  min-height: 32px;
+  background-color: var(--nt-scroll-thumb);
+  background-clip: padding-box;
+  border: 4px solid transparent;
+  border-radius: 999px;
+}
+
+.nt-root::-webkit-scrollbar-thumb:hover,
+.nt-root ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--nt-scroll-thumb-hover);
+  border-width: 3px;
+}
+
+/* --- Focus rings only after keyboard use ----------------------------------------------------------
+   The provider marks the page with what was used last (data-nt-input, see provider.tsx). After a click,
+   a focus the app moves by itself (a panel opening, a menu closing) shows no keyboard ring, whichever
+   component draws it. Text boxes keep their own focus look (it says where typing goes). */
+:root[data-nt-input="pointer"] .nt-root :focus-visible:not(:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"], [type="color"], [type="file"]), textarea, [contenteditable=""], [contenteditable="true"])) {
+  outline: none !important;
+}
+
+:root[data-nt-input="pointer"] .nt-root .nt-filelist tr:focus-visible td,
+:root[data-nt-input="pointer"] .nt-root .nt-bubble:focus-visible {
+  box-shadow: none !important;
+}

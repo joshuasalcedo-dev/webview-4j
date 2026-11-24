@@ -171,6 +171,7 @@ carries is run as a script.
 | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` `api/<path>[?query]` | `view.<view>.request` to Java (§2.2), the body unread; Java's answer is the response. The routes are a `@WebViewController`'s, and the TypeScript client the annotation processor generates calls them |
 | `POST events` | held until Java emits a large push; answered with the waiting `view.<view>.emit.<…topic>` messages as frames (§1.1), each with a `Seq` header, `Content-Type: application/x-webview4j-frames` |
 | `GET app/<path>` | `view.<view>.asset` to Java (§2.2), for a window opened with `assets`; Java's answer is the response. An empty path or one ending in `/` is `index.html` |
+| `GET ui/<path>` | `view.<view>.asset` to Java with `Root: webview4j-ui`: webview-4j's own components (`@webview4j/ui`, built into core's jar: `ui.js`, `ui.css` and the chunks they load), for every window. Public library code: any page may load it, from any origin (`Access-Control-Allow-Origin: *`) |
 
 **The app's files** answer before the origin check: a page loading itself and the files it links
 to sends no `Origin`. They are the app's code, never its data, and only a window opened with
@@ -201,6 +202,13 @@ same-origin `GET`, so without one a request's origin is taken from headers pages
 - Large pushes made before the page has polled once are dropped, as with no listeners. While the
   page polls, up to 16 MiB of them wait for it; beyond that a push fails with `503`.
 - When the window closes, the held poll is answered `410` and open calls `503`.
+
+**The page's own window.** A page posts `WIN <action>` over IPC (`window.__webview4j.window`):
+`minimize`, `toggle-maximize`, `close` (as the close button: with `confirmClose`, Java gets
+`close-requested`) or `drag` (moves the window with the mouse; sent on a mouse-down). Only a page
+the window allows is heard; anything else is ignored. A mouse-down on an element inside
+`[data-webview4j-drag-region]` (or `[data-tauri-drag-region]`), not on a button, link, field or
+`[data-no-drag]`, sends `drag`; a double click sends `toggle-maximize`.
 
 ## 3. Headers
 
