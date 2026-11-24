@@ -19,6 +19,10 @@
 - A window without the system's frame resizes from its edges, with the system's resize pointers
 - `WindowOptions.theme` and `view.setTheme`: light or dark for the window and the page's `prefers-color-scheme` together
 - `samples/notes`: a whole sample app, its own Gradle build, with a look (Windows 11 / macOS) and theme switcher
+- Embedded views: `view.embed(options, x, y, width, height)` opens a website inside a window (Windows, macOS), `place` moves it; no bridge for it unless Java names its origins; it closes with its window
+- `MdiArea` and `useMdi` in `@webview4j/ui`: windows inside the app's window (move, resize, minimize, maximize, cascade, tile, Ctrl+F6)
+- `WindowOptions.app(...).page("other.html")`: another page of the app's own files
+- `TitleBar dragsWindow={false}`: a title bar that is not the window's own
 - The build reuses a native library already built from the current Rust sources instead of running cargo again (`-PrebuildNative` forces it)
 
 ## 0.1.0 — 2026-10-21

@@ -105,6 +105,7 @@ A refused frame is never half-processed: the receiver drops it and, if it can te
 | `view.<view>.state` | `{"minimized":bool,"maximized":bool,"fullscreen":bool,"alwaysOnTop":bool,"resizable":bool}`, keys left out stay as they are | `200` |
 | `view.<view>.min-size` | `{"width":400,"height":300}` logical pixels; `0` for none | `200` |
 | `view.<view>.geometry` | none | `200`, where the window is and how it is shown (§5.8) |
+| `view.<view>.place` | `{"x":0,"y":0,"width":800,"height":600}` logical pixels | `200`: where an embedded view sits in its window; `400` for a view that is not embedded |
 | `view.<view>.theme` | `text/plain`: `system`, `light` or `dark` | `200`: the window's frame and the page's `prefers-color-scheme` |
 | `view.<view>.capture` | `{"api":true,"clicks":false,...}`, keys left out keep their setting (§5.4) | `200` |
 | `view.<view>.websocket.<socket>.send` | `text/plain`: one text frame | `200`, or `404` if the socket is unknown or not open |
@@ -272,6 +273,7 @@ sent (`400`), so a typo fails loudly instead of being half-understood.
 | `maximized`, `fullscreen`, `alwaysOnTop` | boolean | `false` |
 | `confirmClose` | boolean: the close button sends `close-requested` instead of closing | `false` |
 | `theme` | `system`, `light` or `dark`: the frame and the page's `prefers-color-scheme` | `system` |
+| `parent` | a view id: embeds the webview in that view's window instead of opening one, at `x`, `y` (logical pixels, default `0`), `width` by `height`. Window options do not apply; with no `origins`, the embedded page gets no bridge. An embedded view refuses what is about a window (`title`, `size`, `state`...) with `400`; `show`, `hide` and `focus` act on the webview. It closes, with its `closed`, before its parent. `400` to embed in an embedded view, `501` where it is not supported yet (Linux) | |
 | `fileDrop` | boolean: files dropped on the window are reported (`file-drop`), not opened by the page | `false` |
 | `icon` | string, a PNG in base64 (1 MB at most): the window's icon in its title bar, the taskbar and the window switcher; one that is not a PNG is ignored with a warning | the program's icon |
 

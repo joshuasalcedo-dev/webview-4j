@@ -10,7 +10,7 @@ import { TextField } from "@webview4j/ui/components/text-field"
 import { TitleBar } from "@webview4j/ui/components/title-bar"
 import { isWebView4j } from "@webview4j/api"
 // Written by the annotation processor from NotesController.java when Java compiles.
-import { appearance, notes, type Note } from "./api.generated"
+import { appearance, notes, showcase, type Note } from "./api.generated"
 import type { Look } from "./main"
 
 type ThemeChoice = "system" | "light" | "dark"
@@ -80,6 +80,9 @@ export function App({ look, onLookChange }: { look: Look; onLookChange: (look: L
             ]}
           />
         </div>
+        <Button onClick={() => void showcase.open()} disabled={!isWebView4j()} style={{ marginBottom: 20 }}>
+          Open the showcase: every component, MDI, an embedded website and its network
+        </Button>
         <Text variant="title">Notes</Text>
         <Text tone="secondary">Kept by Java (NotesController), shown with @webview4j/ui.</Text>
         <form onSubmit={add} style={{ display: "flex", gap: 8, alignItems: "flex-end", margin: "16px 0" }}>

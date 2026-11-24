@@ -30,6 +30,7 @@ public final class NotesApp {
     private static void start(App app, boolean dev) {
         app.register(new NotesController());
         app.register(new AppearanceController());
+        app.register(new ShowcaseController());
 
         WindowOptions page = dev ? WindowOptions.url(DEV_SERVER).devtools(true) : WindowOptions.app("web");
         View view = app.open(page.title("Notes").size(1100, 720).minSize(640, 420)
@@ -40,5 +41,8 @@ public final class NotesApp {
             if (app.confirm("Quit?", "Close Notes?").join()) view.close();
         });
         view.subscribe(Closed.class, closed -> app.quit());
+
+        // ./gradlew run -Pshowcase: the showcase too, from the start.
+        if (Boolean.getBoolean("notes.showcase")) new ShowcaseController().open(view);
     }
 }

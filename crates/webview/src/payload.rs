@@ -72,6 +72,24 @@ pub struct OpenRequest {
     /// Light or dark for the window's frame and the page's `prefers-color-scheme`; the system's unless given.
     #[serde(default)]
     pub theme: ThemeChoice,
+    /// Embeds the webview in this view's window instead of opening a window: at `x`, `y` (logical pixels from
+    /// the window's top left), `width` by `height`. Window options (title, frame, size limits...) do not apply.
+    #[serde(default)]
+    pub parent: Option<String>,
+    #[serde(default)]
+    pub x: f64,
+    #[serde(default)]
+    pub y: f64,
+}
+
+/// Payload of `view.<view>.place`: where an embedded view sits in its window, logical pixels.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PlaceBody {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
 }
 
 /// `system` follows the system, and changes when it does; `light` and `dark` hold.
@@ -344,5 +362,8 @@ mod tests {
         assert_eq!(open.theme, ThemeChoice::System);
         assert_eq!(json::<OpenRequest>(br#"{"theme":"dark"}"#).unwrap().theme, ThemeChoice::Dark);
         assert_eq!(json::<OpenRequest>(br#"{"theme":"sepia"}"#).err().unwrap().status, 400);
+        let embed = json::<OpenRequest>(br#"{"url":"https://example.com","parent":"wv-1","x":10,"y":20,"width":300,"height":200}"#).unwrap();
+        assert_eq!((embed.parent.as_deref(), embed.x, embed.y, embed.width), (Some("wv-1"), 10.0, 20.0, 300.0));
+        assert!(json::<PlaceBody>(br#"{"x":1,"y":2,"width":3}"#).is_err(), "a place needs all four");
     }
 }

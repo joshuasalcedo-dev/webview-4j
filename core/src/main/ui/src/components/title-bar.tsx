@@ -19,6 +19,11 @@ type TitleBarProps = Omit<React.ComponentProps<"header">, "title"> & {
   onClose?: () => void
   /** Whether the window fills the screen: Windows' window menu offers Restore then, Maximize otherwise. */
   maximized?: boolean
+  /**
+   * Whether dragging the bar moves the app's window (true by default). False for a title bar that is not the
+   * window's own, such as an MdiWindow's inside the app.
+   */
+  dragsWindow?: boolean
 }
 
 const glyph = (d: string) => (
@@ -44,6 +49,7 @@ function TitleBar({
   onRestore,
   onClose = currentWindow.close,
   maximized = false,
+  dragsWindow = true,
   className,
   children,
   ...props
@@ -74,7 +80,7 @@ function TitleBar({
   const { onContextMenu } = useContextMenu(windowMenu)
   return (
     <header
-      data-webview4j-drag-region
+      data-webview4j-drag-region={dragsWindow ? "" : undefined}
       className={cn("nt-titlebar", className)}
       onContextMenu={platform === "windows" ? onContextMenu : undefined}
       {...props}

@@ -22,4 +22,13 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   server: { port: 5173, strictPort: true, fs: { allow: [".", core] } },
+  // Two pages: the notes (index.html) and the showcase window (showcase.html, WindowOptions.app("web").page(...)).
+  build: {
+    rollupOptions: {
+      input: {
+        index: fileURLToPath(new URL("index.html", import.meta.url)),
+        showcase: fileURLToPath(new URL("showcase.html", import.meta.url)),
+      },
+    },
+  },
 })

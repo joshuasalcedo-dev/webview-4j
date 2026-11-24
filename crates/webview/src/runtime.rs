@@ -6,6 +6,7 @@
 //! frames (PROTOCOL.md). What each subject means is in PROTOCOL.md §2.
 
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
@@ -21,7 +22,7 @@ use crate::frame::Message;
 use crate::inspector::{self, Capture};
 use crate::payload::{
     self, BoundsBody, CaptureBody, CookieRecord, FileDialogBody, Geometry, MessageDialogBody, OpenRequest, Outcome, PositionBody,
-    SizeBody, StateBody, ThemeChoice, WebViewInfo,
+    PlaceBody, SizeBody, StateBody, ThemeChoice, WebViewInfo,
 };
 
 /// Receives each message as a frame (`frame`, `length` bytes), valid only during the call. Mostly
@@ -69,7 +70,10 @@ pub fn send(message: Message) -> Result<(), NotSent> {
 
 struct Instance {
     webview: WebView,
-    window: Window,
+    /// Its own window, or for an embedded view the window it is embedded in (its parent's).
+    window: Rc<Window>,
+    /// Set for an embedded view: the view whose window it sits in.
+    parent: Option<String>,
     title: String,
     capture: Arc<Capture>,
     link: Arc<Mutex<bridge::Link>>,
@@ -173,6 +177,25 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
     }))
 }
 
+/// Closes a view and every view embedded in it (theirs first, while its window still exists), each with a
+/// `view.<id>.closed`. False if there is no such view.
+fn close_view(state: &mut State, id: &str) -> bool {
+    let children: Vec<String> =
+        state.views.iter().filter(|(_, v)| v.parent.as_deref() == Some(id)).map(|(child, _)| child.clone()).collect();
+    for child in children {
+        close_view(state, &child);
+    }
+    let Some(instance) = state.views.remove(id) else {
+        return false;
+    };
+    if instance.parent.is_none() {
+        state.ids_by_window.remove(&instance.window.id());
+    }
+    drop(instance); // the webview, then (its last reference) the window: dropping the window closes it
+    emit(&Message::new(format!("view.{id}.closed")));
+    true
+}
+
 /// What a window reports: closing, its size and position, focus.
 fn on_window(window_id: WindowId, event: WindowEvent, state: &mut State) {
     let Some(id) = state.ids_by_window.get(&window_id).cloned() else {
@@ -186,9 +209,7 @@ fn on_window(window_id: WindowId, event: WindowEvent, state: &mut State) {
             emit(&Message::new(format!("view.{id}.close-requested")));
         }
         WindowEvent::CloseRequested => {
-            state.ids_by_window.remove(&window_id);
-            state.views.remove(&id);
-            emit(&Message::new(format!("view.{id}.closed")));
+            close_view(state, &id);
         }
         WindowEvent::Resized(size) => {
             let size = size.to_logical::<f64>(instance.window.scale_factor());
@@ -211,6 +232,9 @@ fn page_window_action(view: &str, action: &str, state: &mut State) {
     let Some(instance) = state.views.get(view) else {
         return;
     };
+    if instance.parent.is_some() {
+        return; // an embedded page does not move or close the window it sits in
+    }
     let window = &instance.window;
     match action {
         "drag" => {
@@ -379,7 +403,8 @@ fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut 
             Err(error) => error,
         },
         ["app", "quit"] => {
-            // Webviews before their windows and contexts, while the loop is still alive.
+            // Webviews before their windows and contexts, embedded ones first, while the loop is still alive.
+            state.views.retain(|_, v| v.parent.is_none());
             state.ids_by_window.clear();
             state.views.clear();
             *control_flow = ControlFlow::Exit;
@@ -398,7 +423,7 @@ fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut 
 fn parent<'a>(view: Option<&str>, state: &'a State) -> Result<Option<&'a Window>, Outcome> {
     match view {
         None => Ok(None),
-        Some(view) => state.views.get(view).map(|instance| Some(&instance.window)).ok_or_else(|| not_found(view)),
+        Some(view) => state.views.get(view).map(|instance| Some(&*instance.window)).ok_or_else(|| not_found(view)),
     }
 }
 
@@ -415,19 +440,24 @@ fn answer_later(reply: ReplyTo, answer: crate::dialog::Answer) {
 fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state: &mut State) -> Option<Outcome> {
     let payload = message.payload.as_slice();
     if rest == ["close"] {
-        return Some(match state.views.remove(view) {
-            Some(instance) => {
-                state.ids_by_window.remove(&instance.window.id());
-                drop(instance); // dropping the window closes it
-                emit(&Message::new(format!("view.{view}.closed")));
-                Outcome::ok()
-            }
-            None => not_found(view),
-        });
+        return Some(if close_view(state, view) { Outcome::ok() } else { not_found(view) });
     }
     let Some(instance) = state.views.get_mut(view) else {
         return Some(not_found(view));
     };
+    if instance.parent.is_some() {
+        // An embedded view has no window of its own: what is about a window is refused; showing, hiding and
+        // focusing are about the webview, and `place` moves it.
+        match rest {
+            ["title"] | ["size"] | ["position"] | ["bounds"] | ["state"] | ["min-size"] | ["geometry"] | ["theme"] => {
+                return Some(Outcome::error(400, format!("'{view}' is embedded: it has no window of its own (place moves it)")));
+            }
+            ["show"] => return Some(result(instance.webview.set_visible(true))),
+            ["hide"] => return Some(result(instance.webview.set_visible(false))),
+            ["focus"] => return Some(result(instance.webview.focus())),
+            _ => {}
+        }
+    }
     Some(match rest {
         ["call", call] => {
             // Java's answer to the page's call: to the waiting fetch, status and bytes unread, or
@@ -563,6 +593,11 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
             Err(error) => error,
         },
         ["geometry"] => Outcome::json(&geometry(&instance.window)),
+        ["place"] => match payload::json::<PlaceBody>(payload) {
+            Ok(body) if instance.parent.is_some() => result(instance.webview.set_bounds(logical_rect(&body))),
+            Ok(_) => Outcome::error(400, format!("'{view}' is not embedded: place moves an embedded view")),
+            Err(error) => error,
+        },
         ["capture"] => match payload::json::<CaptureBody>(payload) {
             Ok(body) => {
                 instance.capture.apply(body);
@@ -706,9 +741,23 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
             return Outcome::error(500, format!("cannot create browser profile: {e}"));
         }
     }
-    let window = match window_builder(&open).build(target) {
-        Ok(window) => window,
-        Err(e) => return Outcome::error(500, format!("failed to create the window: {e}")),
+    let parent = match &open.parent {
+        None => None,
+        Some(parent) => match state.views.get(parent) {
+            Some(instance) if instance.parent.is_none() => Some((parent.clone(), Rc::clone(&instance.window))),
+            Some(_) => return Outcome::error(400, format!("'{parent}' is embedded itself: embed in a window's own view")),
+            None => return not_found(parent),
+        },
+    };
+    if parent.is_some() && !EMBEDDING {
+        return Outcome::error(501, "embedded views are not supported on this system yet");
+    }
+    let window = match &parent {
+        Some((_, window)) => Rc::clone(window),
+        None => match window_builder(&open).build(target) {
+            Ok(window) => Rc::new(window),
+            Err(e) => return Outcome::error(500, format!("failed to create the window: {e}")),
+        },
     };
     state.next_id += 1;
     let id = format!("wv-{}", state.next_id);
@@ -721,9 +770,11 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
     .with_devtools(open.devtools);
     let capture = Arc::new(Capture::new(open.capture));
     let (view_id, view_capture) = (id.clone(), Arc::clone(&capture));
-    let origins = open.origins.clone().unwrap_or_else(|| match &open.url {
-        Some(url) => bridge::origin_of(url).into_iter().collect(),
-        None => vec!["null".to_string()],
+    let origins = open.origins.clone().unwrap_or_else(|| match (&parent, &open.url) {
+        // An embedded page is someone else's site, usually: no bridge unless Java names its origins.
+        (Some(_), _) => Vec::new(),
+        (None, Some(url)) => bridge::origin_of(url).into_iter().collect(),
+        (None, None) => vec!["null".to_string()],
     });
     let link = bridge::Link::with_assets(&id, origins, open.assets.clone());
     let page_link = Arc::clone(&link);
@@ -758,14 +809,24 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
         builder = builder.with_html(html);
     }
 
-    let webview = match build_webview(builder, &window) {
+    let built = match &parent {
+        Some(_) => builder
+            .with_bounds(logical_rect(&PlaceBody { x: open.x, y: open.y, width: open.width, height: open.height }))
+            .with_visible(!open.headless)
+            .build_as_child(&*window),
+        None => build_webview(builder, &window),
+    };
+    let webview = match built {
         Ok(webview) => webview,
         Err(e) => return Outcome::error(500, format!("failed to create the webview: {e}")),
     };
 
-    state.ids_by_window.insert(window.id(), id.clone());
+    if parent.is_none() {
+        state.ids_by_window.insert(window.id(), id.clone());
+    }
     let instance = Instance {
         window,
+        parent: parent.map(|(parent, _)| parent),
         webview,
         title: open.title,
         capture,
@@ -794,6 +855,18 @@ fn file_drop(view: &str, event: wry::DragDropEvent) {
     let (x, y) = position.unwrap_or_default();
     let report = json!({"kind": kind, "paths": paths, "x": x, "y": y});
     emit(&Message::new(format!("view.{view}.file-drop")).payload(report.to_string()));
+}
+
+/// Where child webviews work: Windows and macOS. On Linux a child webview needs a GTK container the window does
+/// not have yet (wry's build_as_child is X11 only), so embedding is refused there with `501`.
+const EMBEDDING: bool = cfg!(any(target_os = "windows", target_os = "macos"));
+
+/// An embedded view's place in its window, logical pixels from the window's top left.
+fn logical_rect(place: &PlaceBody) -> wry::Rect {
+    wry::Rect {
+        position: wry::dpi::LogicalPosition::new(place.x, place.y).into(),
+        size: wry::dpi::LogicalSize::new(place.width.max(1.0), place.height.max(1.0)).into(),
+    }
 }
 
 /// Windows maps the custom protocol onto `http(s)://webview4j.localhost`: https, so a secure page

@@ -87,6 +87,20 @@ public final class WindowOptions {
         return options;
     }
 
+    /**
+     * Another page of the {@link #app app's own files} than {@code index.html}, such as {@code "settings.html"} of
+     * a Vite app with several pages: {@code WindowOptions.app("web").page("settings.html")}.
+     *
+     * @throws IllegalStateException unless the options were made with {@link #app}
+     * @throws IllegalArgumentException if {@code page} is not a path inside the app's files
+     */
+    public WindowOptions page(String page) {
+        if (assets == null) throw new IllegalStateException("page() is for the app's own files: WindowOptions.app(...)");
+        if (page == null || !Assets.safe(page)) throw new IllegalArgumentException("not a page of the app's files: " + page);
+        this.url = Assets.baseUrl() + "app/" + page;
+        return this;
+    }
+
     public WindowOptions title(String title)        { this.title = Objects.requireNonNull(title, "title"); return this; }
 
     /**

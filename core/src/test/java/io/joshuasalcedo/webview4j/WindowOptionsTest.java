@@ -35,4 +35,11 @@ class WindowOptionsTest {
         assertFalse(plain.containsKey("theme"), "the system's theme is the default");
         assertEquals("dark", WindowOptions.blank().theme(Theme.DARK).toPayload().get("theme"));
     }
+
+    @Test
+    void anAppOpensAnotherOfItsPages() {
+        assertEquals(Assets.baseUrl() + "app/settings.html", WindowOptions.app("web").page("settings.html").toPayload().get("url"));
+        assertThrows(IllegalStateException.class, () -> WindowOptions.url("https://example.com").page("x.html"));
+        assertThrows(IllegalArgumentException.class, () -> WindowOptions.app("web").page("../secret.html"));
+    }
 }

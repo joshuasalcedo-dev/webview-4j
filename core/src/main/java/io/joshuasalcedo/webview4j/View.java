@@ -150,9 +150,45 @@ public final class View {
         return Boolean.TRUE.equals(json.get(key));
     }
 
+    // ---- embedded views ----
+
+    /**
+     * Opens another page inside this view's window, as an embedded view: a website on demand, a preview, a
+     * document beside the app's own UI. It sits at {@code x}, {@code y} (logical pixels from the window's top
+     * left), {@code width} by {@code height}, above this page, and {@link #place moves} with the app's layout.
+     * The returned view is a view like any other (navigate, eval, capture, events, close), without a window of
+     * its own: what is about a window (title, size, state...) is refused. It closes with this view.
+     *
+     * <p>An embedded page cannot use the bridge unless {@code options} names its origins
+     * ({@link WindowOptions#origins}): a website someone opens is not the app. Window options (title, frame, size
+     * limits, theme) do not apply. Windows and macOS; on Linux the future fails (not supported yet).
+     * <pre>{@code
+     * View site = view.embed(WindowOptions.url("https://example.com").capture(Capture.API), 240, 48, 800, 600).join();
+     * site.subscribe(ApiCall.class, call -> System.out.println(call.method() + " " + call.url()));
+     * }</pre>
+     */
+    public CompletableFuture<View> embed(WindowOptions options, double x, double y, double width, double height) {
+        Objects.requireNonNull(options, "options");
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("an embedded view's size is positive");
+        Map<String, Object> payload = options.toPayload();
+        payload.put("parent", id);
+        payload.put("x", x);
+        payload.put("y", y);
+        payload.put("width", width);
+        payload.put("height", height);
+        return app.open(options, payload);
+    }
+
+    /** Where this embedded view sits in its window, logical pixels from the window's top left. */
+    public CompletableFuture<Void> place(double x, double y, double width, double height) {
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("an embedded view's size is positive");
+        return done(message("place").withJson(Map.of("x", x, "y", y, "width", width, "height", height)));
+    }
+
     /**
      * Closes the window; a {@link Closed} event follows. With {@link WindowOptions#confirmClose
-     * confirmClose}, this is how the app closes it after a {@link CloseRequested}.
+     * confirmClose}, this is how the app closes it after a {@link CloseRequested}. For an embedded view, closes
+     * just it; closing a window's view closes the views embedded in it first.
      */
     public CompletableFuture<Void> close() {
         return done(message("close"));

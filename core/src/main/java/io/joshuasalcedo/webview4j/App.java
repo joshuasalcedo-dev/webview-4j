@@ -144,9 +144,14 @@ public final class App implements AutoCloseable {
 
     /** Opens a window; the future completes once it exists. */
     public CompletableFuture<View> open(WindowOptions options) {
+        return open(options, options.toPayload());
+    }
+
+    /** Opens what {@code payload} says (a window, or with {@code parent} an embedded view); {@code options} for its files. */
+    CompletableFuture<View> open(WindowOptions options, Map<String, Object> payload) {
         // Before the window exists: its page asks for its files as soon as it loads.
         if (options.assets() != null) assets.serve(options.assets(), options.assetLoader());
-        return request(Message.of("app.open").withJson(options.toPayload()))
+        return request(Message.of("app.open").withJson(payload))
                 .thenApply(reply -> new View(this, Events.text(object(reply), "view")));
     }
 
