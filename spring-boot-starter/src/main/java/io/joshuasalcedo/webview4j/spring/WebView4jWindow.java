@@ -52,6 +52,20 @@ public class WebView4jWindow implements ApplicationListener<ApplicationReadyEven
         return "http://localhost:" + port + context;
     }
 
+    /** A client of a server: what the server says changed is fetched again (its ServerState and pages' queries). */
+    private void listenToInvalidations(Environment environment) {
+        String at = properties.getInvalidations();
+        if ("none".equalsIgnoreCase(at)) return;
+        if (at == null || at.isBlank()) {
+            String server = properties.getClientUrl() != null ? properties.getClientUrl() : environment.getProperty("webview4j.client-url");
+            if (server == null || server.isBlank()) return;
+            at = server.replaceAll("/+$", "") + "/webview4j/invalidations";
+        }
+        var session = io.joshuasalcedo.webview4j.ui.UiWindow.session(app);
+        var listening = io.joshuasalcedo.webview4j.ui.state.Invalidations.listen(session, java.net.URI.create(at));
+        app.whenStopped().thenRun(listening::close);
+    }
+
     /** The page the window opens: webview4j.url, or webview4j.path (or {@code /}) on the app's own server. */
     public String address(Environment environment) {
         if (properties.getUrl() != null && !properties.getUrl().isBlank()) return properties.getUrl();
@@ -74,6 +88,7 @@ public class WebView4jWindow implements ApplicationListener<ApplicationReadyEven
             var router = io.joshuasalcedo.webview4j.spring.client.PagesWindow.router(context, title, development);
             watch(io.joshuasalcedo.webview4j.spring.client.PagesWindow.open(app, router,
                     properties.getWidth(), properties.getHeight(), properties.isHeadless()), context);
+            listenToInvalidations(environment);
             // The developer window needs Spring's HTTP service clients (spring-web); an app of pages only has none.
             if (development && io.joshuasalcedo.webview4j.spring.client.ClientWindow.available()) {
                 io.joshuasalcedo.webview4j.spring.client.ClientWindow.open(app, context, title + ": developer",

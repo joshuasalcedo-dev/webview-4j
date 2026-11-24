@@ -91,3 +91,21 @@ describe("outside webview-4j", () => {
     expect(() => listen("orders.updated", () => {})).toThrow("not running in a webview-4j window");
   });
 });
+
+describe("TanStack Query", () => {
+  test("keys match patterns as Java's do", async () => {
+    const { keyMatches } = await import("./index.ts")
+    expect(keyMatches("orders", ["orders"])).toBe(true)
+    expect(keyMatches("orders", ["orders", 2])).toBe(false)
+    expect(keyMatches("orders.*", ["orders", 2])).toBe(true)
+    expect(keyMatches("orders.>", ["orders", 2, "lines"])).toBe(true)
+    expect(keyMatches("orders.>", ["orders"])).toBe(false)
+    expect(keyMatches("people.*", ["orders", 1])).toBe(false)
+  })
+
+  test("javaQuery keys a command by its name and arguments", async () => {
+    const { javaQuery } = await import("./index.ts")
+    expect(javaQuery("orders").queryKey).toEqual(["orders"])
+    expect(javaQuery("orders", { page: 2 }).queryKey).toEqual(["orders", { page: 2 }])
+  })
+})

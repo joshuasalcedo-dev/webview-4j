@@ -8,3 +8,23 @@ default:
 bench:
     ./gradlew :core:test --tests '*Benchmark' -Pbenchmark --rerun --console=plain
     Select-String -Path core/build/test-results/test/TEST-*Benchmark.xml -Pattern 'BENCH ' | ForEach-Object { $_.Line -replace '^.*?BENCH ', '' }
+
+# The component gallery: every component, written only in Java, with the Java for each (samples/notes)
+gallery:
+    cd samples/notes; ./gradlew run -Pgallery -PcargoProfile=dev --console=plain
+
+# The sample app (Notes) and its showcase window: sidebar, MDI, an embedded site
+showcase:
+    cd samples/notes; ./gradlew run -Pshowcase -PcargoProfile=dev --console=plain
+
+# The sample app (Notes) on its own
+notes:
+    cd samples/notes; ./gradlew run -PcargoProfile=dev --console=plain
+
+# The React kit's stories (Storybook on http://localhost:6006)
+storybook:
+    cd core/src/main/ui; bun install; bun run storybook
+
+# Checks the gallery: every component has a page, every page draws (one category: just gallery-check Layout)
+gallery-check section="":
+    bash samples/notes/gallery-check.sh {{section}}

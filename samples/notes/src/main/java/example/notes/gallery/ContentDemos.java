@@ -104,13 +104,17 @@ final class ContentDemos implements Demos {
                 """
                 code("App.run(app -> ...);", "java")""",
                 CodeBlock.class);
-        gallery.page("Content", "Inline code", () -> column(
-                row(text("Open a window with"), inlineCode("Ui.open(app, screen)"), text("from your main method.")),
-                row(text("Set"), inlineCode("WEBVIEW4J_DEVTOOLS=1"), text("to inspect the page.")),
-                row(text("Press"), inlineCode("Ctrl+K"), text("to search; config lives in"), inlineCode("~/.notes/config.toml"))),
+        gallery.page("Content", "Inline code and paragraphs", () -> column(
+                paragraph("Open a window with ", inlineCode("Ui.open(app, screen)"), " from your main method; it shows the screen ",
+                        "and draws it again after each event."),
+                paragraph("Set ", inlineCode("WEBVIEW4J_DEVTOOLS=1"), " to inspect the page, or read ",
+                        link("the guide", "https://github.com/joshuasalcedo-dev/webview-4j"), "."),
+                new Paragraph().text("Press ").with(inlineCode("Ctrl+K")).text(" to search. Settings live in ")
+                        .with(inlineCode("~/.notes/config.toml")).text(", and ").strong("nothing").text(" is sent anywhere.")).gap(12),
                 """
-                row(text("Open a window with"), inlineCode("Ui.open(app, screen)"), text("from main."))""",
-                InlineCode.class);
+                paragraph("Open a window with ", inlineCode("Ui.open(app, screen)"), " from main.")
+                new Paragraph().text("Press ").with(inlineCode("Ctrl+K")).text(" to search, ").strong("quickly").text(".")""",
+                InlineCode.class, Paragraph.class);
         gallery.page("Content", "Pill group", () -> column(
                 pillGroup(tagPills()).max(maxTags),
                 row(button("Add tag").onClick(() -> {
@@ -146,12 +150,12 @@ final class ContentDemos implements Demos {
                         : quantity(100, Unit.KILOMETER_PER_HOUR)),
                 row(text("Download:"), quantity(1.2, Unit.GIGABYTE), text("of"), quantity(4500, Unit.MEGABYTE).as(Unit.GIGABYTE).digits(1)),
                 row(text("Battery:"), quantity(87, Unit.PERCENT)),
-                row(text("Display long / narrow:"), quantity(3, Unit.HOUR).display("long"), quantity(250, Unit.MILLILITER).display("narrow"))),
+                row(text("Display long / narrow:"), quantity(3, Unit.HOUR).display(Quantity.Display.LONG), quantity(250, Unit.MILLILITER).display(Quantity.Display.NARROW))),
                 """
                 quantity(2.5, Unit.KILOGRAM)                        // 2.5 kg
                 quantity(2.5, Unit.KILOGRAM).as(Unit.POUND).digits(2) // 5.51 lb
                 quantity(37, Unit.CELSIUS).as(Unit.FAHRENHEIT)       // 98.6 °F
-                quantity(3, Unit.HOUR).display("long")              // 3 hours""",
+                quantity(3, Unit.HOUR).display(Quantity.Display.LONG)   // 3 hours""",
                 Quantity.class);
         gallery.page("Content", "Status dot", () -> column(
                 row(statusDot(DotState.ONLINE), text("Online"), statusDot(DotState.CONNECTING), text("Connecting"),

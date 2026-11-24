@@ -46,10 +46,13 @@ public final class Tracking {
             return reads;
         }
 
-        /** Remembers {@code cell}; true when the render before did not read it (the window starts showing it). */
+        /**
+         * Remembers {@code cell}; true when the render before did not read it (the window starts showing it), and only
+         * for its first read in this render: a render reads a value several times (its status, its data), and one
+         * start is one fetch.
+         */
         boolean read(Object cell) {
-            reads.add(cell);
-            return !previous.contains(cell);
+            return reads.add(cell) && !previous.contains(cell);
         }
 
         void changed() {

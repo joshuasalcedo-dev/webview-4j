@@ -14,7 +14,7 @@ import org.springframework.data.domain.Sort;
  * order) for a repository or a paged endpoint, and a {@link Page} as the rows and the {@link Paging} to show.
  * <pre>{@code
  * Page<Order> page = orders.findAll(SpringPaging.pageable(query));
- * DataTable.of("Orders", page.getContent()).page(SpringPaging.result(page))
+ * DataTable.of("Orders", page.getContent()).result(SpringPaging.result(page))
  *         .onQueryChange(q -> query = q)
  * }</pre>
  * The query's search and filters are not paging: a repository reads them from the query
@@ -45,7 +45,7 @@ public final class SpringPaging {
         return new Paging(page.getNumber() + 1, page.getSize(), page.getTotalElements());
     }
 
-    /** A Spring Data page as the rows and the paging a collection shows ({@code table.page(result)}). */
+    /** A Spring Data page as the rows and the paging a collection shows ({@code table.result(result)}). */
     public static <T> Query.Result<T> result(Page<T> page) {
         return new Query.Result<>(page.getContent(), paging(page));
     }

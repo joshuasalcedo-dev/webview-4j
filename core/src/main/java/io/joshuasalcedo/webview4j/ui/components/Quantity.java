@@ -15,5 +15,8 @@ public final class Quantity extends Component<Quantity> {
     public Quantity as(Unit unit) { return prop("as", unit.key()); }
     public Quantity digits(int digits) { return prop("digits", digits); }
     /** "short" (the default), "long" or "narrow". */
-    public Quantity display(String display) { return prop("display", display); }
+    /** How the unit is written: SHORT "km/h" (the default), LONG "kilometers per hour", NARROW "km/h" or "kph". */
+    public enum Display { SHORT, LONG, NARROW }
+
+    public Quantity display(Display display) { return prop("display", display.name().toLowerCase(java.util.Locale.ROOT)); }
 }

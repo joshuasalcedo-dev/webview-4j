@@ -21,6 +21,7 @@ public final class Session {
     private final Object owner;
     final Map<ContextProperty<?>, Object> values = new ConcurrentHashMap<>();
     final Map<Class<?>, Object> parts = new ConcurrentHashMap<>();
+    private final java.util.List<java.util.function.Consumer<String>> invalidations = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     private Session(Object owner) {
         this.owner = owner;
@@ -67,6 +68,25 @@ public final class Session {
     /** Writes now what is waiting to be written. */
     public void flush() {
         SessionState.of(this).flush();
+    }
+
+    /**
+     * Told of every invalidation in the session (a pattern of keys): to pass it on, to the pages (a React page's
+     * TanStack queries) or to another process. Returns what stops it.
+     */
+    public Runnable onInvalidate(java.util.function.Consumer<String> listener) {
+        invalidations.add(listener);
+        return () -> invalidations.remove(listener);
+    }
+
+    void invalidated(String pattern) {
+        for (var l : invalidations) {
+            try {
+                l.accept(pattern);
+            } catch (RuntimeException e) {
+                System.getLogger(Session.class.getName()).log(System.Logger.Level.WARNING, "an invalidation listener failed", e);
+            }
+        }
     }
 
     /** {@code run} inside this session: what it reads of the context and of the stores is the session's. */

@@ -30,7 +30,7 @@ import java.util.function.IntConsumer;
  *
  * <p>Sorting (Shift-click for more than one column), searching, filtering ({@link #filterable}) and paging happen in
  * the page, unless {@link #onQueryChange} is given: then each change is a {@link Query} for the server, and the table
- * shows the page it answers ({@link #page(Query.Result)}, or {@link #rows} and {@link #paging}).
+ * shows the page it answers ({@link #result(Query.Result)}, or {@link #rows} and {@link #paging}).
  */
 public final class DataTable extends CollectionView<DataTable> {
 

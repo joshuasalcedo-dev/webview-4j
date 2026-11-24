@@ -24,6 +24,8 @@ public final class UiWindow {
     static final String READY = "webview4j.ui.ready";
     static final String EVENT = "webview4j.ui.event";
     static final String TREE = "webview4j.ui.tree";
+    /** To the pages: server state matching {@code pattern} changed (PROTOCOL.md: webview4j.state.invalidate). */
+    public static final String INVALIDATE = "webview4j.state.invalidate";
 
     /** The renderer's page: the kit from core's jar, and its Java-screen renderer mounted. */
     static final String PAGE = """
@@ -101,10 +103,23 @@ public final class UiWindow {
     public static io.joshuasalcedo.webview4j.ui.state.Session session(App app) {
         io.joshuasalcedo.webview4j.ui.state.Session session = io.joshuasalcedo.webview4j.ui.state.Session.of(app);
         session.defaultStorage(() -> io.joshuasalcedo.webview4j.NativeStore.forApp(appName()));
-        if (STOPPING.add(app)) app.whenStopped().thenRun(() -> {
-            STOPPING.remove(app);
-            session.close();
-        });
+        if (STOPPING.add(app)) {
+            // Every page of the app hears what changed: a React page's TanStack queries refresh (@webview4j/api).
+            Runnable stop = session.onInvalidate(pattern -> app.views().thenAccept(views -> {
+                for (var v : views) {
+                    try {
+                        app.view(v.id()).emit(INVALIDATE, Map.of("pattern", pattern));
+                    } catch (RuntimeException e) {
+                        // a view closing as it is told: nothing to refresh there
+                    }
+                }
+            }));
+            app.whenStopped().thenRun(() -> {
+                STOPPING.remove(app);
+                stop.run();
+                session.close();
+            });
+        }
         return session;
     }
 

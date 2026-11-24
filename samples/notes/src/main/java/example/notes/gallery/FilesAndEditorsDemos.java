@@ -169,7 +169,7 @@ final class FilesAndEditorsDemos implements Demos {
                 fileTree("Project", project()).selected(selected).height(300)
                         .onSelectionChange(paths -> selected = paths)
                         .onOpen(path -> fileEvent = "Opened " + path)
-                        .onRename(path -> fileEvent = "Rename asked for " + path)
+                        .onRename((path, name) -> fileEvent = "Renamed " + path + " to " + name)
                         .onDelete(path -> { deleted.add(path); fileEvent = "Deleted " + path; }),
                 status()),
                 """
@@ -186,7 +186,7 @@ final class FilesAndEditorsDemos implements Demos {
                 fileList("src/main", folder("src/main")).selected(selected).height(220)
                         .onSelectionChange(paths -> selected = paths)
                         .onOpen(path -> fileEvent = "Opened " + path)
-                        .onRename(path -> fileEvent = "Rename asked for " + path)
+                        .onRename((path, name) -> fileEvent = "Renamed " + path + " to " + name)
                         .onDelete(path -> { deleted.add("src/main/" + path); fileEvent = "Deleted " + path; }),
                 status()),
                 """
@@ -200,7 +200,7 @@ final class FilesAndEditorsDemos implements Demos {
                 fileGrid("Project", project()).selected(selected).height(260)
                         .onSelectionChange(paths -> selected = paths)
                         .onOpen(path -> fileEvent = "Opened " + path)
-                        .onRename(path -> fileEvent = "Rename asked for " + path)
+                        .onRename((path, name) -> fileEvent = "Renamed " + path + " to " + name)
                         .onDelete(path -> { deleted.add(path); fileEvent = "Deleted " + path; }),
                 status()),
                 """
@@ -213,7 +213,7 @@ final class FilesAndEditorsDemos implements Demos {
                 fileExplorer("Project", project()).selected(selected).height(360)
                         .onSelectionChange(paths -> selected = paths)
                         .onOpen(path -> fileEvent = "Opened " + path)
-                        .onRename(path -> fileEvent = "Rename asked for " + path)
+                        .onRename((path, name) -> fileEvent = "Renamed " + path + " to " + name)
                         .onDelete(path -> { deleted.add(path); fileEvent = "Deleted " + path; }),
                 status()),
                 """
@@ -221,7 +221,7 @@ final class FilesAndEditorsDemos implements Demos {
                         .selected(selected)
                         .onSelectionChange(paths -> selected = paths)
                         .onOpen(path -> open(path))
-                        .onRename(path -> askNewName(path))
+                        .onRename((path, name) -> rename(path, name))   // the page asks for the name
                         .onDelete(path -> delete(path))""",
                 FileExplorer.class);
     }

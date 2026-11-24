@@ -193,3 +193,55 @@ export const currentWindow: NativeWindow = {
   close: () => window.__webview4j?.window?.close(),
   startDrag: () => window.__webview4j?.window?.startDrag(),
 };
+
+// ---- TanStack Query: Java's state and the page's queries, one cache's worth of changes ----
+
+/** The topic Java tells pages on when server state changed (webview-4j's ServerState.invalidate, a Mutation). */
+export const INVALIDATE_TOPIC = "webview4j.state.invalidate";
+
+/**
+ * Whether a query key matches a webview-4j key pattern, as Java's do: the key's parts joined with dots
+ * (`["orders", 2]` is `orders.2`), `*` one part, `>` one or more at the end.
+ */
+export function keyMatches(pattern: string, queryKey: readonly unknown[]): boolean {
+  const key = queryKey.map((part) => (typeof part === "object" && part !== null ? JSON.stringify(part) : String(part)).replaceAll(" ", "_"))
+  const parts = pattern.split(".")
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] === ">") return i === parts.length - 1 && key.length > i
+    if (i >= key.length) return false
+    if (parts[i] !== "*" && parts[i] !== key[i]) return false
+  }
+  return parts.length === key.length
+}
+
+/** The little of TanStack Query's QueryClient this needs (so @webview4j/api does not depend on it). */
+export interface InvalidatingClient {
+  invalidateQueries(filters: { predicate: (query: { queryKey: readonly unknown[] }) => boolean }): unknown
+}
+
+/**
+ * Refreshes the page's TanStack queries whose key matches what Java says changed: one line, once, where the
+ * QueryClient is made. Java's `ServerState.invalidate("orders.>")` (or a Mutation's) then refreshes both the Java
+ * screens and the page. Returns what stops it.
+ * ```ts
+ * const queryClient = new QueryClient()
+ * invalidateFromJava(queryClient)
+ * ```
+ */
+export function invalidateFromJava(client: InvalidatingClient): () => void {
+  if (!isWebView4j()) return () => {}
+  return listen<{ pattern: string }>(INVALIDATE_TOPIC, ({ pattern }) => {
+    client.invalidateQueries({ predicate: (query) => keyMatches(pattern, query.queryKey) })
+  })
+}
+
+/**
+ * A TanStack query of a Java command: the key is the command's name and its arguments, so Java can invalidate it
+ * by name (`ServerState.invalidate("orders")` refreshes `javaQuery("orders")`).
+ * ```ts
+ * const orders = useQuery(javaQuery<Order[]>("orders", { page: 2 }))
+ * ```
+ */
+export function javaQuery<T>(command: string, args?: unknown): { queryKey: unknown[]; queryFn: () => Promise<T> } {
+  return { queryKey: args === undefined ? [command] : [command, args], queryFn: () => invoke<T>(command, args) }
+}

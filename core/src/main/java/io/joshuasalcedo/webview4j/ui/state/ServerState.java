@@ -152,11 +152,27 @@ public final class ServerState<T> {
         if (now != null) c.put(change.apply(now), null, true);
     }
 
-    /** Marks every server state of the session whose key matches {@code pattern} changed ({@code "orders.>"}). */
+    /**
+     * Marks every server state of the session whose key matches {@code pattern} changed ({@code "orders.>"}), and
+     * tells the session's listeners (the app's pages: a React page's TanStack queries with a matching key refresh).
+     */
     public static void invalidate(String pattern) {
-        SessionState state = SessionState.of(Session.current());
-        for (io.joshuasalcedo.webview4j.ui.state.Cell c : state.cells()) {
+        Session session = Session.current();
+        invalidateHere(session, pattern);
+        session.invalidated(pattern);
+    }
+
+    /** Only this session's server state, not its listeners: for an invalidation that came from outside. */
+    static void invalidateHere(Session session, String pattern) {
+        for (io.joshuasalcedo.webview4j.ui.state.Cell c : SessionState.of(session).cells()) {
             if (c instanceof Cell<?> s && Keys.matches(pattern, s.definition.key)) s.invalidate();
+        }
+    }
+
+    /** The network came back: what says so ({@code refetchOnReconnect}) is checked again if shown, else when next shown. */
+    static void reconnected(Session session) {
+        for (io.joshuasalcedo.webview4j.ui.state.Cell c : SessionState.of(session).cells()) {
+            if (c instanceof Cell<?> s && s.property().refetchesOnReconnect()) s.invalidate();
         }
     }
 

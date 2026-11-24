@@ -25,6 +25,8 @@ dependencies {
     // A desktop client of a server (@WebViewApplication): Spring's HTTP service clients, and Jakarta Validation to
     // check a call before it is sent. The app brings them; the starter works without them.
     compileOnly("org.springframework:spring-web:7.1.0")
+    // The server's invalidations endpoint (StateInvalidations): a stream of server-sent events, on a Spring MVC server.
+    compileOnly("org.springframework:spring-webmvc:7.1.0")
     compileOnly("jakarta.validation:jakarta.validation-api:3.1.1")
     // Spring Data's Page and Pageable for the collections' queries (SpringPaging), when the app has Spring Data.
     compileOnly("org.springframework.data:spring-data-commons:4.2.0")

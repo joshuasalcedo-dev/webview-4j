@@ -5,6 +5,8 @@
  */
 module io.joshuasalcedo.webview4j {
     requires jdk.httpserver;
+    // A server's invalidations (ui.state.Invalidations): server-sent events.
+    requires java.net.http;
     // Value objects as first-class fields and displays (ui.components.valueobject).
     requires transitive io.joshuasalcedo.valueobject;
     exports io.joshuasalcedo.webview4j;

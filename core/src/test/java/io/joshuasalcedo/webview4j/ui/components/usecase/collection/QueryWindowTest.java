@@ -40,7 +40,7 @@ class QueryWindowTest {
         @Override
         public Component<?> render() {
             var result = query.apply(none ? List.<Order>of() : all);
-            DataTable table = DataTable.of("Orders", all).page(result).query(query)
+            DataTable table = DataTable.of("Orders", all).result(result).query(query)
                     .filterable("customer").filterable("items").filterable("status", QueryTest.Status.class).filterable("rush")
                     .onQueryChange(q -> {
                         asked.add(q);

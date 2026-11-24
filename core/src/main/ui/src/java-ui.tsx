@@ -35,6 +35,7 @@ import {
 } from "./components/value-fields"
 import { DataTable, type DataColumn, type DataRow } from "./components/usecase/collection/data-table"
 import type { CollectionQuery, Paging } from "./components/usecase/collection/query"
+import { ErrorState, LoadingBar } from "./components/usecase/collection/states"
 import { Anchored, type Anchors, AnchorPane, Card, CardPane, FlowPane, ScrollPane, TilePane } from "./components/layout/more-layout"
 import { Carousel } from "./components/carousel"
 import { Accordion, TitledPane } from "./components/titled-pane"
@@ -630,22 +631,40 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     case "fileTree":
     case "fileList":
     case "fileGrid":
-    case "fileExplorer": {
-      const common = {
-        "aria-label": str(p.label) ?? "Files",
-        items: (p.items as never[]) ?? [],
-        selected: p.selected as string[] | undefined,
-        onSelectionChange: typeof p.onSelectionChange === "string" ? (paths: string[]) => send(p.onSelectionChange, paths) : undefined,
-        onOpen: typeof p.onOpen === "string" ? (path: string) => send(p.onOpen, path) : undefined,
-        onRename: typeof p.onRename === "string" ? (path: string) => send(p.onRename, path) : undefined,
-        onDelete: typeof p.onDelete === "string" ? (path: string) => send(p.onDelete, path) : undefined,
-        style: { minHeight: 240, ...style },
-      }
-      if (node.t === "fileTree") return <FileTree {...common} />
-      if (node.t === "fileList") return <FileList {...common} />
-      if (node.t === "fileGrid") return <FileGrid {...common} />
-      return <FileExplorer {...common} />
+    case "fileExplorer":
+      return <JavaFiles node={node} />
+    case "loadable": {
+      const status = str(p.status)
+      if (status === "loading" && !node.c?.length)
+        return (
+          <div className="nt-state" style={style} role="status" aria-busy="true">
+            <Spinner label="Loading" />
+          </div>
+        )
+      if (status === "error" && !node.c?.length)
+        return <ErrorState title={str(p.title)} message={str(p.message)} onRetry={typeof p.onRetry === "string" ? () => send(p.onRetry) : undefined} />
+      return (
+        <div style={{ position: "relative", ...style }} data-reloading={bool(p.fetching) ? "" : undefined}>
+          {bool(p.fetching) && <LoadingBar />}
+          <Children nodes={node.c} />
+        </div>
+      )
     }
+    // ---- inline text ----
+    case "paragraph":
+      return (
+        <Text variant={str(p.variant) as never} tone={str(p.tone) as never} style={{ display: "block", ...style }}>
+          {(node.c ?? []).map((child, i) =>
+            child.t === "span" ? (
+              <span key={i} style={{ fontWeight: bool(child.p.strong) ? 600 : undefined, fontStyle: bool(child.p.italic) ? "italic" : undefined }}>
+                {str(child.p.text)}
+              </span>
+            ) : (
+              <Render key={child.k ?? i} node={child} />
+            )
+          )}
+        </Text>
+      )
     // ---- value objects ----
     case "emailField":
     case "phoneField":
@@ -938,6 +957,60 @@ function JavaSplitPane({ node }: { node: JavaNode }) {
         <Render key={child.k ?? i} node={child} />
       ))}
     </SplitPane>
+  )
+}
+
+/** The file views; a rename asks for the new name here, and Java gets the path and the name. */
+function JavaFiles({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const [renaming, setRenaming] = React.useState<string | null>(null)
+  const [name, setName] = React.useState("")
+  const common = {
+    "aria-label": str(p.label) ?? "Files",
+    items: (p.items as never[]) ?? [],
+    selected: p.selected as string[] | undefined,
+    onSelectionChange: typeof p.onSelectionChange === "string" ? (paths: string[]) => send(p.onSelectionChange, paths) : undefined,
+    onOpen: typeof p.onOpen === "string" ? (path: string) => send(p.onOpen, path) : undefined,
+    onRename:
+      typeof p.onRename === "string"
+        ? (path: string) => {
+            setName(path.split("/").pop() ?? path)
+            setRenaming(path)
+          }
+        : undefined,
+    onDelete: typeof p.onDelete === "string" ? (path: string) => send(p.onDelete, path) : undefined,
+    style: { minHeight: 240, ...sizing(p) },
+  }
+  const done = (rename: boolean) => {
+    if (rename && renaming && name.trim() && name.trim() !== renaming.split("/").pop()) send(p.onRename, { path: renaming, name: name.trim() })
+    setRenaming(null)
+  }
+  const view =
+    node.t === "fileTree" ? <FileTree {...common} /> : node.t === "fileList" ? <FileList {...common} /> : node.t === "fileGrid" ? <FileGrid {...common} /> : <FileExplorer {...common} />
+  return (
+    <>
+      {view}
+      <Dialog
+        open={renaming !== null}
+        title="Rename"
+        message={renaming ? `A new name for ${renaming.split("/").pop()}` : undefined}
+        actions={[
+          { label: "Rename", primary: true, onSelect: () => done(true), disabled: !name.trim() },
+          { label: "Cancel", cancel: true, onSelect: () => done(false) },
+        ]}
+      >
+        <TextField
+          aria-label="New name"
+          value={name}
+          autoFocus
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") done(true)
+          }}
+        />
+      </Dialog>
+    </>
   )
 }
 

@@ -57,6 +57,14 @@ public class WebView4jProperties {
 
     /** A desktop client's server ({@code @WebViewApplication}): the base URL of every HTTP service client it imports. */
     private String clientUrl;
+    /**
+     * A desktop client's: where the server tells it what changed (server-sent events). Unless set, the client-url's
+     * /webview4j/invalidations; "none" to not listen.
+     */
+    private String invalidations;
+
+    public String getInvalidations() { return invalidations; }
+    public void setInvalidations(String invalidations) { this.invalidations = invalidations; }
 
     public String getClientUrl() { return clientUrl; }
     public void setClientUrl(String clientUrl) { this.clientUrl = clientUrl; }

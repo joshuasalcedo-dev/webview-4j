@@ -35,7 +35,8 @@
     "bundle": "vite build -c vite.bundle.ts",
     "typecheck": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build -o storybook-static"
+    "build-storybook": "storybook build -o storybook-static",
+    "egui": "cargo build -p egui-4j --target wasm32-unknown-unknown --release && wasm-bindgen ../../../../target/wasm32-unknown-unknown/release/egui4j.wasm --target web --out-dir src/egui4j --out-name egui4j"
   },
   "peerDependencies": {
     "react": "^19",

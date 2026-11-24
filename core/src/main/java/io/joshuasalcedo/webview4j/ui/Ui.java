@@ -146,6 +146,32 @@ public final class Ui {
         return new io.joshuasalcedo.webview4j.ui.components.layout.SplitPane(panes);
     }
 
+    /**
+     * What server state's data shows, with its states around it: a spinner while it first loads, its error with Try
+     * again, the content (with a running bar while it loads again). For a form, a detail page, anything not a
+     * collection (those have {@code .state(...)}).
+     * <pre>{@code
+     * loadable(CUSTOMER, c -> form(c))
+     * }</pre>
+     */
+    public static <T> Component<?> loadable(io.joshuasalcedo.webview4j.ui.state.ServerState<T> state,
+                                            java.util.function.Function<? super T, ? extends Component<?>> content) {
+        var status = state.status();
+        Element box = new Element("loadable").set("status", status.name().toLowerCase(java.util.Locale.ROOT)).set("fetching", state.fetching());
+        if (status == io.joshuasalcedo.webview4j.ui.state.ServerState.Status.ERROR) {
+            Throwable e = state.error().orElse(null);
+            boolean said = e instanceof UiException;
+            box.set("title", said ? ((UiException) e).title() : "This could not be loaded")
+                    .set("message", said ? ((UiException) e).userMessage() : "The server did not answer as it should. Try again in a moment.")
+                    .handle("onRetry", v -> state.refetch());
+        }
+        state.data().ifPresent(data -> box.with(content.apply(data)));
+        return box;
+    }
+
+    /** Text flowing as one paragraph, code and links inside: {@code paragraph("Run ", inlineCode("ls"), " first.")}. */
+    public static Paragraph paragraph(Object... parts) { return new Paragraph(parts); }
+
     public static Box column(Component<?>... children) { return new Box("column", children); }
 
     public static Box column(List<? extends Component<?>> children) { return new Box("column").with(children); }

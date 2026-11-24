@@ -2,6 +2,10 @@
 
 ## 0.2.0 — unreleased
 
+- `loadable(serverState, data -> ...)` and a collection's `.state(serverState)`: loading, errors with Try again and the reload bar from server state, nothing by hand
+- Invalidations leave the JVM: `ServerState.invalidate` (and every `Mutation`) tells the app's pages, and `@webview4j/api` refreshes a page's TanStack queries (`invalidateFromJava(queryClient)`, `javaQuery(command)`); a server pushes them over server-sent events (`Invalidations.listen`), the starter has the endpoint (`StateInvalidations.publish`) and a desktop client listens by itself
+- `paragraph(...)`: code, links and bold inside one paragraph; a file rename asks for the new name (`onRename((path, name) -> ...)`); `Quantity.Display`; `result(query.apply(rows))` instead of `page(result)`
+- `just gallery`, `just showcase`, `just notes`, `just storybook`, `just gallery-check`
 - Layout panes named as JavaFX's (`ui.components.layout`): `HBox`, `VBox`, `GridPane`, `BorderPane`, `StackPane`, `SplitPane`, `FlowPane`, `TilePane`, `AnchorPane`, `ScrollPane`, and `CardPane` (Swing's CardLayout); `Pos`, `HPos`, `VPos`, `Insets`, `Priority`; min and max sizes on every component
 - `Carousel`, `TitledPane` and `Accordion`
 - State (`ui.state`): `Store`, `Saved`, `ServerState` (as TanStack Query: cached by key, shown from memory or disk, fetched again only when invalidated, stale or changed by the server's ETag) and `Mutation` (pending, errors, invalidation, optimistic changes); `Property` says how long a value lives; `Context` and `ContextProperty` carry values down to a component's children; all of it a `Session`'s, never the process's

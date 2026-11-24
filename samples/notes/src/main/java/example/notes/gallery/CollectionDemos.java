@@ -134,7 +134,7 @@ final class CollectionDemos implements Demos {
                             .filterable("customer").filterable("total").filterable("placed")
                             .filterable("status", Status.class).filterable("paid")
                             .search()
-                            .query(query).page(result)
+                            .query(query).result(result)
                             .onQueryChange(q -> {
                                 query = q;
                                 answered++;
@@ -151,7 +151,7 @@ final class CollectionDemos implements Demos {
                         .filterable("customer").filterable("total").filterable("placed")
                         .filterable("status", Status.class).filterable("paid")
                         .search()
-                        .query(query).page(result)              // the rows and their Paging
+                        .query(query).result(result)              // the rows and their Paging
                         .onQueryChange(q -> query = q)          // each page, sort, search, filter comes here""",
                 DataTable.class);
 

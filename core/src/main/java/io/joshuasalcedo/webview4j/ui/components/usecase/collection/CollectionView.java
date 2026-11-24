@@ -60,8 +60,8 @@ public abstract class CollectionView<C extends CollectionView<C>> extends Compon
         return on("onQueryChange", v -> action.accept(Query.read(v)));
     }
 
-    /** One page of rows and where it is: the rows, and {@link #paging}. */
-    public C page(Query.Result<?> result) {
+    /** The query's answer: its rows (one page of them) and where they are ({@link #paging}). */
+    public C result(Query.Result<?> result) {
         rowsOf(result.rows());
         return paging(result.paging());
     }
@@ -69,6 +69,22 @@ public abstract class CollectionView<C extends CollectionView<C>> extends Compon
     abstract C rowsOf(List<?> rows);
 
     // ---- the states ----
+
+    /**
+     * The states from server state: grey rows while it first loads, a running bar while it loads again, its error
+     * with Try again (which fetches it again). The rows are the caller's ({@code rows(state.data(List.of()))}).
+     */
+    public C state(io.joshuasalcedo.webview4j.ui.state.ServerState<?> state) {
+        var status = state.status();
+        loading(status == io.joshuasalcedo.webview4j.ui.state.ServerState.Status.LOADING || state.fetching());
+        if (status == io.joshuasalcedo.webview4j.ui.state.ServerState.Status.ERROR) {
+            Throwable e = state.error().orElse(null);
+            if (e instanceof io.joshuasalcedo.webview4j.ui.UiException ui) error(ui.title(), ui.userMessage());
+            else error("This could not be loaded", "The server did not answer as it should. Try again in a moment.");
+            onRetry(state::refetch);
+        }
+        return self();
+    }
 
     /** Loading: grey rows the first time, a running bar over the rows after. */
     public C loading(boolean loading) {
