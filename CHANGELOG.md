@@ -2,6 +2,8 @@
 
 ## 0.2.0 — unreleased
 
+- `Host.current()`: files to open and save, messages, questions and notifications, the same in a desktop window (the system's dialogs and disk) and a browser tab (the browser's file chooser and downloads, dialogs in the page, the browser's notifications); `supports(Feature)` says what is there; what is chained to an answer redraws the screen
+- `WebHost` signs people in: `.signIn(authenticator)` (a sign-in screen in the kit's look, tries limited per name and per address, a new session id once signed in, `WebHost.account().signOut()`), `.allow(user -> ...)`, `.trustProxyUser(header, groups)` from a proxy on the same machine; and serves TLS itself (`.tls(pkcs12, password)`: Secure cookies, HSTS), with a warning when it listens beyond the machine with neither
 - The same screens on the web: `WebHost.of(MyScreen::new).port(8080).start()` shows a `Screen` in every browser tab over a WebSocket (no dependency: sockets and virtual threads); each browser session (a cookie) is a `Session` of its own, keeping what it persists in that browser's IndexedDB; another site's page is refused; `UiWindow.onWeb()` tells a screen where it is (`just gallery-web`)
 - `loadable(serverState, data -> ...)` and a collection's `.state(serverState)`: loading, errors with Try again and the reload bar from server state, nothing by hand
 - Invalidations leave the JVM: `ServerState.invalidate` (and every `Mutation`) tells the app's pages, and `@webview4j/api` refreshes a page's TanStack queries (`invalidateFromJava(queryClient)`, `javaQuery(command)`); a server pushes them over server-sent events (`Invalidations.listen`), the starter has the endpoint (`StateInvalidations.publish`) and a desktop client listens by itself

@@ -102,6 +102,7 @@ public final class UiWindow {
         io.joshuasalcedo.webview4j.ui.state.Session session = session(app);
         return app.open(page).thenApply(view -> {
             UiWindow window = new UiWindow(view, screen, session);
+            window.host(new DesktopHost(app, view, window));
             windows.computeIfAbsent(view.id(), id -> new CompletableFuture<>()).complete(window);
             view.subscribe(Closed.class, closed -> {
                 windows.remove(view.id());
@@ -213,6 +214,48 @@ public final class UiWindow {
     /** Whether the screen is in a browser tab of a {@link WebHost} rather than a desktop window. */
     public boolean onWeb() {
         return view == null;
+    }
+
+    /**
+     * What a host's call answers, handed back the screen's way: what is chained to it ({@code thenAccept}) runs in the
+     * screen's context, and the window is drawn again after; a handler that waits for it ({@code join}) simply goes on.
+     */
+    <T> CompletableFuture<T> answered(CompletableFuture<T> answer) {
+        CompletableFuture<T> out = new CompletableFuture<>();
+        answer.whenComplete((value, error) -> {
+            // Not holding the screen: a handler may be waiting on this answer (join) while it holds it.
+            scope.call(() -> {
+                if (error != null) out.completeExceptionally(error instanceof java.util.concurrent.CompletionException c && c.getCause() != null ? c.getCause() : error);
+                else out.complete(value);
+                return null;
+            });
+            if (!closed) refresh();
+        });
+        return out;
+    }
+
+    /** The screen's host, in its context: {@link Host#current()}. */
+    void host(Host host) {
+        scope.provide(Host.CURRENT, new Answering(host));
+    }
+
+    /** A host whose answers come back the screen's way ({@link #answered}). */
+    private final class Answering implements Host {
+        private final Host host;
+
+        Answering(Host host) {
+            this.host = host;
+        }
+
+        @Override public boolean onWeb() { return host.onWeb(); }
+        @Override public boolean supports(Feature feature) { return host.supports(feature); }
+        @Override public CompletableFuture<java.util.Optional<PickedFile>> openFile(String title, String... extensions) { return answered(host.openFile(title, extensions)); }
+        @Override public CompletableFuture<java.util.List<PickedFile>> openFiles(String title, String... extensions) { return answered(host.openFiles(title, extensions)); }
+        @Override public CompletableFuture<Boolean> saveFile(String fileName, byte[] content) { return answered(host.saveFile(fileName, content)); }
+        @Override public CompletableFuture<java.util.Optional<java.nio.file.Path>> pickFolder(String title) { return answered(host.pickFolder(title)); }
+        @Override public CompletableFuture<Void> message(String title, String text, UiException.Level level) { return answered(host.message(title, text, level)); }
+        @Override public CompletableFuture<Boolean> confirm(String title, String text) { return answered(host.confirm(title, text)); }
+        @Override public CompletableFuture<Boolean> notify(String title, String text) { return answered(host.notify(title, text)); }
     }
 
     /** Its tab closed (web): what it read no longer draws it. */

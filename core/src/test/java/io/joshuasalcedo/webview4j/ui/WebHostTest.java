@@ -45,12 +45,18 @@ class WebHostTest {
         final StringBuilder partial = new StringBuilder();
         WebSocket ws;
 
+        /** How the browser answers what the screen's host asks (a dialog's answer, a chosen file). */
+        volatile java.util.function.Function<Map<String, Object>, Map<String, Object>> hostAnswers = m -> Map.of();
+
         Tab(URI host, String cookie, Map<String, Object> indexedDb) throws Exception {
-            this.indexedDb = indexedDb;
-            ws = HttpClient.newHttpClient().newWebSocketBuilder()
+            this(host, cookie, indexedDb, HttpClient.newHttpClient().newWebSocketBuilder()
                     .header("Cookie", cookie)
-                    .header("Origin", "http://" + host.getRawAuthority())
-                    .buildAsync(host.resolve("/webview4j/socket").toString().replace("http:", "ws:").transform(URI::create), this)
+                    .header("Origin", "http://" + host.getRawAuthority()));
+        }
+
+        Tab(URI host, String cookie, Map<String, Object> indexedDb, WebSocket.Builder builder) throws Exception {
+            this.indexedDb = indexedDb;
+            ws = builder.buildAsync(host.resolve("/webview4j/socket").toString().replace("http:", "ws:").transform(URI::create), this)
                     .get(10, TimeUnit.SECONDS);
         }
 
@@ -74,7 +80,11 @@ class WebHostTest {
                 partial.setLength(0);
                 if (m.get("id") instanceof Number n && calls.containsKey(n.longValue())) calls.remove(n.longValue()).complete(m);
                 else if (m.containsKey("topic")) pushed.add(m);
-                else if (m.get("storage") instanceof String op) {
+                else if (m.get("host") instanceof String) {
+                    Map<String, Object> answer = new java.util.LinkedHashMap<>(hostAnswers.apply(m));
+                    answer.put("sid", m.get("sid"));
+                    socket.sendText(Json.write(answer), true);
+                } else if (m.get("storage") instanceof String op) {
                     Map<String, Object> answer = new java.util.LinkedHashMap<>();
                     answer.put("sid", m.get("sid"));
                     switch (op) {

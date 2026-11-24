@@ -52,6 +52,31 @@ class WebHostBrowserTest {
         }
     }
 
+    static final class Asker implements Screen {
+        String said = "nothing yet";
+
+        @Override
+        public Component<?> render() {
+            return column(text("said " + said),
+                    button("Delete").onClick(() -> Host.current().confirm("Delete the note?", "It cannot be undone.")
+                            .thenAccept(yes -> said = yes ? "deleted" : "kept")));
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    void aQuestionIsADialogInThePage() throws Exception {
+        try (App app = App.start(); WebHost host = WebHost.of(Asker::new).start()) {
+            View view = app.open(WindowOptions.url(host.url().toString()).headless(true).size(700, 500)).join();
+            until(view, "said nothing yet");
+            view.eval("[...document.querySelectorAll('button')].find(b => b.innerText === 'Delete').click()").join();
+            until(view, "Delete the note?");
+            assertEquals("dialog", String.valueOf(view.eval("document.querySelector('.w4j-dialog').getAttribute('role')").join()));
+            view.eval("[...document.querySelectorAll('.w4j-dialog button')].find(b => b.innerText === 'Cancel').click()").join();
+            until(view, "said kept");
+        }
+    }
+
     static void until(View view, String part) throws InterruptedException {
         String text = "";
         for (int i = 0; i < 150; i++) {
