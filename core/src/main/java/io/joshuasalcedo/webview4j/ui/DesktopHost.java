@@ -95,6 +95,22 @@ final class DesktopHost implements Host {
         return window.notify(title, text, UiException.Level.INFO).thenApply(v -> false);
     }
 
+    @Override
+    public CompletableFuture<Void> openUrl(String url) {
+        if (!Host.openable(url)) return CompletableFuture.failedFuture(new IllegalArgumentException("only http, https and mailto links open"));
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        // The link as one argument, never through a shell.
+        java.util.List<String> command = os.contains("win") ? java.util.List.of("rundll32", "url.dll,FileProtocolHandler", url.trim())
+                : os.contains("mac") ? java.util.List.of("open", url.trim()) : java.util.List.of("xdg-open", url.trim());
+        return CompletableFuture.runAsync(() -> {
+            try {
+                new ProcessBuilder(command).redirectErrorStream(true).start();
+            } catch (IOException e) {
+                throw new UiException("The link could not be opened", "No browser answered for " + url + ".", UiException.Level.WARNING, e);
+            }
+        }, r -> Thread.ofVirtual().start(r));
+    }
+
     /** A file on the disk: read when its bytes are asked for. */
     private record DiskFile(Path file) implements PickedFile {
         @Override public String name() { return file.getFileName().toString(); }

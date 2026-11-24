@@ -169,6 +169,9 @@ public final class Ui {
         return box;
     }
 
+    /** Markdown, in the kit's look; links open in the browser. */
+    public static Markdown markdown(String text) { return new Markdown(text); }
+
     /** Text flowing as one paragraph, code and links inside: {@code paragraph("Run ", inlineCode("ls"), " first.")}. */
     public static Paragraph paragraph(Object... parts) { return new Paragraph(parts); }
 

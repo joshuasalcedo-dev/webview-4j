@@ -78,6 +78,19 @@ public interface Host {
      */
     CompletableFuture<Boolean> notify(String title, String text);
 
+    /**
+     * Opens a link outside the app: the system's browser (or mail app) on the desktop, a new tab on the web. Only
+     * http, https and mailto: anything else fails, so text from elsewhere cannot start a program.
+     */
+    CompletableFuture<Void> openUrl(String url);
+
+    /** Whether {@code url} may be opened: http, https or mailto. */
+    static boolean openable(String url) {
+        if (url == null) return false;
+        String u = url.trim().toLowerCase(java.util.Locale.ROOT);
+        return (u.startsWith("https://") || u.startsWith("http://") || u.startsWith("mailto:")) && !u.contains("\n") && !u.contains("\"") && !u.contains(" ");
+    }
+
     /** A file chosen to open: its name, its size, its bytes; on the desktop, its path too. */
     interface PickedFile {
         String name();

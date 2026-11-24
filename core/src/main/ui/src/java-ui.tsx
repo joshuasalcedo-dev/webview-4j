@@ -36,6 +36,9 @@ import {
 import { DataTable, type DataColumn, type DataRow } from "./components/usecase/collection/data-table"
 import type { CollectionQuery, Paging } from "./components/usecase/collection/query"
 import { ErrorState, LoadingBar } from "./components/usecase/collection/states"
+import { Markdown } from "./components/markdown"
+import { Changelog } from "./components/usecase/autoupdate/changelog"
+import { UpdatePrompt, type UpdateStatus } from "./components/usecase/autoupdate/update-prompt"
 import { Anchored, type Anchors, AnchorPane, Card, CardPane, FlowPane, ScrollPane, TilePane } from "./components/layout/more-layout"
 import { Carousel } from "./components/carousel"
 import { Accordion, TitledPane } from "./components/titled-pane"
@@ -635,6 +638,26 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     case "fileGrid":
     case "fileExplorer":
       return <JavaFiles node={node} />
+    case "changelog":
+      return (
+        <Changelog markdown={str(p.markdown) ?? ""} since={str(p.since)} only={str(p.only)} upTo={str(p.upTo)} empty={str(p.empty)}
+          onLink={typeof p.onLink === "string" ? (href) => send(p.onLink, href) : undefined} style={style} />
+      )
+    case "updatePrompt": {
+      const on = (name: string) => (typeof p[name] === "string" ? () => send(p[name]) : undefined)
+      return (
+        <UpdatePrompt app={str(p.app) ?? "The app"} version={str(p.version) ?? ""} current={str(p.current)} notes={str(p.notes)}
+          status={(str(p.status) as UpdateStatus | undefined) ?? "available"} progress={num(p.progress)} error={str(p.error)}
+          onUpdate={on("onUpdate")} onInstall={on("onInstall")} onLater={on("onLater")} onSkip={on("onSkip")}
+          onLink={typeof p.onLink === "string" ? (href) => send(p.onLink, href) : undefined} style={style} />
+      )
+    }
+    case "markdown":
+      return (
+        <Markdown headingOffset={num(p.headingOffset)} onLink={typeof p.onLink === "string" ? (href) => send(p.onLink, href) : undefined} style={style}>
+          {str(p.text) ?? ""}
+        </Markdown>
+      )
     case "loadable": {
       const status = str(p.status)
       if (status === "loading" && !node.c?.length)

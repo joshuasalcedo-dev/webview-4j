@@ -93,6 +93,7 @@ public final class UiWindow {
         this.surface = surface;
         this.screen = screen;
         this.scope = new io.joshuasalcedo.webview4j.ui.state.Context.Scope(session);
+        scope.provide(CURRENT, this);
     }
 
     static CompletableFuture<UiWindow> open(App app, Screen screen, UnaryOperator<WindowOptions> options) {
@@ -234,6 +235,14 @@ public final class UiWindow {
         return out;
     }
 
+    private static final io.joshuasalcedo.webview4j.ui.state.ContextProperty<UiWindow> CURRENT =
+            io.joshuasalcedo.webview4j.ui.state.ContextProperty.of("webview4j.window");
+
+    /** The window the current screen is in (in its render and handlers): to close it, refresh it. */
+    public static java.util.Optional<UiWindow> current() {
+        return io.joshuasalcedo.webview4j.ui.state.Context.find(CURRENT);
+    }
+
     /** The screen's host, in its context: {@link Host#current()}. */
     void host(Host host) {
         scope.provide(Host.CURRENT, new Answering(host));
@@ -256,6 +265,7 @@ public final class UiWindow {
         @Override public CompletableFuture<Void> message(String title, String text, UiException.Level level) { return answered(host.message(title, text, level)); }
         @Override public CompletableFuture<Boolean> confirm(String title, String text) { return answered(host.confirm(title, text)); }
         @Override public CompletableFuture<Boolean> notify(String title, String text) { return answered(host.notify(title, text)); }
+        @Override public CompletableFuture<Void> openUrl(String url) { return answered(host.openUrl(url)); }
     }
 
     /** Its tab closed (web): what it read no longer draws it. */

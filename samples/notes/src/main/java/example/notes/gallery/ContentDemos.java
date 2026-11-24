@@ -4,11 +4,32 @@ import static example.notes.gallery.Demos.ordered;
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 
 import io.joshuasalcedo.webview4j.ui.components.*;
+import io.joshuasalcedo.webview4j.ui.components.usecase.autoupdate.Changelog;
+import io.joshuasalcedo.webview4j.ui.components.usecase.autoupdate.UpdatePrompt;
 import java.util.List;
 import java.util.Map;
 
 /** The gallery's pages: What a page shows: text, avatars and pills, money and quantities, code, progress, lists, surfaces. */
 final class ContentDemos implements Demos {
+
+    private static final String CHANGELOG = """
+            # Changelog
+
+            ## 0.3.0 — 2026-12-01
+
+            - Auto-update: the app finds, checks and installs its next version
+            - A **changelog** in the app
+
+            ## 0.2.0 — 2026-11-25
+
+            - Layout panes named as JavaFX's
+
+            ## 0.1.0 — 2026-10-01
+
+            - The first version
+            """;
+    private String changelogShow = "all";
+    private UpdatePrompt.Status updateStatus = UpdatePrompt.Status.AVAILABLE;
 
     private double progress = 40;
     private String chosen = "Ana Reyes";
@@ -115,6 +136,56 @@ final class ContentDemos implements Demos {
                 paragraph("Open a window with ", inlineCode("Ui.open(app, screen)"), " from main.")
                 new Paragraph().text("Press ").with(inlineCode("Ctrl+K")).text(" to search, ").strong("quickly").text(".")""",
                 InlineCode.class, Paragraph.class);
+        gallery.page("Content", "Markdown", () -> column(
+                markdown("""
+                        ## Release notes
+                        Version **0.2.0** brings *layouts*, state kept on disk, and the web.
+
+                        - Layout panes named as JavaFX's: `HBox`, `GridPane`, `SplitPane`
+                        - [x] Tested in a real window
+                        - [ ] Shipped
+
+                        | Part | Package |
+                        | --- | --- |
+                        | Layouts | `ui.components.layout` |
+                        | State | `ui.state` |
+
+                        > Links open in your browser: [webview-4j](https://github.com/joshuasalcedo-dev/webview-4j)
+                        """)),
+                """
+                markdown(\"""
+                        ## Release notes
+                        - Layout panes, named as JavaFX's
+                        | Part | Package |
+                        \""")   // links open in the browser; HTML in it is never run""",
+                Markdown.class);
+        gallery.page("Updates", "Changelog", () -> column(
+                segmented("Show", Demos.ordered("all", "Every version", "since", "Since 0.1.0", "only", "0.3.0 only"))
+                        .value(changelogShow).onChange(v -> changelogShow = v),
+                switch (changelogShow) {
+                    case "since" -> Changelog.of(CHANGELOG).since("0.1.0");
+                    case "only" -> Changelog.of(CHANGELOG).only("0.3.0");
+                    default -> Changelog.of(CHANGELOG);
+                }),
+                """
+                Changelog.bundled()                     // the app's CHANGELOG.md, put in its jar by the build
+                Changelog.bundled().since(lastRun)      // What's new
+                Changelog.of(markdown).only("0.3.0")    // one version's notes""",
+                Changelog.class);
+        gallery.page("Updates", "Update prompt", () -> column(
+                segmented("Status", Demos.ordered("AVAILABLE", "Available", "DOWNLOADING", "Downloading", "READY", "Ready", "FAILED", "Failed"))
+                        .value(updateStatus.name()).onChange(v -> updateStatus = UpdatePrompt.Status.valueOf(v)),
+                new UpdatePrompt("Notes", "0.3.0").current("0.2.0").notes("- Auto-update\n- A **changelog** in the app")
+                        .status(updateStatus).progress(0.6).error("The connection dropped.")
+                        .onUpdate(() -> updateStatus = UpdatePrompt.Status.DOWNLOADING)
+                        .onInstall(() -> updateStatus = UpdatePrompt.Status.AVAILABLE)
+                        .onLater(() -> updateStatus = UpdatePrompt.Status.AVAILABLE)
+                        .onSkip(() -> updateStatus = UpdatePrompt.Status.AVAILABLE)),
+                """
+                AutoUpdate.start(app);   // What's new, updates every 6 hours, this prompt when one is there
+                new UpdatePrompt("Notes", "0.3.0").current("0.2.0").notes(markdown)
+                        .status(status).progress(p).onUpdate(...).onLater(...).onSkip(...)""",
+                UpdatePrompt.class);
         gallery.page("Content", "Pill group", () -> column(
                 pillGroup(tagPills()).max(maxTags),
                 row(button("Add tag").onClick(() -> {

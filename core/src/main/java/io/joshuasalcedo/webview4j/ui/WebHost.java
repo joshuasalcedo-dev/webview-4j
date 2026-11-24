@@ -889,6 +889,12 @@ public final class WebHost implements AutoCloseable {
         public CompletableFuture<Boolean> notify(String title, String text) {
             return ask(Map.of("host", "notify", "title", title, "text", text)).thenApply(a -> Boolean.TRUE.equals(a.get("system")));
         }
+
+        @Override
+        public CompletableFuture<Void> openUrl(String url) {
+            if (!Host.openable(url)) return CompletableFuture.failedFuture(new IllegalArgumentException("only http, https and mailto links open"));
+            return ask(Map.of("host", "open", "url", url.trim())).thenApply(a -> null);
+        }
     }
 
     /** A file the browser uploaded: a name and its bytes, no path. */
@@ -1132,6 +1138,10 @@ public final class WebHost implements AutoCloseable {
                     const a = document.createElement("a");
                     a.href = url; a.download = m.name; document.body.append(a); a.click(); a.remove();
                     setTimeout(() => URL.revokeObjectURL(url), 30000);
+                    return { ok: true };
+                  }
+                  case "open": {
+                    if (/^(https?:|mailto:)/i.test(m.url)) window.open(m.url, "_blank", "noopener,noreferrer");
                     return { ok: true };
                   }
                   case "message": await dialog(m.title, m.text, [{ label: "OK", main: true, value: true, cancel: true }]); return { ok: true };

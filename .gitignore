@@ -8,3 +8,7 @@ target/
 .gradle/
 build/
 .env
+
+# A release's private key never goes in the repository (update-public.key, the public one, does).
+*.key
+!update-public.key

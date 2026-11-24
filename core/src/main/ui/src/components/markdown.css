@@ -1,0 +1,77 @@
+/* Markdown in the kit's look (markdown.tsx). */
+.nt-markdown {
+  color: var(--nt-text);
+  font-size: var(--nt-font-size, 14px);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.nt-markdown > :first-child { margin-top: 0; }
+.nt-markdown > :last-child { margin-bottom: 0; }
+
+.nt-markdown h1, .nt-markdown h2, .nt-markdown h3, .nt-markdown h4, .nt-markdown h5, .nt-markdown h6 {
+  margin: 1.2em 0 0.4em;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.nt-markdown h1 { font-size: 1.6em; }
+.nt-markdown h2 { font-size: 1.3em; }
+.nt-markdown h3 { font-size: 1.12em; }
+.nt-markdown h4, .nt-markdown h5, .nt-markdown h6 { font-size: 1em; }
+
+.nt-markdown p, .nt-markdown ul, .nt-markdown ol, .nt-markdown blockquote, .nt-markdown pre, .nt-markdown .nt-markdown-table {
+  margin: 0 0 0.8em;
+}
+
+.nt-markdown ul, .nt-markdown ol { padding-inline-start: 1.5em; }
+.nt-markdown li + li { margin-top: 0.2em; }
+.nt-markdown li > ul, .nt-markdown li > ol { margin: 0.2em 0 0; }
+
+/* Task lists: the box where the bullet would be. */
+.nt-markdown li:has(> input[type="checkbox"]) { list-style: none; margin-inline-start: -1.3em; }
+.nt-markdown input[type="checkbox"] { margin: 0 0.4em 0 0; vertical-align: middle; }
+
+.nt-markdown code {
+  font-family: var(--nt-font-mono, ui-monospace, "Cascadia Code", Menlo, Consolas, monospace);
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--nt-text) 8%, transparent);
+}
+
+.nt-markdown pre {
+  padding: 10px 12px;
+  border-radius: var(--nt-radius, 6px);
+  background: color-mix(in srgb, var(--nt-text) 6%, transparent);
+  overflow: auto;
+}
+
+.nt-markdown pre code { padding: 0; background: none; font-size: 0.88em; }
+
+.nt-markdown blockquote {
+  padding: 0 0 0 12px;
+  border-inline-start: 3px solid var(--nt-surface-border);
+  color: var(--nt-text-secondary);
+}
+
+.nt-markdown hr {
+  border: none;
+  border-top: 1px solid var(--nt-surface-border);
+  margin: 1.2em 0;
+}
+
+.nt-markdown-table { overflow-x: auto; }
+
+.nt-markdown table { border-collapse: collapse; font-size: 0.95em; }
+
+.nt-markdown th, .nt-markdown td {
+  padding: 5px 10px;
+  border: 1px solid var(--nt-surface-border);
+  text-align: start;
+}
+
+.nt-markdown th { font-weight: 600; background: color-mix(in srgb, var(--nt-text) 4%, transparent); }
+
+.nt-markdown img { max-width: 100%; }

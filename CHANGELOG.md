@@ -2,6 +2,9 @@
 
 ## 0.2.0 — unreleased
 
+- `markdown("...")`: Markdown in the kit's look (CommonMark with GitHub's tables and task lists), safe for text from anywhere (no HTML run, only http, https and mailto links); links open in the browser through `Host.openUrl`
+- Auto-update (`usecase.autoupdate`): `AutoUpdate.start(app)` shows What's new once after an update, checks the release's signed manifest (Ed25519, the public key in the app) every few hours, and with Update now, Later or Skip downloads the jpackage installer over https, checks its size and SHA-256, runs it and quits; `Changelog` and `UpdatePrompt` components, `AutoUpdate.openChangelog(app)`
+- Releases: the build puts the app's `CHANGELOG.md` and `app.properties` in its jar; `UpdateTool` (and the sample's `updateKey`, `packageApp`, `updateManifest` tasks) make the release key and the signed manifest; `UiWindow.current()`
 - MDI workspaces: any component (layouts too) in a window; `Mdi.remember("workspace")` keeps where the windows are between runs, `onLayoutChange` and `layout(MdiLayout)` for screens that keep it themselves, `arrangeButtons()` for Cascade and Tile, `MdiWindow.state(...)`
 - `WindowOptions.remember("main")`: a window opens where it was left (place, size, maximized), back on the main monitor when its monitor is gone; `WindowOptions.position(x, y)`; `View.monitors()` (bounds, scale, primary, current)
 - `Host.current()`: files to open and save, messages, questions and notifications, the same in a desktop window (the system's dialogs and disk) and a browser tab (the browser's file chooser and downloads, dialogs in the page, the browser's notifications); `supports(Feature)` says what is there; what is chained to an answer redraws the screen
