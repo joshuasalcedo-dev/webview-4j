@@ -105,6 +105,44 @@ public final class Ui {
     // ---- layout ----
 
     /** Its children one under the other. */
+    /** Children side by side (JavaFX's HBox), {@code spacing} CSS pixels apart. */
+    public static io.joshuasalcedo.webview4j.ui.components.layout.HBox hbox(double spacing, Component<?>... children) {
+        return new io.joshuasalcedo.webview4j.ui.components.layout.HBox(spacing, children);
+    }
+
+    public static io.joshuasalcedo.webview4j.ui.components.layout.HBox hbox(Component<?>... children) {
+        return new io.joshuasalcedo.webview4j.ui.components.layout.HBox(children);
+    }
+
+    /** Children one under the other (JavaFX's VBox), {@code spacing} CSS pixels apart. */
+    public static io.joshuasalcedo.webview4j.ui.components.layout.VBox vbox(double spacing, Component<?>... children) {
+        return new io.joshuasalcedo.webview4j.ui.components.layout.VBox(spacing, children);
+    }
+
+    public static io.joshuasalcedo.webview4j.ui.components.layout.VBox vbox(Component<?>... children) {
+        return new io.joshuasalcedo.webview4j.ui.components.layout.VBox(children);
+    }
+
+    /** Children in rows and columns (JavaFX's GridPane). */
+    public static io.joshuasalcedo.webview4j.ui.components.layout.GridPane gridPane() {
+        return new io.joshuasalcedo.webview4j.ui.components.layout.GridPane();
+    }
+
+    /** A center with what goes around it (JavaFX's BorderPane). */
+    public static io.joshuasalcedo.webview4j.ui.components.layout.BorderPane borderPane(Component<?> center) {
+        return new io.joshuasalcedo.webview4j.ui.components.layout.BorderPane(center);
+    }
+
+    /** Children on top of each other (JavaFX's StackPane). */
+    public static io.joshuasalcedo.webview4j.ui.components.layout.StackPane stackPane(Component<?>... children) {
+        return new io.joshuasalcedo.webview4j.ui.components.layout.StackPane(children);
+    }
+
+    /** Panes with dividers to drag (JavaFX's SplitPane). */
+    public static io.joshuasalcedo.webview4j.ui.components.layout.SplitPane splitPane(Component<?>... panes) {
+        return new io.joshuasalcedo.webview4j.ui.components.layout.SplitPane(panes);
+    }
+
     public static Box column(Component<?>... children) { return new Box("column", children); }
 
     public static Box column(List<? extends Component<?>> children) { return new Box("column").with(children); }

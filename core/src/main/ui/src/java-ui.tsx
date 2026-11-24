@@ -35,6 +35,10 @@ import {
 } from "./components/value-fields"
 import { DataTable, type DataColumn, type DataRow } from "./components/usecase/collection/data-table"
 import type { CollectionQuery, Paging } from "./components/usecase/collection/query"
+import { Anchored, type Anchors, AnchorPane, Card, CardPane, FlowPane, ScrollPane, TilePane } from "./components/layout/more-layout"
+import { Carousel } from "./components/carousel"
+import { Accordion, TitledPane } from "./components/titled-pane"
+import { BorderPane, GridCell, GridPane, HBox, type HPos, type Insets, type Pos, SplitPane, StackItem, StackPane, type TrackSize, VBox, type VPos } from "./components/layout/layout"
 import { DataGrid } from "./components/usecase/collection/data-grid"
 import { DataList } from "./components/usecase/collection/data-list"
 import { DataMap } from "./components/usecase/collection/data-map"
@@ -140,6 +144,10 @@ function sizing(p: Record<string, unknown>): React.CSSProperties {
     ...(p.grow === true ? { flex: 1, minWidth: 0, minHeight: 0 } : {}),
     ...(typeof p.width === "number" ? { width: p.width } : {}),
     ...(typeof p.height === "number" ? { height: p.height } : {}),
+    ...(typeof p.minWidth === "number" ? { minWidth: p.minWidth } : {}),
+    ...(typeof p.maxWidth === "number" ? { maxWidth: p.maxWidth } : {}),
+    ...(typeof p.minHeight === "number" ? { minHeight: p.minHeight } : {}),
+    ...(typeof p.maxHeight === "number" ? { maxHeight: p.maxHeight } : {}),
   }
 }
 
@@ -537,6 +545,7 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
           wordWrap={p.wordWrap as boolean | undefined}
           height={num(p.height) ?? 320}
           onChange={(v) => send(p.onChange, v)}
+          style={style}
         />
       )
     case "composer":
@@ -582,7 +591,7 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     case "messageBubble": {
       const mine = bool(p.mine)
       const sender = { id: mine ? "me" : (str(p.sender) ?? "them"), name: str(p.sender) ?? (mine ? "Me" : "Them") }
-      return (
+      const bubble = (
         <MessageBubble
           message={{
             id: node.k ?? str(p.text) ?? "",
@@ -597,6 +606,8 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
           showMeta={str(p.sentAt) !== undefined}
         />
       )
+      // Its size from Java (width, grow) on a box around it: the bubble sizes itself to its text.
+      return Object.keys(style).length ? <div style={style}>{bubble}</div> : bubble
     }
     case "typing":
       return <TypingIndicator people={((p.people as string[] | undefined) ?? []).map((name) => ({ id: name, name }))} />
@@ -663,6 +674,146 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     // ---- use cases ----
     case "dataTable":
       return <JavaDataTable node={node} />
+    case "hbox":
+    case "vbox": {
+      const Box = node.t === "hbox" ? HBox : VBox
+      return (
+        <Box
+          spacing={num(p.spacing)}
+          padding={p.padding as Insets | undefined}
+          alignment={str(p.alignment) as Pos | undefined}
+          fill={p.fill === false ? false : undefined}
+          wrap={bool(p.wrap)}
+          scroll={bool(p.scroll)}
+          style={style}
+        >
+          <Children nodes={node.c} />
+        </Box>
+      )
+    }
+    case "gridpane":
+      return (
+        <GridPane
+          hgap={num(p.hgap)}
+          vgap={num(p.vgap)}
+          padding={p.padding as Insets | undefined}
+          alignment={str(p.alignment) as Pos | undefined}
+          columns={p.columns as TrackSize[] | undefined}
+          rows={(p.rows as TrackSize[] | undefined)?.map((r) => ({ ...r }))}
+          style={style}
+        >
+          {(node.c ?? []).map((cell, i) => (
+            <GridCell
+              key={cell.k ?? i}
+              column={num(cell.p.column) ?? 0}
+              row={num(cell.p.row) ?? 0}
+              columnSpan={num(cell.p.columnSpan)}
+              rowSpan={num(cell.p.rowSpan)}
+              halignment={str(cell.p.halignment) as HPos | undefined}
+              valignment={str(cell.p.valignment) as VPos | undefined}
+            >
+              <Children nodes={cell.c} />
+            </GridCell>
+          ))}
+        </GridPane>
+      )
+    case "borderpane": {
+      const area = (name: string) => {
+        const child = slot(node, name)
+        return child ? <Render node={child} /> : undefined
+      }
+      return (
+        <BorderPane
+          top={area("top")}
+          left={area("left")}
+          center={area("center")}
+          right={area("right")}
+          bottom={area("bottom")}
+          padding={p.padding as Insets | undefined}
+          spacing={num(p.spacing)}
+          style={style}
+        />
+      )
+    }
+    case "stackpane":
+      return (
+        <StackPane alignment={str(p.alignment) as Pos | undefined} padding={p.padding as Insets | undefined} style={style}>
+          {(node.c ?? []).map((child, i) =>
+            child.t === "stackItem" ? (
+              <StackItem key={child.k ?? i} alignment={str(child.p.alignment) as Pos | undefined} margin={child.p.margin as Insets | undefined}>
+                <Children nodes={child.c} />
+              </StackItem>
+            ) : (
+              <Render key={child.k ?? i} node={child} />
+            )
+          )}
+        </StackPane>
+      )
+    case "splitpane":
+      return <JavaSplitPane node={node} />
+    case "flowpane":
+      return (
+        <FlowPane orientation={str(p.orientation) === "vertical" ? "vertical" : "horizontal"} hgap={num(p.hgap)} vgap={num(p.vgap)}
+          padding={p.padding as Insets | undefined} alignment={str(p.alignment) as Pos | undefined} style={style}>
+          <Children nodes={node.c} />
+        </FlowPane>
+      )
+    case "tilepane":
+      return (
+        <TilePane tileWidth={num(p.tileWidth)} tileHeight={num(p.tileHeight)} columns={num(p.columns)} hgap={num(p.hgap)} vgap={num(p.vgap)}
+          padding={p.padding as Insets | undefined} tileAlignment={str(p.tileAlignment) as Pos | undefined} style={style}>
+          {(node.c ?? []).map((child, i) => <Render key={child.k ?? i} node={child} />)}
+        </TilePane>
+      )
+    case "anchorpane":
+      return (
+        <AnchorPane padding={p.padding as Insets | undefined} style={style}>
+          {(node.c ?? []).map((child, i) => (
+            <Anchored key={child.k ?? i} anchors={(child.p.anchors as Anchors | undefined) ?? {}}>
+              <Children nodes={child.c} />
+            </Anchored>
+          ))}
+        </AnchorPane>
+      )
+    case "scrollpane":
+      return (
+        <ScrollPane fitToWidth={p.fitToWidth === false ? false : true} fitToHeight={bool(p.fitToHeight)}
+          hbarPolicy={str(p.hbarPolicy) as "as-needed" | "always" | "never" | undefined} vbarPolicy={str(p.vbarPolicy) as "as-needed" | "always" | "never" | undefined}
+          padding={p.padding as Insets | undefined} style={style}>
+          <Children nodes={node.c} />
+        </ScrollPane>
+      )
+    case "cardpane":
+      return (
+        <CardPane shown={str(p.shown)} transition={(str(p.transition) as "none" | "fade" | "slide" | undefined) ?? "fade"} style={style}>
+          {(node.c ?? []).map((card, i) => (
+            <Card key={str(card.p.name) ?? i} name={str(card.p.name) ?? String(i)}>
+              <Children nodes={card.c} />
+            </Card>
+          ))}
+        </CardPane>
+      )
+    case "carousel":
+      return (
+        <Carousel aria-label={str(p.label) ?? "Pages"} index={num(p.index)} interval={num(p.interval)} loop={p.loop === false ? false : true}
+          arrows={p.arrows === false ? false : true} dots={p.dots === false ? false : true}
+          onIndexChange={typeof p.onIndexChange === "string" ? (i) => send(p.onIndexChange, i) : undefined} style={style}>
+          {(node.c ?? []).map((child, i) => <Render key={child.k ?? i} node={child} />)}
+        </Carousel>
+      )
+    case "titledPane":
+      return (
+        <TitledPane title={str(p.title) ?? ""} expanded={typeof p.expanded === "boolean" ? p.expanded : undefined}
+          collapsible={p.collapsible === false ? false : true}
+          onExpandedChange={typeof p.onExpandedChange === "string" ? (e) => send(p.onExpandedChange, e) : undefined} style={style}>
+          <Children nodes={node.c} />
+        </TitledPane>
+      )
+    case "accordion":
+      return (
+        <Accordion expanded={num(p.expanded)} onExpandedChange={typeof p.onExpandedChange === "string" ? (i) => send(p.onExpandedChange, i) : undefined} style={style}
+          panes={(node.c ?? []).map((pane, i) => ({ key: pane.k ?? String(i), title: str(pane.p.title) ?? "", content: <Children nodes={pane.c} /> }))} />
+      )
     case "dataList":
     case "dataGrid":
     case "dataTree":
@@ -766,6 +917,30 @@ function JavaValueField({ node }: { node: JavaNode }) {
 }
 
 /** A data table: its rows, columns and state from Java; what the person does goes back as events. */
+/** A SplitPane: dragged in the page, told to Java once a divider is let go (not for every pixel). */
+function JavaSplitPane({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const fromJava = p.dividerPositions as number[] | undefined
+  const [positions, setPositions] = React.useState<number[] | undefined>(fromJava)
+  const given = JSON.stringify(fromJava)
+  React.useEffect(() => setPositions(fromJava), [given]) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <SplitPane
+      orientation={str(p.orientation) === "vertical" ? "vertical" : "horizontal"}
+      dividerPositions={positions}
+      onDividerPositionsChange={setPositions}
+      onDividerPositionsCommit={typeof p.onDividerPositionsChange === "string" ? (next) => send(p.onDividerPositionsChange, next) : undefined}
+      minSize={num(p.minSize)}
+      style={{ minHeight: 0, ...sizing(p) }}
+    >
+      {(node.c ?? []).map((child, i) => (
+        <Render key={child.k ?? i} node={child} />
+      ))}
+    </SplitPane>
+  )
+}
+
 /** What every collection gets from Java: the query and its pages, and its states (loading, error, empty). */
 function collectionStates(p: Record<string, unknown>, send: Send) {
   const has = (name: string) => typeof p[name] === "string"

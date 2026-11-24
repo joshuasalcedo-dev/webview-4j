@@ -1,0 +1,127 @@
+/* Layout panes (layout.tsx): they arrange their children and draw nothing of their own, but the SplitPane's dividers. */
+
+.nt-box {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.nt-gridpane {
+  display: grid;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.nt-gridcell {
+  min-width: 0;
+}
+
+.nt-borderpane {
+  display: grid;
+  grid-template:
+    "top top top" auto
+    "left center right" 1fr
+    "bottom bottom bottom" auto
+    / auto 1fr auto;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.nt-borderpane-top { grid-area: top; }
+.nt-borderpane-left { grid-area: left; min-height: 0; overflow: auto; }
+.nt-borderpane-center { grid-area: center; min-width: 0; min-height: 0; overflow: auto; }
+.nt-borderpane-right { grid-area: right; min-height: 0; overflow: auto; }
+.nt-borderpane-bottom { grid-area: bottom; }
+
+.nt-stackpane {
+  display: grid;
+  box-sizing: border-box;
+}
+
+/* Every child in the one cell, the last on top. */
+.nt-stackpane > * {
+  grid-area: 1 / 1;
+}
+
+.nt-splitpane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.nt-splitpane[data-orientation="vertical"] {
+  flex-direction: column;
+}
+
+.nt-splitpane-pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.nt-splitpane-divider {
+  flex: none;
+  position: relative;
+  background: var(--nt-surface-border, rgba(0, 0, 0, 0.12));
+  outline: none;
+}
+
+.nt-splitpane[data-orientation="horizontal"] > .nt-splitpane-divider {
+  width: 1px;
+  cursor: col-resize;
+}
+
+.nt-splitpane[data-orientation="vertical"] > .nt-splitpane-divider {
+  height: 1px;
+  cursor: row-resize;
+}
+
+/* A wider area to grab than the line shows. */
+.nt-splitpane-divider::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  z-index: 1;
+}
+
+.nt-splitpane-divider:hover,
+.nt-splitpane-divider:focus-visible,
+.nt-splitpane-divider:active {
+  background: var(--nt-accent);
+}
+
+/* CardPane: one card shown, the others hidden but kept. */
+.nt-card:not([data-shown]) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.nt-cardpane[data-transition="fade"] > .nt-card {
+  transition: opacity 150ms ease, visibility 150ms;
+  opacity: 0;
+}
+
+.nt-cardpane[data-transition="fade"] > .nt-card[data-shown] {
+  opacity: 1;
+}
+
+.nt-cardpane[data-transition="slide"] > .nt-card {
+  transition: transform 200ms ease, opacity 200ms ease, visibility 200ms;
+  transform: translateX(16px);
+  opacity: 0;
+}
+
+.nt-cardpane[data-transition="slide"] > .nt-card[data-shown] {
+  transform: none;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-cardpane > .nt-card { transition: none; }
+}

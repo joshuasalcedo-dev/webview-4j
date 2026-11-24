@@ -31,10 +31,16 @@ public final class DataTree extends CollectionView<DataTree> {
     }
 
     /** A tree of {@code records}: a column for each component but {@code children} (and {@code hasChildren}). */
+    @SuppressWarnings("unchecked")
     public static <R extends Record> DataTree of(String label, List<R> records) {
+        return records.isEmpty() ? new DataTree(label).rows(records) : of(label, (Class<R>) records.getFirst().getClass(), records);
+    }
+
+    /** A tree of {@code records} of {@code type}: its columns even when there are no rows (yet). */
+    public static <R extends Record> DataTree of(String label, Class<R> type, List<R> records) {
         DataTree tree = new DataTree(label);
-        if (!records.isEmpty()) {
-            for (RecordComponent c : records.getFirst().getClass().getRecordComponents()) {
+        {
+            for (RecordComponent c : type.getRecordComponents()) {
                 if (c.getName().equals("children") || c.getName().equals("hasChildren") || c.getName().equals("id")) continue;
                 tree.column(c.getName(), Rows.words(c.getName()), DataTable.typeOf(c.getType()));
             }

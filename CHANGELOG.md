@@ -2,6 +2,10 @@
 
 ## 0.2.0 — unreleased
 
+- Layout panes named as JavaFX's (`ui.components.layout`): `HBox`, `VBox`, `GridPane`, `BorderPane`, `StackPane`, `SplitPane`, `FlowPane`, `TilePane`, `AnchorPane`, `ScrollPane`, and `CardPane` (Swing's CardLayout); `Pos`, `HPos`, `VPos`, `Insets`, `Priority`; min and max sizes on every component
+- `Carousel`, `TitledPane` and `Accordion`
+- State (`ui.state`): `Store`, `Saved`, `ServerState` (as TanStack Query: cached by key, shown from memory or disk, fetched again only when invalidated, stale or changed by the server's ETag) and `Mutation` (pending, errors, invalidation, optimistic changes); `Property` says how long a value lives; `Context` and `ContextProperty` carry values down to a component's children; all of it a `Session`'s, never the process's
+- The app's local store: redb in the native library (`NativeStore`, one ACID file in the system's place for the app's data), behind `StateStorage`
 - Collections (`ui.components.usecase.collection`), React first and then Java: `DataTable`, `DataList`, `DataTree`, `DataMap` and `DataGrid`, from records and maps
 - One query model for every collection: `Query` (page, size, sorts, search, column filters) and `Paging`; with `onQueryChange` the server answers it, and `Query.apply` answers one in memory
 - Column filters in `DataTable`: text contains, one of some options (an enum), a range (numbers, money, dates), yes/no; Shift-click sorts by more than one column

@@ -50,13 +50,20 @@ public final class DataTable extends CollectionView<DataTable> {
         prop("columns", columns);
     }
 
-    /** A table of {@code records}, with a column for each of the record's components. */
+    /**
+     * A table of {@code records}, with a column for each of the record's components. With no records it has no
+     * columns: give the type ({@link #of(String, Class, List)}) for an empty, loading or failed table with headers.
+     */
+    @SuppressWarnings("unchecked")
     public static <R extends Record> DataTable of(String label, List<R> records) {
+        return records.isEmpty() ? new DataTable(label).rows(records) : of(label, (Class<R>) records.getFirst().getClass(), records);
+    }
+
+    /** A table of {@code records} of {@code type}: its columns even when there are no rows (yet). */
+    public static <R extends Record> DataTable of(String label, Class<R> type, List<R> records) {
         DataTable table = new DataTable(label);
-        if (!records.isEmpty()) {
-            for (RecordComponent c : records.getFirst().getClass().getRecordComponents()) {
-                table.column(c.getName(), Rows.words(c.getName()), typeOf(c.getType()));
-            }
+        for (RecordComponent c : type.getRecordComponents()) {
+            table.column(c.getName(), Rows.words(c.getName()), typeOf(c.getType()));
         }
         return table.rows(records);
     }

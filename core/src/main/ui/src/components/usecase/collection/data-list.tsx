@@ -7,6 +7,7 @@ import { List, ListItem } from "../../list"
 import { Pill } from "../../pill"
 import { SearchField } from "../../search-field"
 import type { DataRow } from "./data-table"
+import { fieldText } from "./field"
 import { type CollectionQuery, EMPTY_QUERY, type Paging } from "./query"
 import { CollectionState, type EmptyStateProps, LoadingBar, Pages, useLoadedOnce } from "./states"
 import "./collection.css"
@@ -93,7 +94,7 @@ function DataList({
   }
   const onServer = onQueryChange != null
   const chosen = selected ?? ownSelected
-  const field = (item: DataRow, key?: string) => (key && item[key] != null ? String(item[key]) : undefined)
+  const field = fieldText
   const id = (item: DataRow, index: number) => String(item[itemKey] ?? index)
 
   const shown = React.useMemo(() => {

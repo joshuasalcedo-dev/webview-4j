@@ -4,6 +4,7 @@ import { Avatar } from "../../avatar"
 import { type MenuEntry, useContextMenu } from "../../context-menu"
 import { Pill } from "../../pill"
 import type { DataRow } from "./data-table"
+import { fieldText } from "./field"
 import { type CollectionQuery, EMPTY_QUERY, type Paging } from "./query"
 import { CollectionState, type EmptyStateProps, LoadingBar, Pages, useLoadedOnce } from "./states"
 import "./collection.css"
@@ -77,7 +78,7 @@ function DataGrid({
     onSelectionChange?.(next)
     if (!selected) setOwnSelected(next)
   }
-  const field = (item: DataRow, key?: string) => (key && item[key] != null ? String(item[key]) : undefined)
+  const field = fieldText
   const [own, setOwn] = React.useState<CollectionQuery>({ ...EMPTY_QUERY, size: pageSize })
   const current: CollectionQuery = { ...own, ...query, size: query?.size ?? paging?.size ?? (pageSize || own.size) }
   const onServer = onQueryChange != null
