@@ -1,0 +1,12 @@
+[package]
+name = "grammar"
+version.workspace = true
+edition.workspace = true
+license = "Apache-2.0"
+description = "Spelling and grammar for webview-4j's text: Harper (harper-core), offline, about a millisecond a message."
+publish = false
+
+[dependencies]
+harper-core = "3.2.0"
+serde = { workspace = true }
+serde_json = "1"

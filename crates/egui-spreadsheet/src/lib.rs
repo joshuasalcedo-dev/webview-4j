@@ -1,12 +1,9 @@
-//! A spreadsheet for egui: formulas over 26 x 10,000 cells.
-//!
-//! The engine (the formula language, the dependency order, the sheet and its edits) is egui-reactor's, taken
-//! unchanged with its tests: [`formula`], [`eval`], [`sheet`]. Nothing in it knows about egui. The grid on screen
-//! is ours: [`Spreadsheet`].
+//! A spreadsheet for egui, fast on Excel-sized sheets (1,048,576 rows by 16,384 columns): only what is in view is
+//! drawn. The engine is [IronCalc](https://github.com/ironcalc/IronCalc): Excel's formulas and number formats,
+//! workbooks of several sheets, undo, and .xlsx files in ([`Spreadsheet::from_xlsx`], [`Loading`] in the background)
+//! and out ([`Spreadsheet::to_xlsx`]).
 
-pub mod eval;
 pub mod grid;
-pub mod formula;
-pub mod sheet;
 
-pub use grid::{Output, Spreadsheet};
+pub use grid::{Loading, Output, Spreadsheet, cell_name, column_name};
+pub use ironcalc;

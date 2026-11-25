@@ -2,20 +2,19 @@
 name = "egui-spreadsheet"
 version.workspace = true
 edition.workspace = true
-description = "A spreadsheet for egui: formulas over 26 x 10,000 cells. Its engine is egui-reactor's (MIT OR Apache-2.0), its grid ours."
-license = "MIT OR Apache-2.0"
+description = "A spreadsheet for egui, fast on Excel-sized sheets: IronCalc's engine (Excel formulas, .xlsx in and out), drawn by egui."
 
 [lib]
 name = "egui_spreadsheet"
 
 [dependencies]
 egui = "0.37"
-egui_extras = { version = "0.37", default-features = false }
-serde = { workspace = true }
+# the engine: Excel's formulas and number formats, workbooks of several sheets, .xlsx import and export
+ironcalc = "0.9.1"
+serde_json = "1"
 log = "0.4"
 
 [dev-dependencies]
-serde_json = "1"
 eframe = { version = "0.37", features = ["glow"] }
 egui_kittest = "0.37"
 env_logger = "0.11"
