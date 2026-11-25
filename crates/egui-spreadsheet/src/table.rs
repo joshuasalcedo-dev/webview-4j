@@ -225,6 +225,11 @@ impl Spreadsheet {
                 self.set_style(table.sheet, (first, col, table.last_row, col), &crate::style::CellStyle::new().number_format(format))?;
             }
             self.autofit_column(table.sheet, col)?;
+            // room for the filter button beside the header's text
+            if table.filter {
+                let width = self.column_width(table.sheet, col);
+                self.set_column_width(table.sheet, col, col, width + 18.0)?;
+            }
         }
         Ok(())
     }

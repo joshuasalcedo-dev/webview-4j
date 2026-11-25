@@ -41,6 +41,7 @@ public final class SamplerScreen implements Screen {
             new Group("Data", List.of(
                     new Category("Collections", "table"),
                     new Category("Value objects", "money"),
+                    new Category("Documents", "file"),
                     new Category("Files", "folder"),
                     new Category("Editors", "code"))),
             new Group("App", List.of(

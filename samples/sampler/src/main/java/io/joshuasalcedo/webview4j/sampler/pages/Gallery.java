@@ -38,7 +38,10 @@ public final class Gallery {
             ValueObjectDemos::new,
             CollectionDemos::new,
             PanesDemos::new,
-            AuthenticationDemos::new);
+            AuthenticationDemos::new,
+            XlsxDemos::new,
+            PdfDemos::new,
+            DocxDemos::new);
 
     private final Map<String, Page> pages = new LinkedHashMap<>();
 

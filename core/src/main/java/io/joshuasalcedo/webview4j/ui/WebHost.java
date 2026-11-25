@@ -393,8 +393,11 @@ public final class WebHost implements AutoCloseable {
         }
         if (secure(request, socket)) headers.put("Strict-Transport-Security", "max-age=31536000");
         headers.put("Cache-Control", "no-store");
-        headers.put("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; "
-                + "script-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; frame-ancestors 'self'");
+        // WebAssembly (egui-4j, grammar, the Excel, Word and PDF engines) needs 'wasm-unsafe-eval'; the PDF engine
+        // runs in a blob: worker, and documents arrive as data: URLs and are read through blob: ones.
+        headers.put("Content-Security-Policy", "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; "
+                + "font-src 'self' data:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self' blob:; "
+                + "connect-src 'self' ws: wss: blob: data:; frame-ancestors 'self'");
         String html = PAGE.replace("%TITLE%", escape(config.title));
         respond(out, 200, "text/html; charset=utf-8", html.getBytes(StandardCharsets.UTF_8), headers);
     }

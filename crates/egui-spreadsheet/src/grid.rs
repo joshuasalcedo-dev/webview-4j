@@ -1074,7 +1074,7 @@ fn fit_number(text: &str, width: f32, measure: impl Fn(&str) -> f32) -> String {
 }
 
 /// A small dropdown button: a box with a triangle pointing down.
-fn drop_button(painter: &egui::Painter, rect: Rect, strong: bool, visuals: &egui::Visuals) {
+pub(crate) fn drop_button(painter: &egui::Painter, rect: Rect, strong: bool, visuals: &egui::Visuals) {
     let fill = if strong { visuals.selection.bg_fill } else { visuals.widgets.inactive.weak_bg_fill };
     let ink = if strong { visuals.selection.stroke.color } else { visuals.text_color() };
     painter.rect_filled(rect, 2.0, fill);

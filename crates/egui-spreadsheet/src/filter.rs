@@ -168,7 +168,10 @@ impl Spreadsheet {
                 end += 1;
             }
             let (from, to) = (range.header_row + 1 + start as i32, range.header_row + 1 + end as i32);
-            self.model.set_rows_hidden(sheet, from, to, hidden)?;
+            // only rows that change: each change is a step of undo
+            if (from..=to).any(|r| self.is_row_hidden(sheet, r) != hidden) {
+                self.model.set_rows_hidden(sheet, from, to, hidden)?;
+            }
             start = end + 1;
         }
         self.changed();
@@ -270,7 +273,10 @@ impl Spreadsheet {
         self.changed();
         done?;
         // a filter hides rows by where they are: hide again what does not match
-        self.apply_filter(sheet)
+        if self.filters.get(&sheet).is_some_and(|f| !f.conditions.is_empty()) {
+            self.apply_filter(sheet)?;
+        }
+        Ok(())
     }
 }
 

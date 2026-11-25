@@ -313,9 +313,11 @@ fn the_filter_menu_sorts() {
     let mut h = harness(s);
     let cell = h.state().0.cell_screen_rect(1, 3).unwrap();
     click(&mut h, egui::pos2(cell.max.x - 10.0, cell.center().y));
-    h.get_by_label("Sort Z-A").click();
+    // the menu's (the toolbar has one too): the last drawn
+    h.get_all_by_label("Sort Z-A").last().unwrap().click();
     h.run();
     assert_eq!(column(&h.state().0, 3, 2..=4), ["8", "7", "6"]);
+    assert!(h.query_by_label("OK").is_none(), "the menu closed");
 }
 
 #[test]

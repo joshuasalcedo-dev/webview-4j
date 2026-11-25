@@ -11,15 +11,20 @@ pub mod filter;
 pub mod grid;
 pub mod load;
 pub mod row;
+pub mod source;
 pub mod statusbar;
 pub mod style;
 pub mod table;
 pub mod toolbar;
 pub mod validation;
+pub mod viewer;
+pub mod viewers;
 
 pub use grid::{Output, Spreadsheet, cell_name, column_name};
 pub use ironcalc;
 pub use load::{Kind, Loading};
+pub use source::{DataSource, Rows, Value};
+pub use viewer::Viewer;
 
 /// A cell's A1 name as (row, column), 1-based: `B2` is (2, 2), `XFD1048576` the last. None for anything else.
 pub fn parse_cell(name: &str) -> Option<(i32, i32)> {

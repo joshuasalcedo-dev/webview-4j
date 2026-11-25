@@ -85,6 +85,9 @@ import {
 } from "./components/sidebar"
 import { NamedIcon } from "./lib/named-icons"
 import { GrammarTextArea } from "./components/grammar-text-area"
+import { JavaCsvViewer, JavaXlsxEditor, JavaXlsxViewer } from "./components/usecase/xlsx/java"
+import { JavaBoundingBoxCitations, JavaDocumentSplits, JavaFileThumbnail, JavaPdfViewer } from "./components/usecase/pdf/java"
+import { JavaDocumentViewerSidebar, JavaDocxAnnotationCard, JavaDocxEditor, JavaDocxLayoutBlocks, JavaDocxViewer } from "./components/usecase/docx/java"
 import { StatusBar, StatusBarSpacer, StatusDot, StatusItem } from "./components/status-bar"
 import { Surface } from "./components/surface"
 import { Switch } from "./components/switch"
@@ -416,6 +419,35 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
         </Sidebar>
       )
     }
+    // ---- documents (Excel, PDF, Word): each library loads the first time one is shown ----
+    case "xlsxViewer":
+      return <JavaXlsxViewer node={node} send={send} />
+    case "xlsxEditor":
+      return <JavaXlsxEditor node={node} send={send} />
+    case "csvViewer":
+      return <JavaCsvViewer node={node} send={send} />
+    case "pdfViewer":
+      return <JavaPdfViewer node={node} send={send} />
+    case "fileThumbnail":
+      return <JavaFileThumbnail node={node} send={send} />
+    case "boundingBoxCitations":
+      return <JavaBoundingBoxCitations node={node} send={send} />
+    case "documentSplits":
+      return <JavaDocumentSplits node={node} send={send} />
+    case "docxViewer":
+      return <JavaDocxViewer node={node} send={send} />
+    case "docxEditor":
+      return <JavaDocxEditor node={node} send={send} />
+    case "docxAnnotationCard":
+      return <JavaDocxAnnotationCard node={node} send={send} />
+    case "documentViewerSidebar":
+      return (
+        <JavaDocumentViewerSidebar node={node} send={send}>
+          <Children nodes={node.c} />
+        </JavaDocumentViewerSidebar>
+      )
+    case "docxLayoutBlocks":
+      return <JavaDocxLayoutBlocks node={node} send={send} />
     case "grammarTextArea":
       return <JavaGrammarTextArea node={node} />
     case "sidebarGroup":

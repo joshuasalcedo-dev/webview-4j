@@ -7,6 +7,7 @@
 
 #[cfg(target_arch = "wasm32")]
 mod console;
+pub mod live_csv;
 pub mod dev_logger;
 pub mod json_view;
 pub mod line_chart;
@@ -72,6 +73,7 @@ impl Default for Registry {
         registry.register("line-chart", || Box::new(line_chart::LineChart::default()));
         registry.register("monitor", || Box::new(monitor::Monitor::default()));
         registry.register("dev-logger", || Box::new(dev_logger::DevLogger::default()));
+        registry.register("live-csv", || Box::new(live_csv::LiveCsv::default()));
         registry
     }
 }

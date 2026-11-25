@@ -22,5 +22,8 @@ module io.joshuasalcedo.webview4j {
     exports io.joshuasalcedo.webview4j.ui.components.usecase.mdi;
     exports io.joshuasalcedo.webview4j.ui.components.usecase.autoupdate;
     exports io.joshuasalcedo.webview4j.ui.components.usecase.authentication;
+    exports io.joshuasalcedo.webview4j.ui.components.usecase.xlsx;
+    exports io.joshuasalcedo.webview4j.ui.components.usecase.pdf;
+    exports io.joshuasalcedo.webview4j.ui.components.usecase.docx;
     exports io.joshuasalcedo.webview4j.ui.components.usecase.collection;
 }

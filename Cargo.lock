@@ -2797,6 +2797,7 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
+ "egui-spreadsheet",
  "egui_dock",
  "egui_extras",
  "egui_kittest",

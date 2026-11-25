@@ -2,6 +2,8 @@
 
 ## 0.2.0 — unreleased
 
+- Documents (use cases `xlsx`, `pdf`, `docx`, each library loaded the first time it is shown): Excel viewer and editor (formula bar, undo/redo, merge, sheets, save to bytes), CSV viewer; PDF viewer (PDFium as WebAssembly: zoom, search, selection, thumbnails, rotate), file thumbnails, bounding-box citations, document splits; Word viewer and editor (toolbar, styles, lists, tables, images, comments and tracked changes shown, save to bytes), annotation cards, document side panel, layout blocks. Java: `XlsxViewer`, `XlsxEditor`, `CsvViewer`, `PdfViewer`, `FileThumbnail`, `BoundingBoxCitations`, `DocumentSplits`, `DocxViewer`, `DocxEditor`, `DocxAnnotationCard`, `DocumentViewerSidebar`, `DocxLayoutBlocks`; the Sampler's Documents pages
+- WebHost's content security policy lets WebAssembly, blob: workers and data: documents through
 - Spelling and grammar in the page as WebAssembly (`GrammarTextArea`, `useGrammar`, `checkGrammar`; Java `grammarTextArea`): mistakes underlined as they are typed, fixes at the caret; and in Java through the native library (`Grammar.of("en-GB").check(text)`, `fix`)
 - `TitleBar` leading corner (`titleBar(...).sidebarTrigger(...)`, `.leading(...)`): the sidebar button in the title bar
 - Fixed: a click during a redraw could reach a neighbouring handler; handlers are now named by their place in the tree
