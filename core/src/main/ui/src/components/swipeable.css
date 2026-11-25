@@ -53,7 +53,7 @@
   color: #ffffff;
   background: var(--nt-swipe);
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
   transition: flex-grow 160ms ease;
 }
 

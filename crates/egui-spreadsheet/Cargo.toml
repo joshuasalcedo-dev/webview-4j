@@ -12,9 +12,12 @@ egui = "0.37"
 # the engine: Excel's formulas and number formats, workbooks of several sheets, .xlsx import and export
 ironcalc = "0.9.1"
 serde_json = "1"
+# CSV files (IronCalc reads it too: already in the build)
+csv = "1.4"
 log = "0.4"
 
 [dev-dependencies]
+serde_json = "1"
 eframe = { version = "0.37", features = ["glow"] }
 egui_kittest = "0.37"
 env_logger = "0.11"

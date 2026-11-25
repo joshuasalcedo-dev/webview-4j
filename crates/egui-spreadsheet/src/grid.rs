@@ -10,11 +10,13 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use egui::{Align2, Key, Pos2, Rect, RichText, Sense, Stroke, Ui, pos2, vec2};
+use egui::{Align2, Color32, Key, Pos2, Rect, RichText, Sense, Stroke, Ui, pos2, vec2};
 use ironcalc::base::cell::CellValue;
 use ironcalc::base::expressions::types::Area;
 use ironcalc::base::types::CellType;
 use ironcalc::base::{Model, UserModel};
+
+use crate::style::{CellStyle, Look};
 
 /// Excel's last row and column.
 pub const MAX_ROW: i32 = 1_048_576;
@@ -45,6 +47,10 @@ struct Shown {
     text: String,
     align: Align2,
     error: bool,
+    /// Its style, as the file has it (fill, font, alignment, borders).
+    look: Look,
+    /// A number as fitted to its cell's width (measured once, not every frame).
+    fitted: Option<(f32, String)>,
 }
 
 /// What a copy left: its text (to know a paste is ours) and IronCalc's clipboard (to paste formulas moved).
@@ -74,10 +80,15 @@ pub struct Spreadsheet {
     /// Each column's left edge from the first, for the sheet shown (index 0 is column 1's).
     col_x: Vec<f32>,
     col_version: Option<(u64, u32)>,
+    /// The sheet's last used row and column, per version: IronCalc's `dimension()` reads every cell, too slow for
+    /// every frame on a big sheet.
+    used: Option<((u64, u32), (i32, i32))>,
     anchor: (i32, i32),
     cursor: (i32, i32),
     editing: Option<String>,
     focus_editor: bool,
+    /// An edit ended this frame (Enter, Tab, Escape): that key was the editor's, not the grid's.
+    edit_ended: bool,
     active: bool,
     scroll_to: bool,
     copied: Option<Copied>,
@@ -120,10 +131,12 @@ impl Spreadsheet {
             shown_version: 0,
             col_x: Vec::new(),
             col_version: None,
+            used: None,
             anchor: (1, 1),
             cursor: (1, 1),
             editing: None,
             focus_editor: false,
+            edit_ended: false,
             active: false,
             scroll_to: false,
             copied: None,
@@ -180,6 +193,16 @@ impl Spreadsheet {
         Ok(())
     }
 
+    /// Styles a rectangle (first row, first column, last row, last column; 1-based): only what `style` sets changes.
+    /// Saved with the workbook.
+    pub fn set_style(&mut self, sheet: u32, range: (i32, i32, i32, i32), style: &CellStyle) -> Result<(), String> {
+        let (r0, c0, r1, c1) = range;
+        let area = Area { sheet, row: r0.min(r1), column: c0.min(c1), width: (c1 - c0).abs() + 1, height: (r1 - r0).abs() + 1 };
+        style.apply(&mut self.model, &area)?;
+        self.version += 1;
+        Ok(())
+    }
+
     /// What a cell shows (formatted as Excel would).
     pub fn text(&self, sheet: u32, row: i32, col: i32) -> String {
         self.model.get_formatted_cell_value(sheet, row, col).unwrap_or_default()
@@ -213,9 +236,17 @@ impl Spreadsheet {
 
     // ---- inside ----
 
-    fn rows_cols(&self) -> (i32, i32) {
-        let used = self.model.get_model().workbook.worksheet(self.sheet()).map(|s| s.dimension()).ok();
-        let (max_row, max_col) = used.map_or((1, 1), |d| (d.max_row, d.max_column));
+    fn rows_cols(&mut self) -> (i32, i32) {
+        let key = (self.version, self.sheet());
+        let (max_row, max_col) = match self.used {
+            Some((k, used)) if k == key => used,
+            _ => {
+                let d = self.model.get_model().workbook.worksheet(self.sheet()).map(|s| s.dimension()).ok();
+                let used = d.map_or((1, 1), |d| (d.max_row, d.max_column));
+                self.used = Some((key, used));
+                used
+            }
+        };
         let rows = (max_row + MORE_ROWS).max(MIN_ROWS).max(self.cursor.0 + 1).min(MAX_ROW);
         let cols = (max_col + MORE_COLS).max(MIN_COLS).max(self.cursor.1 + 1).min(MAX_COL);
         (rows, cols)
@@ -266,13 +297,15 @@ impl Spreadsheet {
         }
         let text = self.model.get_formatted_cell_value(sheet, row, col).unwrap_or_default();
         let kind = if text.is_empty() { None } else { self.model.get_cell_type(sheet, row, col).ok() };
-        let (align, error) = match kind {
+        let (by_value, error) = match kind {
             Some(CellType::Number) => (Align2::RIGHT_CENTER, false),
             Some(CellType::ErrorValue) => (Align2::CENTER_CENTER, true),
             Some(CellType::LogicalValue) => (Align2::CENTER_CENTER, false),
             _ => (Align2::LEFT_CENTER, false),
         };
-        let s = Shown { text, align, error };
+        let look = self.model.get_cell_style(sheet, row, col).map(|style| Look::of(&self.model, &style)).unwrap_or_default();
+        let align = look.align.unwrap_or(by_value);
+        let s = Shown { text, align, error, look, fitted: None };
         self.shown.insert((sheet, row, col), s.clone());
         s
     }
@@ -332,6 +365,8 @@ impl Spreadsheet {
 
     fn copy(&mut self, ui: &Ui, cut: bool, out: &mut Output) {
         let (r0, c0, r1, c1) = self.selection();
+        // IronCalc takes a range only around its selected cell: that first
+        let _ = self.model.set_selected_cell(self.cursor.0, self.cursor.1);
         let _ = self.model.set_selected_range(r0, c0, r1, c1);
         let text = self.copy_text();
         ui.ctx().copy_text(text.clone());
@@ -442,7 +477,7 @@ impl Spreadsheet {
         {
             self.active = false;
         }
-        if self.active && self.editing.is_none() {
+        if self.active && self.editing.is_none() && !std::mem::take(&mut self.edit_ended) {
             self.keys(ui, &mut out);
         }
         if self.selection() != before {
@@ -475,6 +510,7 @@ impl Spreadsheet {
                     self.commit(out);
                 }
                 self.active = true;
+                self.edit_ended = true;
             }
         });
     }
@@ -517,21 +553,67 @@ impl Spreadsheet {
                     if in_selection && (s_r0, s_c0) != (s_r1, s_c1) {
                         painter.rect_filled(cell, 0.0, visuals.selection.bg_fill.gamma_multiply(0.2));
                     }
-                    if self.editing.is_some() && (row, col) == self.cursor {
-                        continue;
-                    }
                     let shown = self.shown(sheet, row, col);
-                    if shown.text.is_empty() {
+                    if let Some(fill) = shown.look.fill {
+                        painter.rect_filled(cell, 0.0, fill);
+                    }
+                    for (i, edge) in shown.look.borders.iter().enumerate() {
+                        if let Some(c) = edge {
+                            let (a, b) = match i {
+                                0 => (cell.left_top(), cell.left_bottom()),
+                                1 => (cell.left_top(), cell.right_top()),
+                                2 => (cell.right_top(), cell.right_bottom()),
+                                _ => (cell.left_bottom(), cell.right_bottom()),
+                            };
+                            painter.line_segment([a, b], Stroke::new(1.0, *c));
+                        }
+                    }
+                    if (self.editing.is_some() && (row, col) == self.cursor) || shown.text.is_empty() {
                         continue;
                     }
-                    let inner = cell.shrink2(vec2(4.0, 0.0));
-                    let pos = match shown.align {
-                        Align2::RIGHT_CENTER => inner.right_center(),
-                        Align2::CENTER_CENTER => inner.center(),
-                        _ => inner.left_center(),
+                    let inner = cell.shrink2(vec2(4.0, 1.0));
+                    let pos = shown.align.pos_in_rect(&inner);
+                    let look = &shown.look;
+                    let color = if shown.error {
+                        visuals.error_fg_color
+                    } else {
+                        // the file's font colour; black text on a dark theme's background would not be seen
+                        look.color.unwrap_or_else(|| if look.fill.is_some() { Color32::BLACK } else { visuals.text_color() })
                     };
-                    let color = if shown.error { visuals.error_fg_color } else { visuals.text_color() };
-                    painter.with_clip_rect(cell.intersect(painter.clip_rect())).text(pos, shown.align, &shown.text, font.clone(), color);
+                    let font = egui::FontId::new(font.size * look.scale, font.family.clone());
+                    let text = match &shown.fitted {
+                        Some((w, fitted)) if *w == inner.width() => fitted.clone(),
+                        _ if shown.align == Align2::RIGHT_CENTER => {
+                            let fitted = fit_number(&shown.text, inner.width(), |t| {
+                                ui.fonts_mut(|f| f.layout_no_wrap(t.to_owned(), font.clone(), color).size().x)
+                            });
+                            if let Some(kept) = self.shown.get_mut(&(sheet, row, col)) {
+                                kept.fitted = Some((inner.width(), fitted.clone()));
+                            }
+                            fitted
+                        }
+                        _ => shown.text.clone(),
+                    };
+                    let format = egui::TextFormat {
+                        font_id: font.clone(),
+                        color,
+                        italics: look.italic,
+                        underline: if look.underline { Stroke::new(1.0, color) } else { Stroke::NONE },
+                        strikethrough: if look.strike { Stroke::new(1.0, color) } else { Stroke::NONE },
+                        ..Default::default()
+                    };
+                    let mut job = egui::text::LayoutJob::single_section(text, format);
+                    if look.wrap {
+                        job.wrap.max_width = inner.width();
+                    }
+                    let galley = ui.fonts_mut(|f| f.layout_job(job));
+                    let at = shown.align.anchor_size(pos, galley.size()).min;
+                    let clipped = painter.with_clip_rect(cell.intersect(painter.clip_rect()));
+                    // egui's fonts have one weight: bold is the text twice, half a point apart
+                    if look.bold {
+                        clipped.galley(at + vec2(0.6, 0.0), galley.clone(), color);
+                    }
+                    clipped.galley(at, galley, color);
                 }
             }
 
@@ -617,6 +699,7 @@ impl Spreadsheet {
         });
 
         if let Some(key) = edit_done {
+            self.edit_ended = true;
             let (row, col) = self.cursor;
             match key {
                 Key::Escape => self.editing = None,
@@ -703,56 +786,59 @@ impl Spreadsheet {
     }
 }
 
-/// A workbook being read in the background (native: on a thread of its own; in the page there are none, so at once).
-pub struct Loading {
-    #[cfg(not(target_arch = "wasm32"))]
-    receiver: std::sync::mpsc::Receiver<Result<ironcalc::base::types::Workbook, String>>,
-    #[cfg(target_arch = "wasm32")]
-    done: Option<Result<ironcalc::base::types::Workbook, String>>,
-    pub name: String,
+/// A number too wide for its cell, as Excel shows it: fewer decimals until it fits, and `###` when even the whole
+/// number does not (a number cut short would be a different number).
+fn fit_number(text: &str, width: f32, measure: impl Fn(&str) -> f32) -> String {
+    if measure(text) <= width {
+        return text.to_owned();
+    }
+    if let Some(dot) = text.find('.') {
+        let digits = text.len() - dot - 1;
+        let value: Option<f64> = text.parse().ok();
+        for keep in (0..digits).rev() {
+            let shorter = match value {
+                Some(v) => format!("{v:.keep$}"),
+                None => text[..dot + if keep == 0 { 0 } else { keep + 1 }].to_owned(),
+            };
+            if measure(&shorter) <= width {
+                return shorter;
+            }
+        }
+    }
+    "#".repeat(((width / measure("#").max(1.0)) as usize).max(1))
 }
 
-impl Loading {
-    /// Starts reading an .xlsx file's bytes.
-    pub fn start(bytes: Vec<u8>, name: &str) -> Loading {
-        let read = {
-            let name = name.to_owned();
-            move || ironcalc::import::load_from_xlsx_bytes(&bytes, &name, "en", "UTC").map_err(|e| format!("not a workbook: {e:?}"))
-        };
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let (sender, receiver) = std::sync::mpsc::channel();
-            std::thread::spawn(move || {
-                let _ = sender.send(read());
-            });
-            Loading { receiver, name: name.to_owned() }
-        }
-        #[cfg(target_arch = "wasm32")]
-        {
-            Loading { done: Some(read()), name: name.to_owned() }
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Each character is 10 wide.
+    fn by_chars(t: &str) -> f32 {
+        t.chars().count() as f32 * 10.0
     }
 
-    /// The workbook, once read (None while it is not yet).
-    pub fn poll(&mut self) -> Option<Result<Spreadsheet, String>> {
-        #[cfg(not(target_arch = "wasm32"))]
-        let read = match self.receiver.try_recv() {
-            Ok(r) => r,
-            Err(std::sync::mpsc::TryRecvError::Empty) => return None,
-            Err(std::sync::mpsc::TryRecvError::Disconnected) => Err("the reading stopped".to_owned()),
-        };
-        #[cfg(target_arch = "wasm32")]
-        let read = self.done.take()?;
-        Some(read.and_then(|workbook| Model::from_workbook(workbook, "en")).map(|m| Spreadsheet::new(UserModel::from_model(m))))
+    #[test]
+    fn a_number_that_fits_is_left_alone() {
+        assert_eq!(fit_number("1726.17", 100.0, by_chars), "1726.17");
     }
 
-    /// What shows while it reads: a spinner and the file's name.
-    pub fn show(&self, ui: &mut Ui) {
-        ui.centered_and_justified(|ui| {
-            ui.horizontal(|ui| {
-                ui.spinner();
-                ui.label(format!("Opening {}…", self.name));
-            });
-        });
+    #[test]
+    fn a_wide_number_loses_decimals_rounded_not_cut() {
+        assert_eq!(fit_number("1726.166666667", 80.0, by_chars), "1726.167");
+        assert_eq!(fit_number("1726.166666667", 40.0, by_chars), "1726");
+        assert_eq!(fit_number("0.999", 30.0, by_chars), "1.0", "rounded, as Excel does");
+    }
+
+    #[test]
+    fn a_number_that_cannot_fit_is_hashes() {
+        assert_eq!(fit_number("123456789", 50.0, by_chars), "#####");
+        assert_eq!(fit_number("1234.5", 1.0, by_chars), "#");
+    }
+
+    #[test]
+    fn columns_are_named_as_excel_names_them() {
+        let names: Vec<String> = [1, 2, 26, 27, 52, 53, 702, 703, 16_384].into_iter().map(column_name).collect();
+        assert_eq!(names, ["A", "B", "Z", "AA", "AZ", "BA", "ZZ", "AAA", "XFD"]);
+        assert_eq!(cell_name(10, 28), "AB10");
     }
 }

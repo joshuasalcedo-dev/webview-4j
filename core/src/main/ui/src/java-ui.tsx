@@ -65,7 +65,25 @@ import { ProgressBar } from "./components/progress-bar"
 import { NativeProvider } from "./components/provider"
 import { SegmentedControl } from "./components/segmented-control"
 import { Select } from "./components/select"
-import { Sidebar, SidebarItem, SidebarSection } from "./components/sidebar"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarInput,
+  SidebarItem,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarSection,
+  SidebarSeparator,
+  SidebarTrigger,
+} from "./components/sidebar"
+import { NamedIcon } from "./lib/named-icons"
 import { StatusBar, StatusBarSpacer, StatusDot, StatusItem } from "./components/status-bar"
 import { Surface } from "./components/surface"
 import { Switch } from "./components/switch"
@@ -143,6 +161,111 @@ const bool = (v: unknown) => v === true
 
 function slot(node: JavaNode, name: string) {
   return node.c?.find((c) => c.p.slot === name)
+}
+
+/** The Java node types that make a sidebar one built from parts. */
+const SIDEBAR_PARTS = new Set(["sidebarHeader", "sidebarGroup", "sidebarMenuButton", "sidebarInput", "sidebarSeparator"])
+
+/** A sidebar's parts in order, its menu buttons side by side in one SidebarMenu. */
+function SidebarParts({ nodes }: { nodes: JavaNode[] | undefined }) {
+  const out: React.ReactNode[] = []
+  let run: JavaNode[] = []
+  const flush = () => {
+    if (!run.length) return
+    const items = run
+    out.push(
+      <SidebarMenu key={`menu-${out.length}`}>
+        {items.map((n, i) => (
+          <SidebarMenuEntry key={n.k ?? `item-${i}`} node={n} />
+        ))}
+      </SidebarMenu>
+    )
+    run = []
+  }
+  nodes?.forEach((n, i) => {
+    if (n.t === "sidebarMenuButton") {
+      run.push(n)
+      return
+    }
+    flush()
+    out.push(<Render key={n.k ?? `${n.t}-${i}`} node={n} />)
+  })
+  flush()
+  return <>{out}</>
+}
+
+/** One menu button from Java, with the places under it (opening on a click) when it has some. */
+function SidebarMenuEntry({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const sub = (node.c ?? []).filter((c) => c.t === "sidebarMenuButton")
+  const anyActive = sub.some((c) => bool(c.p.active))
+  const [open, setOpen] = React.useState(p.open === undefined ? anyActive : bool(p.open))
+  React.useEffect(() => {
+    if (anyActive) setOpen(true)
+  }, [anyActive])
+  const icon = str(p.icon)
+  const badge = p.badge === undefined ? undefined : typeof p.badge === "number" ? (p.badge > 99 ? "99+" : p.badge) : str(p.badge)
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={bool(p.active)}
+        icon={icon ? <NamedIcon name={icon} /> : undefined}
+        description={str(p.description)}
+        size={(str(p.size) as "sm" | "default" | "lg" | undefined) ?? "default"}
+        tooltip={str(p.tooltip)}
+        disabled={bool(p.disabled)}
+        aria-expanded={sub.length ? open : undefined}
+        badge={
+          sub.length ? (
+            <span className="nt-sb-chevron" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                <path d="m6 3 5 5-5 5" />
+              </svg>
+            </span>
+          ) : (
+            badge
+          )
+        }
+        onClick={() => {
+          if (sub.length) setOpen(!open)
+          if (typeof p.onClick === "string") send(p.onClick)
+        }}
+      >
+        {str(p.label) ?? ""}
+      </SidebarMenuButton>
+      {sub.length > 0 && open && (
+        <SidebarMenuSub>
+          {sub.map((c, i) => (
+            <SidebarMenuSubItem key={c.k ?? `sub-${i}`}>
+              <SidebarMenuSubButton isActive={bool(c.p.active)} disabled={bool(c.p.disabled)}
+                onClick={typeof c.p.onClick === "string" ? () => send(c.p.onClick) : undefined}>
+                <span className="nt-sb-label">{str(c.p.label) ?? ""}</span>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          ))}
+        </SidebarMenuSub>
+      )}
+    </SidebarMenuItem>
+  )
+}
+
+/** The sidebar's search: what is typed reaches Java as it is typed. */
+function SidebarSearch({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const [value, setValue] = useJavaValue(str(p.value))
+  return (
+    <SidebarInput
+      placeholder={str(p.placeholder) ?? "Search"}
+      aria-label={str(p.placeholder) ?? "Search"}
+      value={value}
+      onChange={(e) => {
+        setValue(e.target.value)
+        if (typeof p.onChange === "string") send(p.onChange, e.target.value)
+      }}
+    />
+  )
 }
 
 function Children({ nodes }: { nodes: JavaNode[] | undefined }) {
@@ -224,12 +347,60 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     }
     case "sidebar": {
       const footer = node.c?.find((c) => c.t === "sidebarFooter")
+      if (node.c?.some((c) => SIDEBAR_PARTS.has(c.t))) {
+        const header = node.c.find((c) => c.t === "sidebarHeader")
+        const body = node.c.filter((c) => c.t !== "sidebarHeader" && c.t !== "sidebarFooter")
+        return (
+          <Sidebar
+            composed
+            aria-label={str(p.label) ?? "Sections"}
+            collapsed={bool(p.collapsed)}
+            onCollapsedChange={typeof p.onCollapsedChange === "string" ? (v) => send(p.onCollapsedChange, v) : undefined}
+            collapsible={(str(p.collapsible) as "icon" | "offcanvas" | "none" | undefined) ?? "icon"}
+            side={(str(p.side) as "left" | "right" | undefined) ?? "left"}
+            variant={(str(p.variant) as "sidebar" | "floating" | "inset" | undefined) ?? "sidebar"}
+            style={style}
+          >
+            {header && (
+              <SidebarHeader>
+                <SidebarParts nodes={header.c} />
+              </SidebarHeader>
+            )}
+            <SidebarContent>
+              <SidebarParts nodes={body} />
+            </SidebarContent>
+            {footer && (
+              <SidebarFooter>
+                <SidebarParts nodes={footer.c} />
+              </SidebarFooter>
+            )}
+          </Sidebar>
+        )
+      }
       return (
         <Sidebar aria-label="Sections" footer={footer && <Children nodes={footer.c} />} style={style}>
           <Children nodes={node.c?.filter((c) => c.t !== "sidebarFooter")} />
         </Sidebar>
       )
     }
+    case "sidebarGroup":
+      return (
+        <SidebarGroup label={str(p.label)} collapsible={bool(p.collapsible)} defaultOpen={p.open === undefined ? true : bool(p.open)} style={style}>
+          <SidebarParts nodes={node.c} />
+        </SidebarGroup>
+      )
+    case "sidebarMenuButton":
+      return (
+        <SidebarMenu>
+          <SidebarMenuEntry node={node} />
+        </SidebarMenu>
+      )
+    case "sidebarInput":
+      return <SidebarSearch node={node} />
+    case "sidebarSeparator":
+      return <SidebarSeparator />
+    case "sidebarTrigger":
+      return <SidebarTrigger onClick={(e) => { e.preventDefault(); send(p.onClick) }} style={style} />
     case "sidebarSection":
       return (
         <SidebarSection title={str(p.title)}>

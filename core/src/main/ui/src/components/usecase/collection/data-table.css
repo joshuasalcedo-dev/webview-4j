@@ -106,7 +106,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-datatable-sort:hover {

@@ -99,7 +99,7 @@ dialog.nt-dialog:not([open]) {
   color: var(--nt-accent);
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-dialog-disclosure svg {

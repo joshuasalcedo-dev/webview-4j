@@ -253,7 +253,7 @@
   background: transparent;
   border: none;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-chatheader-who:hover {
@@ -641,7 +641,7 @@
   border: none;
   border-left: 3px solid var(--nt-accent);
   border-radius: 4px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-msg-quote-name {
@@ -695,7 +695,7 @@
   overflow: hidden;
   background: var(--nt-subtle-hover);
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-msg-image img {
@@ -740,7 +740,7 @@
   background: var(--nt-accent);
   border: none;
   border-radius: 999px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-voice-play svg {
@@ -840,7 +840,7 @@
   background: var(--nt-surface);
   border: 1px solid var(--nt-surface-border);
   border-radius: 999px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-reaction[data-mine] {
@@ -891,7 +891,7 @@
   color: var(--nt-error);
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-msg-failed svg {
@@ -934,7 +934,7 @@
   background: transparent;
   border: none;
   border-radius: 4px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-msg-hoverbar > button:hover {
@@ -976,7 +976,7 @@
   background: transparent;
   border: none;
   border-radius: 999px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
   transition: transform 100ms ease;
 }
 
@@ -1056,7 +1056,7 @@
   border: 1px solid var(--nt-surface-border);
   border-radius: 999px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-jump svg {
@@ -1222,7 +1222,7 @@
 }
 
 .nt-msg-images[data-blurred] .nt-msg-image {
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-paywall-lock {
@@ -1255,7 +1255,7 @@
   background: var(--nt-accent);
   border: none;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-paywall-unlock svg {
@@ -1286,7 +1286,7 @@
   background: transparent;
   border: 1px solid var(--nt-separator, var(--nt-surface-border));
   border-radius: 999px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-category-more[data-on] {
@@ -1412,7 +1412,7 @@
   background: var(--nt-subtle-hover);
   border: none;
   border-radius: var(--nt-radius-large);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-details-actions button svg {
@@ -1437,7 +1437,7 @@
   background: transparent;
   border: none;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-details-small svg {
@@ -1503,7 +1503,7 @@
   background: var(--nt-subtle-hover);
   border: none;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-details-pinned svg {
@@ -1545,7 +1545,7 @@
   background: transparent;
   border: none;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-details-danger button:hover {

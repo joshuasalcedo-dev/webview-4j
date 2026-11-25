@@ -30,7 +30,7 @@ function CodeField({ length = 6, value, onChange, onComplete, disabled, error, c
     boxes.current[Math.min(digits.length, length - 1)]?.focus()
   }
   return (
-    <div className={["nt-code", className].filter(Boolean).join(" ")}>
+    <div className={["nt-codefield", className].filter(Boolean).join(" ")}>
       <div className="nt-code-boxes" role="group" aria-label={props["aria-label"] ?? "Code"}>
         {Array.from({ length }, (_, i) => (
           <input

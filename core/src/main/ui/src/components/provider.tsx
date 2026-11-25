@@ -2,6 +2,7 @@ import * as React from "react"
 
 import "../styles/native.css"
 import "../styles/navigation.css"
+import "../styles/sidebar-parts.css"
 import "../styles/dialog.css"
 import "../styles/files.css"
 import "../styles/text.css"

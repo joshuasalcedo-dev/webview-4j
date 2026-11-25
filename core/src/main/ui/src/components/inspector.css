@@ -83,7 +83,7 @@
   background: transparent;
   border: none;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-inspector-close svg {
@@ -129,7 +129,7 @@
   background: transparent;
   border: none;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-inspector-section-toggle svg {

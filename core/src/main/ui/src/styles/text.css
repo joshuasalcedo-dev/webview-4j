@@ -272,3 +272,12 @@
 .nt-link[data-subtle]:hover {
   color: var(--nt-accent);
 }
+
+/* Anything clickable that has no rule of its own: the action cursor (a hand unless --nt-cursor-action says
+   otherwise). The disabled rule above outranks it. */
+.nt-root :where(a[href], button, summary, select, [role="button"], [role="tab"], [role="menuitem"], [role="menuitemcheckbox"],
+  [role="menuitemradio"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], [role="treeitem"],
+  input[type="checkbox"], input[type="radio"], input[type="range"], input[type="color"], label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"])):not(:disabled, [aria-disabled="true"]) {
+  cursor: var(--nt-cursor-action);
+}

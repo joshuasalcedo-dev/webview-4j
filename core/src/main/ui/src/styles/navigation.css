@@ -91,7 +91,7 @@
   text-align: left;
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-sidebar-item:disabled {
@@ -144,7 +144,7 @@
   background: transparent;
   border: none;
   border-radius: 4px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-root[data-platform="windows"] .nt-sidebar-toggle svg {
@@ -348,7 +348,7 @@
   white-space: nowrap;
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-tool svg {
@@ -612,7 +612,7 @@
 }
 
 .nt-search input::-webkit-search-cancel-button {
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 /* Windows: AutoSuggestBox, the magnifier at the end. */
@@ -754,7 +754,7 @@
   flex: 1 1 0;
   align-items: center;
   min-width: 0;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-tab-select {
@@ -769,7 +769,7 @@
   text-align: left;
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-tab-select svg {
@@ -793,7 +793,7 @@
   color: var(--nt-text-secondary);
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-tab-close svg,
@@ -943,7 +943,7 @@
   color: var(--nt-text-secondary);
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-crumb[aria-current="page"] {

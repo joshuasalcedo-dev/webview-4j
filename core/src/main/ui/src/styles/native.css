@@ -145,8 +145,10 @@
   color: var(--nt-text);
   background: var(--nt-window);
   -webkit-font-smoothing: antialiased;
-  /* Desktop apps show the arrow, not a hand, and do not select their labels. */
+  /* The arrow over what is not clickable (not the text cursor), and labels not selected, as desktop apps do. */
   cursor: default;
+  /* What a pointer over something clickable shows: a hand, as on the web; default, as native apps do. */
+  --nt-cursor-action: pointer;
   user-select: none;
 }
 
@@ -212,7 +214,7 @@
   color: var(--nt-text);
   white-space: nowrap;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-button svg {
@@ -435,7 +437,7 @@
 .nt-check-box input {
   appearance: none;
   margin: 0;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-check-box svg {
@@ -530,7 +532,7 @@
 .nt-switch-track input {
   appearance: none;
   margin: 0;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-switch-thumb {
@@ -636,7 +638,7 @@
   margin: 0;
   font: inherit;
   color: var(--nt-text);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-select select:disabled {
@@ -715,7 +717,7 @@
   color: var(--nt-text);
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
   white-space: nowrap;
 }
 
@@ -788,7 +790,7 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 10px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-list-item[data-leading="false"] {
@@ -936,7 +938,7 @@
   color: inherit;
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-root[data-platform="windows"] .nt-titlebar {
@@ -1199,7 +1201,7 @@
   text-align: start;
   text-transform: none;
   white-space: normal;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
   user-select: none;
   color: var(--nt-text);
   outline: none;
@@ -1213,7 +1215,7 @@
   align-items: center;
   column-gap: 24px;
   white-space: nowrap;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-menu[data-gutter="true"] .nt-menu-item {

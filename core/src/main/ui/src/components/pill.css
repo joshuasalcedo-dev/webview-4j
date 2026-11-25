@@ -140,7 +140,7 @@
 
 /* As a toggle (a filter): off is outlined and quiet, on is the full subtle tint. */
 button.nt-pill {
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 button.nt-pill:not([data-pressed]) {

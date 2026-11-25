@@ -39,7 +39,7 @@
   color: var(--nt-text);
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-rt-button svg {

@@ -35,7 +35,7 @@
   padding: 0 8px 0 4px;
   white-space: nowrap;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 /* Indent lines: one per level, under each parent's chevron, as in VS Code. */
@@ -149,7 +149,7 @@
   padding: 8px 8px 8px 10px;
   overflow: hidden;
   color: var(--nt-text);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-filechip-text {
@@ -199,7 +199,7 @@
   background: transparent;
   border: none;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-filechip-remove svg {
@@ -316,7 +316,7 @@
   padding: 8px 4px 6px;
   text-align: center;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-filegrid-name {
@@ -389,7 +389,7 @@
   text-align: left;
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-filelist th button:hover {
@@ -462,7 +462,7 @@
 }
 
 .nt-filelist tr {
-  cursor: default;
+  cursor: var(--nt-cursor-action);
   outline: none;
 }
 

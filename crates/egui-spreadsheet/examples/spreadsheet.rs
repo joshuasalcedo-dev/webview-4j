@@ -1,6 +1,6 @@
 //! The spreadsheet in a native window: `cargo run -p egui-spreadsheet --release --example spreadsheet [file.xlsx]`.
 //!
-//! Opens an .xlsx (given, or dropped on the window: read on a thread of its own while a spinner shows), or starts
+//! Opens an .xlsx or CSV (given, or dropped on the window: read on a thread of its own while a spinner shows), or starts
 //! with a small budget. "1,000,000 cells" fills a sheet with 100,000 rows of numbers and formulas, to see the speed;
 //! the frame time is at the top. "Save" writes the workbook back as .xlsx.
 
@@ -59,7 +59,9 @@ struct Demo {
 }
 
 impl eframe::App for Demo {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        // the time the last frame took to make (not the time between frames: idle, nothing is drawn)
+        let frame_ms = frame.info().cpu_usage.unwrap_or(0.0) * 1000.0;
         let ctx = ui.ctx().clone();
         // a file dropped on the window: read in the background
         if let Some(file) = ctx.input(|i| i.raw.dropped_files.first().cloned()) {
@@ -105,10 +107,9 @@ impl eframe::App for Demo {
                         Err(e) => e,
                     };
                 }
-                ui.weak("Drop an .xlsx on the window to open it");
+                ui.weak("Drop an .xlsx or .csv on the window to open it");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let ms = ctx.input(|i| i.unstable_dt) * 1000.0;
-                    ui.monospace(format!("frame {ms:.1} ms"));
+                    ui.monospace(format!("frame {frame_ms:.1} ms"));
                     ui.weak(&self.message);
                 });
             });

@@ -65,10 +65,17 @@
   flex-direction: column;
 }
 
+/* What a pane holds fills it, as a SplitPane's items do in JavaFX. */
+.nt-splitpane-pane > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
 .nt-splitpane-divider {
   flex: none;
   position: relative;
-  background: var(--nt-surface-border, rgba(0, 0, 0, 0.12));
+  background: var(--nt-separator, var(--nt-surface-border, rgba(0, 0, 0, 0.12)));
   outline: none;
 }
 
@@ -86,8 +93,16 @@
 .nt-splitpane-divider::after {
   content: "";
   position: absolute;
-  inset: -4px;
   z-index: 1;
+}
+
+/* Only across the line, so it never reaches past the pane (which would scroll it). */
+.nt-splitpane[data-orientation="horizontal"] > .nt-splitpane-divider::after {
+  inset: 0 -4px;
+}
+
+.nt-splitpane[data-orientation="vertical"] > .nt-splitpane-divider::after {
+  inset: -4px 0;
 }
 
 .nt-splitpane-divider:hover,

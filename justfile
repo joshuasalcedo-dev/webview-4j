@@ -17,6 +17,10 @@ sampler:
 sampler-web port="8080":
     cd samples/sampler; ./gradlew runWeb -Pport={{port}} -PcargoProfile=dev --console=plain
 
+# Checks English text with Harper (crates/grammar): just grammar "This is an test."  (dialect: en-US, en-GB, en-AU, en-CA, en-IN)
+grammar text dialect="en-US":
+    cargo run -q --release -p grammar --example check -- --dialect {{dialect}} "{{text}}"
+
 # Records what you do in the Sampler until you close it, saved as an automation (a JSON script)
 sampler-record file="docs/tour.automation.json":
     cd samples/sampler; ./gradlew run --args="--record {{absolute_path(file)}}" -PcargoProfile=dev --console=plain

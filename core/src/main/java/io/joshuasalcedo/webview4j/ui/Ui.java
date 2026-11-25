@@ -97,6 +97,20 @@ public final class Ui {
 
     public static SidebarItem sidebarItem(String label) { return new SidebarItem(label); }
 
+    /** A part of a sidebar built from parts, under a small heading ({@code null}: no heading). */
+    public static SidebarGroup sidebarGroup(String label, Component<?>... items) { return new SidebarGroup(label, items); }
+
+    /** One place in a sidebar built from parts. */
+    public static SidebarMenuButton sidebarMenuButton(String label) { return new SidebarMenuButton(label); }
+
+    /** A search for a sidebar's header. */
+    public static SidebarInput sidebarInput(String placeholder) { return new SidebarInput(placeholder); }
+
+    public static SidebarSeparator sidebarSeparator() { return new SidebarSeparator(); }
+
+    /** The button that folds and opens a sidebar. */
+    public static SidebarTrigger sidebarTrigger(Runnable action) { return new SidebarTrigger(action); }
+
     /** A side bar on the left and the {@code content} filling the rest. */
     public static Split split(Sidebar sidebar, Component<?> content) { return new Split(sidebar, content); }
 

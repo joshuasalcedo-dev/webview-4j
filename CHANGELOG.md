@@ -2,6 +2,12 @@
 
 ## 0.2.0 — unreleased
 
+- Sidebar built from parts, as shadcn/ui's: a header (the app's name, a search), groups of menu buttons with icons, counts and places under them, a footer; folds to its icons with Ctrl+B or a trigger; floating and inset variants (React: `SidebarProvider`, `SidebarHeader`, `SidebarGroup`, `SidebarMenuButton`, ...; Java: `sidebarGroup`, `sidebarMenuButton`, `sidebarInput`, `sidebarSeparator`, `sidebarTrigger`)
+- Icons by name for Java (`.icon("table")`)
+- The pointer shows a hand over everything clickable (`--nt-cursor-action`; set it to `default` for the native arrow)
+- The Sampler's sidebar, written by hand on the new parts, with a search
+- Fixed: SplitPane's panes fill, its dividers show in dark themes, no stray scrollbar; the one-time code field no longer looks like inline code
+- `crates/grammar`: spelling and grammar with Harper (`just grammar "text"`)
 - Automation (`io.joshuasalcedo.webview4j.automation`): drive a window as a person would (`Automation.of(view)`, `button("Save").click()`, `field("Name").type(...)`, `press`, `select`, `check`, `waitForText`, `expectText`), each step waiting for its target, a missing one saying what the page has; `record()` writes down what a person does (by role and name, a password as `${PASSWORD}`), a `Script` saved as JSON, replayed with a report, turned into a JUnit test (`toJava`); `just sampler-record` and `just automate`
 - `ListItem.onDoubleClick`
 - Authentication (`usecase.authentication`): `Auth.configure(app, ...)` signs people in with OpenID Connect providers (Keycloak, Microsoft Entra, Google, any by its issuer) in the system's browser with PKCE and a loopback redirect, the ID token checked against the provider's keys, or with names and passwords checked by the app's own server; `Auth.account()` in every screen, `Auth.bearer()` renewed before it runs out, the sign-in remembered in the system's vault (`SecretStore`), signing out revokes it; `SignInForm`, `CodeField`, `PasswordStrength`, `AccountMenu`, `SessionExpired` (React first, with a story); `WebHost`'s sign-in screen is the `SignInForm`

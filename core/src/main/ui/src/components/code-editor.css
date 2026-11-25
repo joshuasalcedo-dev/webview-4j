@@ -198,7 +198,7 @@
   border: 1px solid var(--nt-surface-border);
   border-radius: var(--nt-radius);
   opacity: 0;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
   transition: opacity 120ms ease;
 }
 

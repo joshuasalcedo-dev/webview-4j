@@ -59,7 +59,7 @@
 }
 
 /* CodeField */
-.nt-code {
+.nt-codefield {
   display: grid;
   gap: 6px;
 }

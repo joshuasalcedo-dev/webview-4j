@@ -77,8 +77,11 @@ class SamplerTest {
                 String name = page.name().replace("\\", "\\\\").replace("'", "\\'");
                 String text = "";
                 for (int i = 0; i < 60; i++) {
-                    view.eval("(() => { const b = [...document.querySelectorAll('button')].find(e => e.innerText.trim() === '" + name + "');"
-                            + " if (b && b.getAttribute('aria-current') !== 'page') b.click(); })()").join();
+                    // its category opens first when the page is under one
+                    String section = page.section().replace("'", "\\'");
+                    view.eval("(() => { const all = [...document.querySelectorAll('button')]; const b = all.find(e => e.innerText.trim() === '" + name + "');"
+                            + " if (b) { if (b.getAttribute('aria-current') !== 'page') b.click(); return; }"
+                            + " const c = all.find(e => e.innerText.trim() === '" + section + "' && e.getAttribute('aria-expanded') === 'false'); if (c) c.click(); })()").join();
                     text = String.valueOf(view.eval("document.body ? document.body.innerText : ''").join());
                     if (text.contains("The Java") && text.contains(page.name())
                             && Boolean.TRUE.equals(view.eval("[...document.querySelectorAll('button[aria-current=page]')].some(b => b.innerText.trim() === '" + name + "')").join())) break;

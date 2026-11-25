@@ -18,6 +18,9 @@ final class LayoutDemos implements Demos {
 
     // Split and side bar
     private String folder = "Inbox";
+    private String mailbox = "Inbox";
+    private boolean mailFolded;
+    private String mailSearch = "";
 
     // Tabs
     private final Map<String, String> openTabs = new LinkedHashMap<>(ordered(
@@ -94,6 +97,41 @@ final class LayoutDemos implements Demos {
                                 .footer(text("ada@example.com")),
                         column(text(folder).variant(TextVariant.TITLE)))""",
                 Split.class, Sidebar.class, SidebarSection.class, SidebarItem.class);
+
+        gallery.page("Layout", "Sidebar from parts", () -> column(split(
+                sidebar(
+                        sidebarGroup("Mail",
+                                mailbox("Inbox", "mail", 12), mailbox("Drafts", "file", 2), mailbox("Sent", "upload", 0),
+                                sidebarMenuButton("Archive").icon("bookmark").items(
+                                        mailbox("2026", null, 0), mailbox("2025", null, 0))),
+                        sidebarSeparator(),
+                        sidebarGroup("Labels", mailbox("Work", "tag", 4), mailbox("Family", "heart", 0)).collapsible(true))
+                        .header(sidebarMenuButton("Acme Mail").description("ada@example.com").icon("A").size(SidebarMenuButton.Size.LARGE),
+                                sidebarInput("Search mail").value(mailSearch).onChange(v -> mailSearch = v))
+                        .footer(sidebarMenuButton("Settings").icon("settings"))
+                        .collapsed(mailFolded).onCollapsedChange(v -> mailFolded = v),
+                column(row(sidebarTrigger(() -> mailFolded = !mailFolded), text(mailbox).variant(TextVariant.TITLE)).gap(8),
+                        text(mailSearch.isBlank() ? "The messages in " + mailbox + " would be here." : "Searching for " + mailSearch)
+                                .tone(Tone.SECONDARY),
+                        text("Ctrl+B folds the sidebar to its icons.").tone(Tone.SECONDARY)).padding(16).gap(8)))
+                .height(420),
+                """
+                split(
+                        sidebar(
+                                sidebarGroup("Mail",
+                                        sidebarMenuButton("Inbox").icon("mail").badge(12)
+                                                .active(mailbox.equals("Inbox")).onClick(() -> mailbox = "Inbox"),
+                                        sidebarMenuButton("Archive").icon("bookmark").items(
+                                                sidebarMenuButton("2026"), sidebarMenuButton("2025"))),
+                                sidebarSeparator(),
+                                sidebarGroup("Labels", sidebarMenuButton("Work").icon("tag")).collapsible(true))
+                                .header(sidebarMenuButton("Acme Mail").description("ada@example.com")
+                                                .icon("A").size(SidebarMenuButton.Size.LARGE),
+                                        sidebarInput("Search mail").value(search).onChange(v -> search = v))
+                                .footer(sidebarMenuButton("Settings").icon("settings"))
+                                .collapsed(folded).onCollapsedChange(v -> folded = v),
+                        column(row(sidebarTrigger(() -> folded = !folded), text(mailbox))))""",
+                SidebarGroup.class, SidebarMenuButton.class, SidebarInput.class, SidebarSeparator.class, SidebarTrigger.class);
 
         gallery.page("Layout", "Tabs", () -> {
             Tabs tabs = tabs("Open files").value(tab)
@@ -352,5 +390,10 @@ final class LayoutDemos implements Demos {
     private void edited(String command) {
         edits++;
         lastCommand = command;
+    }
+
+    private SidebarMenuButton mailbox(String name, String icon, long count) {
+        SidebarMenuButton b = sidebarMenuButton(name).key(name).badge(count).active(name.equals(mailbox)).onClick(() -> mailbox = name);
+        return icon == null ? b : b.icon(icon);
     }
 }

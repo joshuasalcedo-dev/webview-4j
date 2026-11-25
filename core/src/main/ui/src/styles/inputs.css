@@ -107,7 +107,7 @@
   background: transparent;
   border: none;
   border-radius: 3px;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-input-button svg {
@@ -150,7 +150,7 @@
   color: var(--nt-text-secondary);
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-stepper button:disabled {
@@ -256,7 +256,7 @@
   border: none;
   border-radius: 999px;
   opacity: 0.7;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-token button:hover {
@@ -306,7 +306,7 @@
 .nt-token-suggestions li {
   padding: 5px 10px;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-token-suggestions li[aria-selected="true"] {
@@ -370,7 +370,7 @@
   color: var(--nt-text-secondary);
   background: transparent;
   border: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-composer-button svg,
@@ -515,7 +515,7 @@
   border-radius: 0;
   outline: none;
   appearance: none;
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-input-unit:hover:not(:disabled) {
@@ -577,7 +577,7 @@
   background: transparent;
   border: none;
   border-radius: var(--nt-radius);
-  cursor: default;
+  cursor: var(--nt-cursor-action);
 }
 
 .nt-iconpicker-cell:hover {
