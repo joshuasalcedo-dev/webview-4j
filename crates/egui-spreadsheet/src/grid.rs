@@ -330,6 +330,8 @@ impl Spreadsheet {
         let row_h = ui.text_style_height(&egui::TextStyle::Body) + 6.0;
         let visuals = ui.visuals().clone();
         let grid_line = egui::Stroke::new(1.0, visuals.widgets.noninteractive.bg_stroke.color);
+        // cells touch, so the lines between them meet
+        ui.spacing_mut().item_spacing = Vec2::ZERO;
         let mut table = TableBuilder::new(ui)
             .id_salt(self.id.with("grid"))
             .striped(false)
@@ -401,10 +403,11 @@ impl Spreadsheet {
                             response.widget_info(|| {
                                 egui::WidgetInfo::labeled(egui::Role::Cell, true, format!("{} {}", at.name(), shown).trim_end())
                             });
+                            // the grid's lines: each cell draws its right and bottom edge, on the table's painter (a
+                            // cell's own would clip a line lying on its edge)
+                            ui.painter().line_segment([rect.right_top(), rect.right_bottom()], grid_line);
+                            ui.painter().line_segment([rect.left_bottom(), rect.right_bottom()], grid_line);
                             let painter = ui.painter_at(rect);
-                            // the grid's lines: each cell draws its right and bottom edge, faintly
-                            painter.line_segment([rect.right_top(), rect.right_bottom()], grid_line);
-                            painter.line_segment([rect.left_bottom(), rect.right_bottom()], grid_line);
                             if selection.contains(at) && selection.from != selection.to {
                                 painter.rect_filled(rect, 0.0, visuals.selection.bg_fill.gamma_multiply(0.25));
                             }

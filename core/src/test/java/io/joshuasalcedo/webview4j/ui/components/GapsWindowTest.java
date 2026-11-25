@@ -37,7 +37,8 @@ class GapsWindowTest {
             Files screen = new Files();
             View view = Ui.open(app, screen, o -> o.headless(true).size(700, 500)).join().view();
             until(view, "notes.txt");
-            assertEquals("Run ./gradlew run to start.", js(view, "document.querySelector('p, .nt-text') ? [...document.querySelectorAll('*')].find(e => e.innerText === 'Run ./gradlew run to start.') ? 'Run ./gradlew run to start.' : 'no' : 'no'"),
+            // one element holds the whole sentence, the code inside it (whitespace as the page lays it out aside)
+            assertTrue(io.joshuasalcedo.webview4j.automation.Automation.of(view).text("Run ./gradlew run to start.").exists(),
                     "one paragraph, the code inside it");
 
             // the file's menu: Rename
