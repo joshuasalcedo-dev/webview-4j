@@ -121,21 +121,35 @@ public abstract class Component<C extends Component<C>> {
 
     /**
      * The tree as the page's renderer reads it: {@code {"t": type, "p": props, "c": children, "k": key}}, each
-     * handler written as an id ({@code "h3"}) that {@code handlers} maps to the Java code.
+     * handler written as an id that {@code handlers} maps to the Java code.
+     * <p>
+     * An id names where its component is (each step its key, or its place among its siblings, and its type) and the
+     * event: {@code 0/2.button:onClick}. An action the page sends from a tree a moment older than Java's (a click
+     * during a redraw) then reaches the same component if it is still there, and nothing if it is gone, never a
+     * neighbour that took its place.
      */
     Map<String, Object> toTree(Map<String, Consumer<Object>> registry) {
+        return toTree(registry, "");
+    }
+
+    private Map<String, Object> toTree(Map<String, Consumer<Object>> registry, String path) {
         Map<String, Object> node = new LinkedHashMap<>();
         node.put("t", type);
         Map<String, Object> p = new LinkedHashMap<>(props);
         for (Map.Entry<String, Consumer<Object>> handler : handlers.entrySet()) {
-            String id = "h" + (registry.size() + 1);
+            String id = path + ":" + handler.getKey();
+            for (int n = 2; registry.containsKey(id); n++) id = path + ":" + handler.getKey() + "#" + n;
             registry.put(id, handler.getValue());
             p.put(handler.getKey(), id);
         }
         node.put("p", p);
         if (!children.isEmpty()) {
             List<Object> c = new ArrayList<>(children.size());
-            for (Component<?> child : children) c.add(child.toTree(registry));
+            for (int i = 0; i < children.size(); i++) {
+                Component<?> child = children.get(i);
+                String step = (child.key != null ? "k" + child.key : String.valueOf(i)) + "." + child.type;
+                c.add(child.toTree(registry, path.isEmpty() ? step : path + "/" + step));
+            }
             node.put("c", c);
         }
         if (key != null) node.put("k", key);

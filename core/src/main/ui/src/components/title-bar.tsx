@@ -24,6 +24,11 @@ type TitleBarProps = Omit<React.ComponentProps<"header">, "title"> & {
    * window's own, such as an MdiWindow's inside the app.
    */
   dragsWindow?: boolean
+  /**
+   * In the bar's corner: the left edge on Windows, after the red, yellow and green buttons on a Mac. For a
+   * SidebarTrigger, or a back button.
+   */
+  leading?: React.ReactNode
 }
 
 const glyph = (d: string) => (
@@ -50,6 +55,7 @@ function TitleBar({
   onClose = currentWindow.close,
   maximized = false,
   dragsWindow = true,
+  leading,
   className,
   children,
   ...props
@@ -130,6 +136,7 @@ function TitleBar({
           </svg>
         </button>
       </span>
+      {leading != null && <span className="nt-titlebar-leading">{leading}</span>}
       {icon != null && (
         <span className="nt-titlebar-icon" aria-hidden="true">
           {icon}

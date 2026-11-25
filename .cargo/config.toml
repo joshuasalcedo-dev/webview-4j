@@ -1,0 +1,3 @@
+# getrandom (pulled in by Harper, crates/grammar) in the page: the browser's crypto.getRandomValues.
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", 'getrandom_backend="wasm_js"']

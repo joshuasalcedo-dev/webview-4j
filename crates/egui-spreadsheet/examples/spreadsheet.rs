@@ -81,8 +81,13 @@ impl eframe::App for Demo {
                     ctx.request_repaint();
                     return;
                 }
-                Some(Ok(sheet)) => {
+                Some(Ok(mut sheet)) => {
                     self.message = format!("opened {}", loading.name);
+                    // a CSV: its data as a table (header, bands, filter buttons, each column formatted for what it has)
+                    if loading.name.to_lowercase().ends_with(".csv") && sheet.tables().is_empty() {
+                        let (rows, cols) = sheet.used_range(0);
+                        let _ = sheet.add_table(egui_spreadsheet::table::Table::new("Data", 0, (1, 1, rows, cols)));
+                    }
                     self.sheet = sheet;
                 }
                 Some(Err(e)) => self.message = e,
@@ -101,7 +106,11 @@ impl eframe::App for Demo {
                     self.message = format!("1,000,000 cells in {:.1} s", started.elapsed().as_secs_f32());
                 }
                 if ui.button("Save").clicked() {
-                    let to = self.path.clone().unwrap_or_else(|| "spreadsheet.xlsx".to_owned());
+                    // always an .xlsx: next to a CSV it was opened from, never over it (a CSV holds no workbook)
+                    let to = self.path.as_ref().map_or_else(
+                        || "spreadsheet.xlsx".to_owned(),
+                        |p| std::path::Path::new(p).with_extension("xlsx").display().to_string(),
+                    );
                     self.message = match self.sheet.to_xlsx().and_then(|b| std::fs::write(&to, b).map_err(|e| e.to_string())) {
                         Ok(()) => format!("saved {to}"),
                         Err(e) => e,
@@ -126,7 +135,10 @@ impl eframe::App for Demo {
 fn main() -> eframe::Result {
     env_logger::init();
     let path = std::env::args().nth(1);
-    let loading = path.as_ref().and_then(|p| std::fs::read(p).ok().map(|b| Loading::start(b, p)));
+    let loading = path.as_ref().and_then(|p| {
+        let name = std::path::Path::new(p).file_name().map_or_else(|| p.clone(), |n| n.to_string_lossy().into_owned());
+        std::fs::read(p).ok().map(|b| Loading::start(b, &name))
+    });
     let demo = Demo { sheet: budget(), loading, message: String::new(), path };
     eframe::run_native("egui-spreadsheet", eframe::NativeOptions::default(), Box::new(|_| Ok(Box::new(demo))))
 }

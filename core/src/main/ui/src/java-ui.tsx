@@ -84,6 +84,7 @@ import {
   SidebarTrigger,
 } from "./components/sidebar"
 import { NamedIcon } from "./lib/named-icons"
+import { GrammarTextArea } from "./components/grammar-text-area"
 import { StatusBar, StatusBarSpacer, StatusDot, StatusItem } from "./components/status-bar"
 import { Surface } from "./components/surface"
 import { Switch } from "./components/switch"
@@ -161,6 +162,36 @@ const bool = (v: unknown) => v === true
 
 function slot(node: JavaNode, name: string) {
   return node.c?.find((c) => c.p.slot === name)
+}
+
+/** A GrammarTextArea from Java: what is typed reaches Java as it is typed, the count of mistakes when checked. */
+function JavaGrammarTextArea({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const [value, setValue] = useJavaValue(str(p.value))
+  // the count arrives a moment after the text changed, when this render's handlers may be gone: the latest one
+  const onMistakes = React.useRef(p.onMistakes)
+  onMistakes.current = p.onMistakes
+  return (
+    <label style={{ display: "grid", gap: 4, ...sizing(p) }}>
+      {str(p.label) && <Text variant="caption">{str(p.label)}</Text>}
+      <GrammarTextArea
+        aria-label={str(p.label)}
+        value={value}
+        placeholder={str(p.placeholder)}
+        rows={num(p.rows)}
+        dialect={(str(p.dialect) as "en-US" | undefined) ?? "en-US"}
+        check={p.check === undefined ? true : bool(p.check)}
+        onChange={(v) => {
+          setValue(v)
+          if (typeof p.onChange === "string") send(p.onChange, v)
+        }}
+        onMistakes={(m) => {
+          if (typeof onMistakes.current === "string") send(onMistakes.current, m.length)
+        }}
+      />
+    </label>
+  )
 }
 
 /** The Java node types that make a sidebar one built from parts. */
@@ -308,12 +339,14 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
         </NativeProvider>
       )
     }
-    case "titleBar":
+    case "titleBar": {
+      const leading = (node.c ?? []).filter((c) => c.p.slot === "leading")
       return (
-        <TitleBar title={str(p.title)} style={style}>
-          <Children nodes={node.c} />
+        <TitleBar title={str(p.title)} style={style} leading={leading.length ? <Children nodes={leading} /> : undefined}>
+          <Children nodes={node.c?.filter((c) => c.p.slot !== "leading")} />
         </TitleBar>
       )
+    }
     case "toolbar":
       return (
         <Toolbar aria-label={str(p.title) ?? "Toolbar"} title={str(p.title)} style={style}>
@@ -383,6 +416,8 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
         </Sidebar>
       )
     }
+    case "grammarTextArea":
+      return <JavaGrammarTextArea node={node} />
     case "sidebarGroup":
       return (
         <SidebarGroup label={str(p.label)} collapsible={bool(p.collapsible)} defaultOpen={p.open === undefined ? true : bool(p.open)} style={style}>

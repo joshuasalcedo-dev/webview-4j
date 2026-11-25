@@ -13,6 +13,10 @@ final class ActionsAndInputDemos implements Demos {
     private int clicks;
     private String name = "";
     private String notes = "";
+    private String draft = "I recieved there package yesterday and its an great day.";
+    private String draftDialect = "en-US";
+    private int draftMistakes;
+    private String javaSays = "";
     private boolean remember = true;
     private boolean sync;
     private String country = "ph";
@@ -64,6 +68,26 @@ final class ActionsAndInputDemos implements Demos {
                 link("webview-4j on GitHub", "https://github.com/...")
                 link("A link that runs Java", "#").onClick(() -> clicks++)""",
                 Link.class);
+        gallery.page("Input", "Grammar", () -> column(
+                segmented("English", ordered("en-US", "American", "en-GB", "British", "en-AU", "Australian"))
+                        .value(draftDialect).onChange(v -> draftDialect = v),
+                grammarTextArea("Message").value(draft).onChange(v -> draft = v).dialect(draftDialect).rows(5)
+                        .onMistakes(n -> draftMistakes = n),
+                row(button("Check in Java").onClick(() -> javaSays = io.joshuasalcedo.webview4j.Grammar.of(draftDialect).check(draft)
+                                .stream().map(m -> m.found(draft) + " (" + m.kind() + ")").reduce((a, b) -> a + ", " + b).orElse("nothing")),
+                        button("Fix all in Java").onClick(() -> draft = io.joshuasalcedo.webview4j.Grammar.of(draftDialect).fix(draft)),
+                        text(draftMistakes + " in the page").tone(Tone.SECONDARY)).gap(8),
+                text(javaSays.isEmpty() ? "" : "Java found: " + javaSays).tone(Tone.SECONDARY)).gap(12),
+                """
+                // in the page, as WebAssembly: underlined as it is typed, fixes at the caret
+                grammarTextArea("Message").value(draft).onChange(v -> draft = v).dialect("en-GB")
+                        .onMistakes(n -> mistakes = n)
+
+                // in Java, through the native library (FFI)
+                List<Grammar.Mistake> found = Grammar.of("en-GB").check(draft);
+                String fixed = Grammar.of("en-GB").fix(draft);""",
+                GrammarTextArea.class);
+
         gallery.page("Input", "Text field", () -> column(
                 textField("Name").value(name).onChange(v -> name = v).hint("As people see it"),
                 textField("Email").value("ada@").error("That is not an email address"),

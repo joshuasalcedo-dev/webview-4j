@@ -97,6 +97,9 @@ public final class Ui {
 
     public static SidebarItem sidebarItem(String label) { return new SidebarItem(label); }
 
+    /** A text area that checks spelling and grammar as it is typed (in the page, as WebAssembly). */
+    public static GrammarTextArea grammarTextArea(String label) { return new GrammarTextArea(label); }
+
     /** A part of a sidebar built from parts, under a small heading ({@code null}: no heading). */
     public static SidebarGroup sidebarGroup(String label, Component<?>... items) { return new SidebarGroup(label, items); }
 

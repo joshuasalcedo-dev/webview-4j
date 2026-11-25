@@ -23,6 +23,7 @@ mod logging;
 mod sound;
 pub mod store;
 pub mod secret;
+pub mod grammar;
 pub mod payload;
 pub mod runtime;
 

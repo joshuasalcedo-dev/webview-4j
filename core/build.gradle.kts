@@ -131,10 +131,23 @@ val uiEgui = tasks.register<Exec>("uiEgui") {
     outputs.dir(uiDir.dir("src/egui4j"))
 }
 
+// crates/grammar for the page (wasm) into @webview4j/ui's src/grammar/ (not in git): spelling and grammar in text
+// areas. Same tools as uiEgui.
+val uiGrammar = tasks.register<Exec>("uiGrammar") {
+    description = "Builds crates/grammar for the page (wasm) into @webview4j/ui's src/grammar/."
+    group = "build"
+    dependsOn(uiInstall)
+    workingDir = uiDir.asFile
+    commandLine("bun", "run", "grammar")
+    inputs.dir(rootProject.file("crates/grammar/src"))
+    inputs.files(rootProject.file("crates/grammar/Cargo.toml"), rootProject.file("Cargo.lock"))
+    outputs.dir(uiDir.dir("src/grammar"))
+}
+
 val uiBundle = tasks.register<Exec>("uiBundle") {
     description = "Builds @webview4j/ui for the browser into the jar's webview4j-ui/."
     group = "build"
-    dependsOn(uiInstall, uiEgui)
+    dependsOn(uiInstall, uiEgui, uiGrammar)
     workingDir = uiDir.asFile
     commandLine("bun", "run", "bundle")
     val target = uiOut.get().dir("webview4j-ui").asFile

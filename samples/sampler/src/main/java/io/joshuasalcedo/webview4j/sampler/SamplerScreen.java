@@ -71,9 +71,8 @@ public final class SamplerScreen implements Screen {
         return frame(split(navigation(), page()))
                 .platform(platform)
                 .scheme(theme)
-                .titleBar(titleBar("webview-4j Sampler"))
+                .titleBar(titleBar("webview-4j Sampler").sidebarTrigger(() -> folded = !folded))
                 .toolbar(toolbar(selected,
-                        sidebarTrigger(() -> folded = !folded),
                         spacer(),
                         segmented("Look", Demos.ordered("AUTO", "This system", "WINDOWS", "Windows 11", "MAC", "macOS"))
                                 .value(platform.name()).onChange(v -> platform = Platform.valueOf(v)),

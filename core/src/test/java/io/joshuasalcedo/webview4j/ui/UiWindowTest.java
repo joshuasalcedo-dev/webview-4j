@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.joshuasalcedo.webview4j.App;
 import io.joshuasalcedo.webview4j.View;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
@@ -36,18 +37,25 @@ class UiWindowTest {
     }
 
     @Test
-    void aTreeNamesItsHandlersInOrder() {
+    void aTreeNamesItsHandlersByWhereTheyAre() {
         Counter screen = new Counter();
         Map<String, Consumer<Object>> handlers = new LinkedHashMap<>();
         Map<String, Object> tree = screen.render().toTree(handlers);
         assertEquals("frame", tree.get("t"));
-        assertEquals(3, handlers.size(), "click, name, sync");
-        handlers.get("h1").accept(null);
+        assertEquals(List.of("0.box/kclick.button:onClick", "0.box/kname.textField:onChange", "0.box/3.switch:onChange"),
+                List.copyOf(handlers.keySet()), "by place (key, or place among siblings) and event");
+        handlers.get("0.box/kclick.button:onClick").accept(null);
         assertEquals(1, screen.count);
-        handlers.get("h2").accept("Ada");
+        handlers.get("0.box/kname.textField:onChange").accept("Ada");
         assertEquals("Ada", screen.name);
-        handlers.get("h3").accept(true);
+        handlers.get("0.box/3.switch:onChange").accept(true);
         assertTrue(screen.sync);
+
+        // drawn again with a line more above them: the same ids still reach the same handlers
+        screen.name = "";
+        Map<String, Consumer<Object>> again = new LinkedHashMap<>();
+        screen.render().toTree(again);
+        assertEquals(handlers.keySet(), again.keySet());
     }
 
     @Test

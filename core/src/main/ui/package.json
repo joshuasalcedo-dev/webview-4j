@@ -36,7 +36,8 @@
     "typecheck": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
-    "egui": "cargo build -p egui-4j --target wasm32-unknown-unknown --release && wasm-bindgen ../../../../target/wasm32-unknown-unknown/release/egui4j.wasm --target web --out-dir src/egui4j --out-name egui4j"
+    "egui": "cargo build -p egui-4j --target wasm32-unknown-unknown --release && wasm-bindgen ../../../../target/wasm32-unknown-unknown/release/egui4j.wasm --target web --out-dir src/egui4j --out-name egui4j",
+    "grammar": "cargo build -p grammar --target wasm32-unknown-unknown --release && wasm-bindgen ../../../../target/wasm32-unknown-unknown/release/grammar.wasm --target web --out-dir src/grammar --out-name grammar"
   },
   "peerDependencies": {
     "react": "^19",

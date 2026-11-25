@@ -2,6 +2,9 @@
 
 ## 0.2.0 — unreleased
 
+- Spelling and grammar in the page as WebAssembly (`GrammarTextArea`, `useGrammar`, `checkGrammar`; Java `grammarTextArea`): mistakes underlined as they are typed, fixes at the caret; and in Java through the native library (`Grammar.of("en-GB").check(text)`, `fix`)
+- `TitleBar` leading corner (`titleBar(...).sidebarTrigger(...)`, `.leading(...)`): the sidebar button in the title bar
+- Fixed: a click during a redraw could reach a neighbouring handler; handlers are now named by their place in the tree
 - Sidebar built from parts, as shadcn/ui's: a header (the app's name, a search), groups of menu buttons with icons, counts and places under them, a footer; folds to its icons with Ctrl+B or a trigger; floating and inset variants (React: `SidebarProvider`, `SidebarHeader`, `SidebarGroup`, `SidebarMenuButton`, ...; Java: `sidebarGroup`, `sidebarMenuButton`, `sidebarInput`, `sidebarSeparator`, `sidebarTrigger`)
 - Icons by name for Java (`.icon("table")`)
 - The pointer shows a hand over everything clickable (`--nt-cursor-action`; set it to `default` for the native arrow)

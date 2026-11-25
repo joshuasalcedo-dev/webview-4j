@@ -126,7 +126,7 @@ fn shift_arrows_choose_a_rectangle_and_the_status_counts_it() {
     key(&mut h, Key::ArrowDown, Modifiers::SHIFT);
     key(&mut h, Key::ArrowRight, Modifiers::SHIFT);
     assert_eq!(h.state().0.selection(), (1, 1, 2, 2));
-    assert_eq!(h.state().0.stats(), "Average 2   Count 4   Sum 6");
+    assert_eq!(h.state().0.stats(), "Average 2   Count 4   Min 1   Max 3   Sum 6");
 }
 
 #[test]

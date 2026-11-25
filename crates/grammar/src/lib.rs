@@ -11,6 +11,9 @@
 //! `from..to` can be underlined or replaced there as is. [`Checker::check_json`] gives the same as JSON, for the
 //! native library's C functions.
 
+#[cfg(target_arch = "wasm32")]
+mod web;
+
 use harper_core::linting::{LintGroup, Suggestion};
 use harper_core::spell::FstDictionary;
 use harper_core::{Dialect as HarperDialect, Document};

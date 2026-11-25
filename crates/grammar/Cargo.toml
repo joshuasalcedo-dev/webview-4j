@@ -6,7 +6,17 @@ license = "Apache-2.0"
 description = "Spelling and grammar for webview-4j's text: Harper (harper-core), offline, about a millisecond a message."
 publish = false
 
+# Native (Rust and the webview library's FFI) and, built with `bun run grammar` in core/src/main/ui, WebAssembly
+# for the page (src/web.rs).
+[lib]
+name = "grammar"
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 harper-core = "3.2.0"
 serde = { workspace = true }
 serde_json = "1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.129"
+getrandom = { version = "0.3", features = ["wasm_js"] }
