@@ -2,6 +2,7 @@
 
 ## 0.2.0 — unreleased
 
+- Authentication (`usecase.authentication`): `Auth.configure(app, ...)` signs people in with OpenID Connect providers (Keycloak, Microsoft Entra, Google, any by its issuer) in the system's browser with PKCE and a loopback redirect, the ID token checked against the provider's keys, or with names and passwords checked by the app's own server; `Auth.account()` in every screen, `Auth.bearer()` renewed before it runs out, the sign-in remembered in the system's vault (`SecretStore`), signing out revokes it; `SignInForm`, `CodeField`, `PasswordStrength`, `AccountMenu`, `SessionExpired` (React first, with a story); `WebHost`'s sign-in screen is the `SignInForm`
 - Window capture: `view.screenshot()` (a PNG, or `screenshot(path)`), `view.record(path, options)` until `stop()`: an animated GIF made by webview-4j, MP4 with Windows' own encoder (Media Foundation, no ffmpeg), WebM through ffmpeg; only the app's own windows, hidden ones too (tests and CI); Windows first, other systems say they cannot yet
 - Secrets in the system's vault (the native library's `secret.rs`: Credential Manager, the Keychain, the Secret Service), for signed-in tokens
 - `markdown("...")`: Markdown in the kit's look (CommonMark with GitHub's tables and task lists), safe for text from anywhere (no HTML run, only http, https and mailto links); links open in the browser through `Host.openUrl`

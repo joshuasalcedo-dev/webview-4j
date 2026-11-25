@@ -567,9 +567,6 @@ public final class WebHost implements AutoCloseable {
     private static final class SignInScreen implements Screen {
         private final String title;
         private final SignIn signIn;
-        private String name = "";
-        private String password = "";
-
         SignInScreen(String title, SignIn signIn) {
             this.title = title;
             this.signIn = signIn;
@@ -577,15 +574,10 @@ public final class WebHost implements AutoCloseable {
 
         @Override
         public Component<?> render() {
-            var form = Ui.column(
-                    Ui.text(title).variant(io.joshuasalcedo.webview4j.ui.components.TextVariant.TITLE),
-                    Ui.text("Sign in to go on.").tone(io.joshuasalcedo.webview4j.ui.components.Tone.SECONDARY),
-                    Ui.textField("Name").value(name).onChange(v -> name = v),
-                    Ui.textField("Password").password().value(password).onChange(v -> password = v),
-                    Ui.button("Sign in").accent().onClick(() -> {
-                        if (!signIn.attempt(name, password)) password = "";
-                    })).gap(12).padding(32).width(360);
-            if (signIn.error() != null) form.with(Ui.text(signIn.error()).tone(io.joshuasalcedo.webview4j.ui.components.Tone.ERROR));
+            var form = new io.joshuasalcedo.webview4j.ui.components.usecase.authentication.SignInForm(title)
+                    .subtitle("Sign in to go on.").username()
+                    .onSubmit((name, password) -> signIn.attempt(name, password));
+            if (signIn.error() != null) form.error(signIn.error());
             return Ui.column(form).align("center").padding(48);
         }
     }

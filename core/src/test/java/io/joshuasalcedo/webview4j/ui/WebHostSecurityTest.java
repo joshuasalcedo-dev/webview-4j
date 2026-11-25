@@ -40,12 +40,24 @@ class WebHostSecurityTest {
         return io.joshuasalcedo.webview4j.Json.write(o);
     }
 
-    /** Types into the sign-in form and presses Sign in: the new tree. */
+    /** Fills the sign-in form and presses Sign in (the form sends both at once): the new tree. */
     static Map<String, Object> signIn(WebHostTest.Tab tab, String name, String password) throws Exception {
         Object tree = tab.invoke("webview4j.ui.ready", null).get("result");
-        tab.invoke("webview4j.ui.event", Map.of("handler", field(tree, "Name"), "value", name));
-        tab.invoke("webview4j.ui.event", Map.of("handler", field(tree, "Password"), "value", password));
-        return tab.invoke("webview4j.ui.event", Map.of("handler", WebHostTest.handlerOf(tree, "Sign in")));
+        return tab.invoke("webview4j.ui.event", Map.of("handler", submit(tree), "value", Map.of("identifier", name, "password", password)));
+    }
+
+    /** The sign-in form's submit handler in a tree. */
+    @SuppressWarnings("unchecked")
+    static String submit(Object tree) {
+        if (tree instanceof Map<?, ?> node) {
+            Map<String, Object> p = (Map<String, Object>) node.get("p");
+            if ("signInForm".equals(node.get("t")) && p != null && p.get("onSubmit") instanceof String h) return h;
+            if (node.get("c") instanceof List<?> children) for (Object c : children) {
+                String h = submit(c);
+                if (h != null) return h;
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

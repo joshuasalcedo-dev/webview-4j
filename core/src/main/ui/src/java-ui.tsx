@@ -38,6 +38,11 @@ import type { CollectionQuery, Paging } from "./components/usecase/collection/qu
 import { ErrorState, LoadingBar } from "./components/usecase/collection/states"
 import { Markdown } from "./components/markdown"
 import { Changelog } from "./components/usecase/autoupdate/changelog"
+import { AccountMenu } from "./components/usecase/authentication/account-menu"
+import { CodeField } from "./components/usecase/authentication/code-field"
+import { PasswordStrength } from "./components/usecase/authentication/password-strength"
+import { SessionExpired } from "./components/usecase/authentication/session-expired"
+import { SignInForm } from "./components/usecase/authentication/sign-in-form"
 import { UpdatePrompt, type UpdateStatus } from "./components/usecase/autoupdate/update-prompt"
 import { Anchored, type Anchors, AnchorPane, Card, CardPane, FlowPane, ScrollPane, TilePane } from "./components/layout/more-layout"
 import { Carousel } from "./components/carousel"
@@ -638,6 +643,48 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     case "fileGrid":
     case "fileExplorer":
       return <JavaFiles node={node} />
+    case "signInForm": {
+      const on = (name: string) => typeof p[name] === "string"
+      return (
+        <SignInForm
+          title={str(p.title)}
+          subtitle={str(p.subtitle)}
+          identifier={str(p.identifier) === "username" ? "username" : "email"}
+          password={p.password === false ? false : true}
+          providers={(p.providers as { id: string; label: string }[] | undefined) ?? []}
+          remember={typeof p.remember === "boolean" ? p.remember : undefined}
+          onRememberChange={on("onRememberChange") ? (r) => send(p.onRememberChange, r) : undefined}
+          onSubmit={on("onSubmit") ? (identifier, password) => send(p.onSubmit, { identifier, password }) : undefined}
+          onProvider={on("onProvider") ? (id) => send(p.onProvider, id) : undefined}
+          onForgot={on("onForgot") ? () => send(p.onForgot) : undefined}
+          busy={bool(p.busy)}
+          error={str(p.error)}
+          style={style}
+        />
+      )
+    }
+    case "codeField":
+      return (
+        <CodeField aria-label={str(p.label)} length={num(p.length)} value={str(p.value)} disabled={bool(p.disabled)} error={str(p.error)}
+          onChange={typeof p.onChange === "string" ? (c) => send(p.onChange, c) : undefined}
+          onComplete={typeof p.onComplete === "string" ? (c) => send(p.onComplete, c) : undefined} />
+      )
+    case "accountMenu": {
+      const entries = (node.c ?? []).filter((c) => c.p.slot === "entry").map((c) => ({ label: str(c.p.label) ?? "", onSelect: () => send(c.p.onSelect) }))
+      return (
+        <AccountMenu name={str(p.name) ?? ""} email={str(p.email)} picture={str(p.picture)} compact={bool(p.compact)} entries={entries}
+          onSwitch={typeof p.onSwitch === "string" ? () => send(p.onSwitch) : undefined}
+          onSignOut={typeof p.onSignOut === "string" ? () => send(p.onSignOut) : undefined} />
+      )
+    }
+    case "sessionExpired":
+      return (
+        <SessionExpired open={bool(p.open)} name={str(p.name)} busy={bool(p.busy)}
+          onSignIn={typeof p.onSignIn === "string" ? () => send(p.onSignIn) : undefined}
+          onSignOut={typeof p.onSignOut === "string" ? () => send(p.onSignOut) : undefined} />
+      )
+    case "passwordStrength":
+      return <PasswordStrength password={str(p.password) ?? ""} />
     case "changelog":
       return (
         <Changelog markdown={str(p.markdown) ?? ""} since={str(p.since)} only={str(p.only)} upTo={str(p.upTo)} empty={str(p.empty)}

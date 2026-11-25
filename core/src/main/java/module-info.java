@@ -18,5 +18,6 @@ module io.joshuasalcedo.webview4j {
     exports io.joshuasalcedo.webview4j.ui.components.valueobject;
     exports io.joshuasalcedo.webview4j.ui.components.usecase.mdi;
     exports io.joshuasalcedo.webview4j.ui.components.usecase.autoupdate;
+    exports io.joshuasalcedo.webview4j.ui.components.usecase.authentication;
     exports io.joshuasalcedo.webview4j.ui.components.usecase.collection;
 }
