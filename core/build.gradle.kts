@@ -117,10 +117,24 @@ val uiInstall = tasks.register<Exec>("uiInstall") {
     outputs.dir(uiDir.dir("node_modules"))
 }
 
+// egui-4j's components (charts, the dev logger) for the page: cargo builds the wasm, wasm-bindgen its JavaScript, into
+// src/egui4j/ (not in git), which the kit imports. Needs the wasm32-unknown-unknown target and wasm-bindgen-cli at
+// the version in Cargo.lock (cargo install wasm-bindgen-cli --version <it>).
+val uiEgui = tasks.register<Exec>("uiEgui") {
+    description = "Builds egui-4j for the page (wasm) into @webview4j/ui's src/egui4j/."
+    group = "build"
+    dependsOn(uiInstall)
+    workingDir = uiDir.asFile
+    commandLine("bun", "run", "egui")
+    inputs.dir(rootProject.file("crates/egui-4j/src"))
+    inputs.files(rootProject.file("crates/egui-4j/Cargo.toml"), rootProject.file("Cargo.lock"))
+    outputs.dir(uiDir.dir("src/egui4j"))
+}
+
 val uiBundle = tasks.register<Exec>("uiBundle") {
     description = "Builds @webview4j/ui for the browser into the jar's webview4j-ui/."
     group = "build"
-    dependsOn(uiInstall)
+    dependsOn(uiInstall, uiEgui)
     workingDir = uiDir.asFile
     commandLine("bun", "run", "bundle")
     val target = uiOut.get().dir("webview4j-ui").asFile

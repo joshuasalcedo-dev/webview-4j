@@ -30,12 +30,21 @@ dependencies {
     compileOnly("jakarta.validation:jakarta.validation-api:3.1.1")
     // Spring Data's Page and Pageable for the collections' queries (SpringPaging), when the app has Spring Data.
     compileOnly("org.springframework.data:spring-data-commons:4.2.0")
+    // The dev logger: the app's Logback lines, and the calls its RestClient, RestTemplate and WebClient make.
+    compileOnly("ch.qos.logback:logback-classic:1.6.6")
+    compileOnly("org.springframework.boot:spring-boot-restclient:$springBoot")
+    compileOnly("org.springframework.boot:spring-boot-webclient:$springBoot")
+    compileOnly("org.springframework:spring-webflux:7.1.0")
 
     testImplementation(project(":devtools"))
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc:$springBoot")
     testImplementation("org.springframework.boot:spring-boot-starter-test:$springBoot")
     testImplementation("org.springframework.boot:spring-boot-starter-validation:$springBoot")
     testImplementation("org.springframework.data:spring-data-commons:4.2.0")
+    // the dev logger's sources, against the real clients
+    testImplementation("org.springframework.boot:spring-boot-restclient:$springBoot")
+    testImplementation("org.springframework.boot:spring-boot-webclient:$springBoot")
+    testImplementation("org.springframework:spring-webflux:7.1.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

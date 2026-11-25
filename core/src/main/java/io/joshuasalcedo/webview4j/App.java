@@ -351,21 +351,23 @@ public final class App implements AutoCloseable {
         long received = System.nanoTime();
         virtualThreads.execute(() -> {
             Object result;
+            Object args = call.json();
             try {
-                result = handler.handle(new Invocation(view, command, call.json()));
+                result = handler.handle(new Invocation(view, command, args));
             } catch (Exception e) {
                 answer(view, replyTo, null, e);
-                meter.pageCall(System.nanoTime() - received);
+                called(viewId, command, args, null, e, received);
                 return;
             }
             if (result instanceof CompletionStage<?> stage) {
                 stage.whenComplete((value, error) -> {
-                    answer(view, replyTo, value, error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error);
-                    meter.pageCall(System.nanoTime() - received);
+                    Throwable failure = error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error;
+                    answer(view, replyTo, value, failure);
+                    called(viewId, command, args, value, failure, received);
                 });
             } else {
                 answer(view, replyTo, result, null);
-                meter.pageCall(System.nanoTime() - received);
+                called(viewId, command, args, result, null, received);
             }
         });
     }
@@ -445,24 +447,26 @@ public final class App implements AutoCloseable {
                 RouteRequest request = new RouteRequest(view(viewId), method, path, found.pathParams(),
                         Router.query(message.header("Query")), message.text());
                 long received = System.nanoTime();
+                String name = method + " " + path;
                 virtualThreads.execute(() -> {
                     Object result;
                     try {
                         result = found.handler().handle(request);
                     } catch (Exception e) {
                         respondFailure(replyTo, request, e);
-                        meter.pageCall(System.nanoTime() - received);
+                        called(viewId, name, request.body(), null, e, received);
                         return;
                     }
                     if (result instanceof CompletionStage<?> stage) {
                         stage.whenComplete((value, error) -> {
-                            if (error == null) respondValue(replyTo, request, value);
-                            else respondFailure(replyTo, request, error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error);
-                            meter.pageCall(System.nanoTime() - received);
+                            Throwable failure = error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error;
+                            if (failure == null) respondValue(replyTo, request, value);
+                            else respondFailure(replyTo, request, failure);
+                            called(viewId, name, request.body(), value, failure, received);
                         });
                     } else {
                         respondValue(replyTo, request, result);
-                        meter.pageCall(System.nanoTime() - received);
+                        called(viewId, name, request.body(), result, null, received);
                     }
                 });
             }
@@ -600,6 +604,15 @@ public final class App implements AutoCloseable {
 
     private void publish(WebViewEvent event) {
         for (Sub<?> sub : subscriptions) sub.offer(event);
+    }
+
+    /** A page's call answered: timed, and told to those watching calls ({@link PageCall}). */
+    private void called(String viewId, String name, Object args, Object result, Throwable error, long received) {
+        long took = System.nanoTime() - received;
+        meter.pageCall(took);
+        if (subscriptions.isEmpty()) return;
+        String why = error == null ? null : error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName();
+        publish(new PageCall(viewId, name, args, error == null ? result : null, why, took / 1_000_000.0));
     }
 
     private void reply(String inbox, Message reply) {

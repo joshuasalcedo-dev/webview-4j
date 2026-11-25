@@ -29,8 +29,11 @@ public class WebView4jAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public WebView4jWindow webview4jWindow(App app, WebView4jProperties properties) {
-        return new WebView4jWindow(app, properties);
+    public WebView4jWindow webview4jWindow(App app, WebView4jProperties properties,
+            org.springframework.beans.factory.ObjectProvider<DevLogSink> devLog) {
+        WebView4jWindow window = new WebView4jWindow(app, properties);
+        devLog.ifAvailable(window::devLogSink);
+        return window;
     }
 
     /** {@code webview4j.enabled} when set; otherwise on, unless tests run (JUnit on the class path). */

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 626 150" role="img" aria-label="webview-4j">
+  <!-- webview-4j wordmark: monoline letters (the icon's stroke), drawn as lines so no font is needed. -->
+  <g fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" stroke="#1D1D1F"><g transform="translate(6,0)"><polyline points="0,40 12,100 25,56 38,100 50,40"/></g><g transform="translate(78,0)"><path d="M0,70 H58 A29 29 0 1 0 50,91"/></g><g transform="translate(158,0)"><path d="M0,16 V100"/><circle cx="29" cy="70" r="29"/></g><g transform="translate(238,0)"><polyline points="0,40 25,100 50,40"/></g><g transform="translate(314,0)"><path d="M0,40 V100"/></g><g transform="translate(336,0)"><path d="M0,70 H58 A29 29 0 1 0 50,91"/></g><g transform="translate(416,0)"><polyline points="0,40 12,100 25,56 38,100 50,40"/></g></g>
+  <g fill="#1D1D1F"><circle cx="314" cy="19" r="7.5"/></g>
+  <g fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" stroke="#0A6CF0"><g transform="translate(492,0)"><path d="M0,70 H26"/></g><g transform="translate(544,0)"><polyline points="36,100 36,16 0,74 50,74"/></g><g transform="translate(620,0)"><path d="M0,40 V114 Q0,138 -22,138"/></g></g>
+  <g fill="#0A6CF0"><circle cx="620" cy="19" r="7.5"/></g>
+</svg>

@@ -40,7 +40,7 @@ export type EguiCanvasHandle = {
   update(props: object): void
 }
 
-type EguiCanvasProps = Omit<React.ComponentProps<"div">, "children"> & {
+type EguiCanvasProps = Omit<React.ComponentProps<"div">, "children" | "onError"> & {
   /** Which component ("line-chart"). */
   component: string
   /** Its props: given again (changed), they are passed again. For streams, the handle's update is cheaper. */

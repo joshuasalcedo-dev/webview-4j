@@ -1,0 +1,156 @@
+{
+  "about": "What Java sends the dev logger (DevLogger.entry), for each kind of event; the Rust dev-logger must take every entry. \"time\" is left out (it is when the event came).",
+  "cases": [
+    {
+      "from": "page console warning",
+      "entry": {
+        "kind": "log",
+        "level": "warn",
+        "target": "page",
+        "message": "slow"
+      }
+    },
+    {
+      "from": "native error log",
+      "entry": {
+        "kind": "log",
+        "level": "error",
+        "target": "webview4j::runtime",
+        "message": "boom"
+      }
+    },
+    {
+      "from": "java.util.logging INFO with a parameter",
+      "entry": {
+        "kind": "log",
+        "level": "info",
+        "target": "app.todos",
+        "message": "saved 3 todos"
+      }
+    },
+    {
+      "from": "a page's fetch that failed with 500",
+      "entry": {
+        "kind": "http",
+        "source": "page",
+        "method": "POST",
+        "url": "/api/todos",
+        "status": 500,
+        "durationMs": 120,
+        "request": {
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"title\":\"milk\"}"
+        },
+        "response": {
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"error\":\"locked\"}"
+        }
+      }
+    },
+    {
+      "from": "a page's fetch with no answer",
+      "entry": {
+        "kind": "http",
+        "source": "page",
+        "method": "GET",
+        "url": "https://rates.example/today",
+        "error": "no answer",
+        "durationMs": 3000,
+        "request": {
+          "headers": {}
+        },
+        "response": {
+          "headers": {}
+        }
+      }
+    },
+    {
+      "from": "a command the page called, answered with a record",
+      "entry": {
+        "kind": "bridge",
+        "direction": "toJava",
+        "name": "users.find",
+        "durationMs": 3.5,
+        "request": {
+          "headers": {},
+          "body": {
+            "id": 42
+          }
+        },
+        "response": {
+          "headers": {},
+          "body": {
+            "id": 42,
+            "name": "Ana"
+          }
+        }
+      }
+    },
+    {
+      "from": "a route the page called, that failed",
+      "entry": {
+        "kind": "bridge",
+        "direction": "toJava",
+        "name": "GET /users/9",
+        "durationMs": 1.25,
+        "request": {
+          "headers": {}
+        },
+        "error": "no user 9"
+      }
+    },
+    {
+      "from": "a Logback line (the starter's appender)",
+      "entry": {
+        "kind": "log",
+        "level": "warn",
+        "target": "com.example.Orders",
+        "message": "retrying order 7"
+      }
+    },
+    {
+      "from": "a call Java made (RestClient), answered",
+      "entry": {
+        "kind": "http",
+        "source": "java",
+        "method": "GET",
+        "url": "https://api.example.com/rates",
+        "status": 200,
+        "durationMs": 84.5,
+        "request": {
+          "headers": {
+            "accept": "application/json"
+          }
+        },
+        "response": {
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"usd\":56.1}"
+        }
+      }
+    },
+    {
+      "from": "a call Java made that got no answer",
+      "entry": {
+        "kind": "http",
+        "source": "java",
+        "method": "POST",
+        "url": "https://api.example.com/pay",
+        "error": "Connection refused",
+        "durationMs": 2.0,
+        "request": {
+          "headers": {},
+          "body": "{\"amount\":10}"
+        },
+        "response": {
+          "headers": {}
+        }
+      }
+    }
+  ]
+}

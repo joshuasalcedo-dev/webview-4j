@@ -1,2 +1,3 @@
 io.joshuasalcedo.webview4j.spring.WebView4jAutoConfiguration
+io.joshuasalcedo.webview4j.spring.DevLogConfiguration
 io.joshuasalcedo.webview4j.spring.state.StateInvalidationsConfiguration

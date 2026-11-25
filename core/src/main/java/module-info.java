@@ -7,6 +7,8 @@ module io.joshuasalcedo.webview4j {
     requires jdk.httpserver;
     // A server's invalidations (ui.state.Invalidations): server-sent events.
     requires java.net.http;
+    // The dev logger shows Java's own logging (java.util.logging, where System.Logger goes by default).
+    requires java.logging;
     // Value objects as first-class fields and displays (ui.components.valueobject).
     requires transitive io.joshuasalcedo.valueobject;
     exports io.joshuasalcedo.webview4j;

@@ -55,6 +55,13 @@ public class WebView4jProperties {
      */
     private Boolean apiExplorer;
 
+    /**
+     * The dev logger beside the app's window: its log (Java's, the native side's, the pages' console), every call its
+     * pages make (fetch and XHR, with bodies, headers, status and time) and every call they make to Java, with
+     * statistics and charts. Unset: in development (see webview4j.dev).
+     */
+    private Boolean devLogger;
+
     /** A desktop client's server ({@code @WebViewApplication}): the base URL of every HTTP service client it imports. */
     private String clientUrl;
     /**
@@ -92,6 +99,9 @@ public class WebView4jProperties {
     public void setQuitOnClose(boolean quitOnClose) { this.quitOnClose = quitOnClose; }
     public boolean isDevtools() { return devtools; }
     public void setDevtools(boolean devtools) { this.devtools = devtools; }
+    public Boolean getDevLogger() { return devLogger; }
+    public void setDevLogger(Boolean devLogger) { this.devLogger = devLogger; }
+
     public Boolean getApiExplorer() { return apiExplorer; }
     public void setApiExplorer(Boolean apiExplorer) { this.apiExplorer = apiExplorer; }
     public String getApiDocs() { return apiDocs; }

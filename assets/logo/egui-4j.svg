@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="egui-4j">
+  <!-- egui-4j: what is drawn live (a pulse) in a native window. Family: webview-4j.svg (same frame, < > inside). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2FD3A6"/>
+      <stop offset="1" stop-color="#0E9A7A"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <g fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="52" y="64" width="152" height="128" rx="18"/>
+    <line x1="52" y1="98" x2="204" y2="98"/>
+    <polyline points="72,152 100,152 112,124 128,172 142,138 152,152 184,152"/>
+  </g>
+</svg>

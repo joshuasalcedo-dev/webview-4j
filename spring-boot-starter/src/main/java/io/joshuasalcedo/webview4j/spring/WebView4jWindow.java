@@ -35,6 +35,13 @@ public class WebView4jWindow implements ApplicationListener<ApplicationReadyEven
     private final CompletableFuture<View> view = new CompletableFuture<>();
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
+    /** The starter's own sources for the dev logger (Logback, the HTTP clients); null without them. */
+    private DevLogSink devLogSink;
+
+    void devLogSink(DevLogSink sink) {
+        this.devLogSink = sink;
+    }
+
     public WebView4jWindow(App app, WebView4jProperties properties) {
         this.app = app;
         this.properties = properties;
@@ -86,8 +93,10 @@ public class WebView4jWindow implements ApplicationListener<ApplicationReadyEven
             // The main window: the app's pages; in development, the developer window beside it.
             boolean development = development(environment, context);
             var router = io.joshuasalcedo.webview4j.spring.client.PagesWindow.router(context, title, development);
-            watch(io.joshuasalcedo.webview4j.spring.client.PagesWindow.open(app, router,
-                    properties.getWidth(), properties.getHeight(), properties.isHeadless()), context);
+            var pages = io.joshuasalcedo.webview4j.spring.client.PagesWindow.open(app, router,
+                    properties.getWidth(), properties.getHeight(), properties.isHeadless());
+            watch(pages, context);
+            devLogger(pages, environment, context);
             listenToInvalidations(environment);
             // The developer window needs Spring's HTTP service clients (spring-web); an app of pages only has none.
             if (development && io.joshuasalcedo.webview4j.spring.client.ClientWindow.available()) {
@@ -119,6 +128,29 @@ public class WebView4jWindow implements ApplicationListener<ApplicationReadyEven
             main = ApiExplorerLauncher.open(app, docs.get(), title, properties.isHeadless());
         }
         watch(main, context);
+        devLogger(main, environment, context);
+    }
+
+    /**
+     * The dev logger beside the app's window (webview4j.dev-logger; unset: in development), watching its calls too.
+     * Not when the window is hidden (tests, automation): nobody would look at it.
+     */
+    private void devLogger(CompletableFuture<View> main, Environment environment, ConfigurableApplicationContext context) {
+        boolean wanted = devLogSink != null ? devLogSink.on()
+                : (properties.getDevLogger() != null ? properties.getDevLogger() : development(environment, context));
+        if (!wanted || properties.isHeadless()) return;
+        String title = (properties.getTitle() != null ? properties.getTitle()
+                : environment.getProperty("spring.application.name", "App")) + ": dev logger";
+        main.thenCompose(view -> io.joshuasalcedo.webview4j.DevLogger.open(app, options -> options.title(title))
+                        .thenCompose(logger -> {
+                            // the app's Logback lines and HTTP calls, the start's included (they waited)
+                            if (devLogSink != null) devLogSink.attach(logger);
+                            return logger.watch(view);
+                        }))
+                .exceptionally(error -> {
+                    LOG.log(System.Logger.Level.WARNING, "the dev logger could not open", error);
+                    return null;
+                });
     }
 
     /** The app's window: kept for view(), and closing it stops the app (webview4j.quit-on-close). */
