@@ -12,6 +12,9 @@
 //! No panic crosses the boundary: each function catches it and answers with an error code instead.
 
 mod bridge;
+pub mod capture;
+#[cfg(windows)]
+mod mediafoundation;
 mod dialog;
 mod icon;
 pub mod frame;
@@ -19,6 +22,7 @@ mod inspector;
 mod logging;
 mod sound;
 pub mod store;
+pub mod secret;
 pub mod payload;
 pub mod runtime;
 

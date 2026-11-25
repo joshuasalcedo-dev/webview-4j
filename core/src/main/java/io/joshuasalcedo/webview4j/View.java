@@ -142,6 +142,46 @@ public final class View {
         });
     }
 
+    /**
+     * A picture of the window as it looks now, title bar and all: a PNG. Only the app's own windows can be captured;
+     * a hidden (headless) one too, so tests and CI can take pictures without showing anything. Windows for now; other
+     * systems fail saying so.
+     */
+    public CompletableFuture<byte[]> screenshot() {
+        return screenshot(1.0);
+    }
+
+    /** ... smaller by {@code scale} (0.1 to 1). */
+    public CompletableFuture<byte[]> screenshot(double scale) {
+        return app.request(message("screenshot").withJson(Map.of("scale", scale))).thenApply(Message::payload);
+    }
+
+    /** A picture of the window, written to {@code file} (PNG). */
+    public CompletableFuture<java.nio.file.Path> screenshot(java.nio.file.Path file) {
+        return screenshot().thenApply(png -> {
+            try {
+                if (file.toAbsolutePath().getParent() != null) java.nio.file.Files.createDirectories(file.toAbsolutePath().getParent());
+                return java.nio.file.Files.write(file, png);
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        });
+    }
+
+    /** Records the window into {@code file} until {@link Recording#stop()}: an animated GIF unless {@code options} say. */
+    public CompletableFuture<Recording> record(java.nio.file.Path file, Recording.Options options) {
+        try {
+            if (file.toAbsolutePath().getParent() != null) java.nio.file.Files.createDirectories(file.toAbsolutePath().getParent());
+        } catch (java.io.IOException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+        return done(message("record").withJson(options.payload(file))).thenApply(v -> new Recording(this, file));
+    }
+
+    public CompletableFuture<Recording> record(java.nio.file.Path file) {
+        return record(file, Recording.Options.gif());
+    }
+
     /** The monitors, in this window's logical pixels: where it may go. */
     @SuppressWarnings("unchecked")
     public CompletableFuture<java.util.List<Monitor>> monitors() {

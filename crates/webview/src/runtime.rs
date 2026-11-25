@@ -180,6 +180,8 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
 /// Closes a view and every view embedded in it (theirs first, while its window still exists), each with a
 /// `view.<id>.closed`. False if there is no such view.
 fn close_view(state: &mut State, id: &str) -> bool {
+    // A recording of it is finished as it is, not lost.
+    crate::capture::closed(id);
     let children: Vec<String> =
         state.views.iter().filter(|(_, v)| v.parent.as_deref() == Some(id)).map(|(child, _)| child.clone()).collect();
     for child in children {
@@ -449,7 +451,8 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
         // An embedded view has no window of its own: what is about a window is refused; showing, hiding and
         // focusing are about the webview, and `place` moves it.
         match rest {
-            ["title"] | ["size"] | ["position"] | ["bounds"] | ["state"] | ["min-size"] | ["geometry"] | ["monitors"] | ["theme"] => {
+            ["title"] | ["size"] | ["position"] | ["bounds"] | ["state"] | ["min-size"] | ["geometry"] | ["monitors"] | ["theme"]
+            | ["screenshot"] | ["record"] => {
                 return Some(Outcome::error(400, format!("'{view}' is embedded: it has no window of its own (place moves it)")));
             }
             ["show"] => return Some(result(instance.webview.set_visible(true))),
@@ -594,6 +597,30 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
         },
         ["geometry"] => Outcome::json(&geometry(&instance.window)),
         ["monitors"] => Outcome::json(&monitors(&instance.window)),
+        ["screenshot"] => match payload::json::<crate::capture::ShotBody>(payload) {
+            Ok(body) => match crate::capture::grab(window_handle(&instance.window)).and_then(|f| f.scaled(body.scale.unwrap_or(1.0)).png()) {
+                Ok(png) => Outcome { status: 200, content_type: "image/png", body: png },
+                Err(e) => Outcome::error(if instance.window.is_visible() { 501 } else { 409 }, capture_problem(&instance.window, e)),
+            },
+            Err(error) => error,
+        },
+        ["record"] => match payload::json::<crate::capture::RecordBody>(payload) {
+            Ok(body) if body.action == "stop" => {
+                let later = ReplyTo(reply.0.clone());
+                crate::capture::stop_later(view, move |done| {
+                    later.send(match done {
+                        Ok(done) => Outcome::json(&done),
+                        Err(e) => Outcome::error(409, e),
+                    })
+                });
+                return None;
+            }
+            Ok(body) => match crate::capture::start(view, window_handle(&instance.window), body) {
+                Ok(()) => Outcome::ok(),
+                Err(e) => Outcome::error(409, capture_problem(&instance.window, e)),
+            },
+            Err(error) => error,
+        },
         ["place"] => match payload::json::<PlaceBody>(payload) {
             Ok(body) if instance.parent.is_some() => result(instance.webview.set_bounds(logical_rect(&body))),
             Ok(_) => Outcome::error(400, format!("'{view}' is not embedded: place moves an embedded view")),
@@ -700,6 +727,25 @@ fn settle(instance: &Instance, script: &str) {
             log::warn!("could not answer the page: {error}");
         }
     }
+}
+
+/// The window's native handle, for capture (its HWND on Windows; 0 elsewhere, where capture says it cannot yet).
+fn window_handle(window: &Window) -> isize {
+    #[cfg(windows)]
+    {
+        use tao::platform::windows::WindowExtWindows;
+        window.hwnd() as isize
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = window;
+        0
+    }
+}
+
+/// What to say when a window cannot be captured: a hidden one has nothing to show.
+fn capture_problem(window: &Window, error: String) -> String {
+    if window.is_visible() { error } else { format!("a hidden window has nothing to capture (open it with headless false): {error}") }
 }
 
 /// The monitors, in the window's own logical pixels (as `geometry`'s are), so the two can be compared: each one's

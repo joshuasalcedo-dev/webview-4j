@@ -2,6 +2,8 @@
 
 ## 0.2.0 — unreleased
 
+- Window capture: `view.screenshot()` (a PNG, or `screenshot(path)`), `view.record(path, options)` until `stop()`: an animated GIF made by webview-4j, MP4 with Windows' own encoder (Media Foundation, no ffmpeg), WebM through ffmpeg; only the app's own windows, hidden ones too (tests and CI); Windows first, other systems say they cannot yet
+- Secrets in the system's vault (the native library's `secret.rs`: Credential Manager, the Keychain, the Secret Service), for signed-in tokens
 - `markdown("...")`: Markdown in the kit's look (CommonMark with GitHub's tables and task lists), safe for text from anywhere (no HTML run, only http, https and mailto links); links open in the browser through `Host.openUrl`
 - Auto-update (`usecase.autoupdate`): `AutoUpdate.start(app)` shows What's new once after an update, checks the release's signed manifest (Ed25519, the public key in the app) every few hours, and with Update now, Later or Skip downloads the jpackage installer over https, checks its size and SHA-256, runs it and quits; `Changelog` and `UpdatePrompt` components, `AutoUpdate.openChangelog(app)`
 - Releases: the build puts the app's `CHANGELOG.md` and `app.properties` in its jar; `UpdateTool` (and the sample's `updateKey`, `packageApp`, `updateManifest` tasks) make the release key and the signed manifest; `UiWindow.current()`

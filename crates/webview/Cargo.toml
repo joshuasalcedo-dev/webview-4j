@@ -18,6 +18,10 @@ log = "0.4"
 # A window's icon: the PNG Java sends, in base64, as RGBA pixels.
 base64 = "0.22"
 png = "0.17"
+# Recordings of the app's windows as animated GIFs (capture.rs).
+gif = "0.13"
+# Secrets in the system's vault (secret.rs): Credential Manager, the Keychain, the Secret Service.
+keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service", "crypto-rust"] }
 # The app's own sounds (app.play).
 rodio = { version = "0.20.1", default-features = false, features = ["mp3", "wav", "vorbis", "flac"] }
 # Native file dialogs and message boxes (app.dialog.*). On Linux through the XDG desktop portal.
@@ -31,4 +35,8 @@ redb = "5"
 
 # Windows: resizing a frameless window from the page's edge (runtime.rs, start_resize).
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse",
+    # Pictures of the app's own windows (capture.rs): PrintWindow, a DIB, the window's visible bounds.
+    "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_Storage_Xps"] }
+# MP4 recordings with Windows' own H.264 encoder, Media Foundation (mediafoundation.rs): no ffmpeg needed.
+windows = { version = "0.61", features = ["Win32_Media_MediaFoundation", "Win32_System_Com", "Win32_Foundation"] }
