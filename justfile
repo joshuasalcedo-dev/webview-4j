@@ -17,6 +17,14 @@ sampler:
 sampler-web port="8080":
     cd samples/sampler; ./gradlew runWeb -Pport={{port}} -PcargoProfile=dev --console=plain
 
+# Records what you do in the Sampler until you close it, saved as an automation (a JSON script)
+sampler-record file="docs/tour.automation.json":
+    cd samples/sampler; ./gradlew run --args="--record {{absolute_path(file)}}" -PcargoProfile=dev --console=plain
+
+# Replays an automation in the Sampler: its screenshots and recordings next to the file; fails if a step does
+automate file="docs/tour.automation.json":
+    cd samples/sampler; ./gradlew run --args="--automate {{absolute_path(file)}}" -PcargoProfile=dev --console=plain
+
 # The Sampler as a native executable (GraalVM native-image): samples/sampler/build/native/
 sampler-native:
     cd samples/sampler; ./gradlew nativeCompile --console=plain

@@ -13,3 +13,8 @@ strip = true
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
+
+# egui-4j for the page (core/src/main/ui: bun run egui): as small as it goes, it is downloaded by every page that shows one
+[profile.wasm]
+inherits = "release"
+opt-level = "z"

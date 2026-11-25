@@ -47,8 +47,17 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '25' }
       - uses: gradle/actions/setup-gradle@v4
-      # core's jar carries @webview4j/ui, built with bun
+      # core's jar carries @webview4j/ui, built with bun, with egui-4j's components built for the page (Rust, wasm)
       - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: Swatinem/rust-cache@v2
+      # egui-4j's components for the page (core's uiEgui): the wasm target, and wasm-bindgen at Cargo.lock's version
+      - name: wasm-bindgen's version
+        shell: bash
+        run: echo "WASM_BINDGEN=$(awk '/^name = "wasm-bindgen"$/ { getline; gsub(/"/, "", $3); print $3 }' Cargo.lock)" >> "$GITHUB_ENV"
+      - uses: taiki-e/install-action@v2
+        with: { tool: "wasm-bindgen@${{ env.WASM_BINDGEN }}" }
       - uses: actions/download-artifact@v4
         with:
           pattern: natives-*

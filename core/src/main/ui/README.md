@@ -89,3 +89,16 @@ To update: change its version in package.json; nothing is copied by hand.
 
 Stories: `script.jar storybook open`, under **Native** (each component on both systems, light and dark; **Gallery** is
 a whole chat window).
+
+## Canvas components (egui-4j)
+
+`EguiCanvas` and `DevLogger` draw with [egui-4j](../../../../crates/egui-4j) (Rust, built for the page as wasm):
+charts that stream, the monitor, the dev logger. `bun run egui` builds it into `src/egui4j/` (not in git); Gradle's
+`:core:uiEgui` runs it before the bundle. It needs, once per machine:
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install wasm-bindgen-cli --version <wasm-bindgen's version in Cargo.lock>
+```
+
+Each component is run in Rust first (`cargo run -p egui-4j --example <component>`, `cargo test -p egui-4j`).

@@ -363,6 +363,8 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
           leading={leading && <Render node={leading} />}
           selected={bool(p.selected)}
           onSelect={typeof p.onSelect === "string" ? () => send(p.onSelect) : undefined}
+          onDoubleClick={typeof p.onDoubleClick === "string" ? () => send(p.onDoubleClick) : undefined}
+          onKeyDown={typeof p.onDoubleClick === "string" ? (e: React.KeyboardEvent) => { if (e.key === "Enter") send(p.onDoubleClick) } : undefined}
           menu={menu.length ? menu.map((m) => ({ label: str(m.p.label) ?? "", onSelect: () => send(m.p.onSelect) })) : undefined}
         />
       )

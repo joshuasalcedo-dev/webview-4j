@@ -17,6 +17,8 @@ public final class ListItem extends Component<ListItem> {
     public ListItem leading(Component<?> leading) { return add(slot(leading, "leading")); }
     public ListItem selected(boolean selected) { return prop("selected", selected); }
     public ListItem onSelect(Runnable action) { return on("onSelect", v -> action.run()); }
+    /** Opened: a double-click, or Enter. */
+    public ListItem onDoubleClick(Runnable action) { return on("onDoubleClick", v -> action.run()); }
     /** A right-click menu entry; call again for each. */
     public ListItem menu(String label, Runnable action) {
         return add(slot(new Element("menuItem").set("label", label).handle("onSelect", v -> action.run()), "menu"));
