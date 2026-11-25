@@ -157,6 +157,38 @@ val uiBundle = tasks.register<Exec>("uiBundle") {
     outputs.dir(uiOut)
 }
 
+// The Java classes java-gen makes from React components' props (src/main/ui/java-gen.json): fails when a component's
+// props changed and `bun run java-gen` was not run again, or when a generated class was edited by hand.
+val uiJavaGenCheck = tasks.register<Exec>("uiJavaGenCheck") {
+    description = "Checks that the Java classes made from React components (java-gen) are up to date."
+    group = "verification"
+    dependsOn(uiInstall)
+    workingDir = uiDir.asFile
+    commandLine("bun", "run", "java-gen:check")
+    // The components' sources; not the wasm uiEgui and uiGrammar build into src/.
+    inputs.files(fileTree(uiDir.dir("src")) { exclude("egui4j/**", "grammar/**") })
+    inputs.files(uiDir.file("java-gen.json"), uiDir.file("scripts/java-gen.ts"))
+    inputs.dir(layout.projectDirectory.dir("src/main/java/io/joshuasalcedo/webview4j/ui/components"))
+    val stamp = layout.buildDirectory.file("java-gen/checked")
+    outputs.file(stamp)
+    doLast { stamp.get().asFile.apply { parentFile.mkdirs(); writeText("ok") } }
+}
+// The HTML elements html-gen makes from React's types (Html.java): fails when React's types changed and
+// `bun run html-gen` was not run again, or when Html.java was edited by hand.
+val uiHtmlGenCheck = tasks.register<Exec>("uiHtmlGenCheck") {
+    description = "Checks that the HTML elements made from React's types (html-gen) are up to date."
+    group = "verification"
+    dependsOn(uiInstall)
+    workingDir = uiDir.asFile
+    commandLine("bun", "run", "html-gen:check")
+    inputs.files(uiDir.file("scripts/html-gen.ts"), uiDir.file("bun.lock"), uiDir.file("src/html-tags.generated.ts"))
+    inputs.file(layout.projectDirectory.file("src/main/java/io/joshuasalcedo/webview4j/ui/Html.java"))
+    val stamp = layout.buildDirectory.file("html-gen/checked")
+    outputs.file(stamp)
+    doLast { stamp.get().asFile.apply { parentFile.mkdirs(); writeText("ok") } }
+}
+tasks.named("check") { dependsOn(uiJavaGenCheck, uiHtmlGenCheck) }
+
 sourceSets.main {
     resources.srcDir(natives)
     resources.srcDir(files(uiOut).builtBy(uiBundle))
@@ -166,6 +198,8 @@ tasks.test {
     useJUnitPlatform()
     // Tests run on the class path (whitebox, same packages), where the module is unnamed.
     jvmArgs("--enable-native-access=ALL-UNNAMED")
+    // A link out of the app is decided and logged, but opens no real browser while tests run.
+    environment("WEBVIEW4J_BROWSER", "off")
     // -Pbenchmark runs Benchmark too: ./gradlew :core:test --tests '*Benchmark' -Pbenchmark
     systemProperty("benchmark", providers.gradleProperty("benchmark").isPresent)
     inputs.property("benchmark", providers.gradleProperty("benchmark").isPresent)

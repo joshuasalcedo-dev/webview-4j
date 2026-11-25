@@ -39,6 +39,10 @@ final class Events {
             case "resized" -> new Resized(view, decimal(json, "width"), decimal(json, "height"));
             case "moved" -> new Moved(view, decimal(json, "x"), decimal(json, "y"));
             case "focused" -> new Focused(view, Boolean.TRUE.equals(json.get("focused")));
+            case "page-load" -> new PageLoad(view, constant(PageLoad.State.class, json, "state"), text(json, "url"));
+            case "title-changed" -> new TitleChanged(view, text(json, "title"));
+            case "cdp" -> new DevToolsEvent(view, text(json, "event"),
+                    json.get("params") instanceof Map<?, ?> params ? (Map<String, Object>) params : Map.of());
             case "file-drop" -> {
                 List<Path> paths = new ArrayList<>();
                 if (json.get("paths") instanceof List<?> list) {
@@ -48,8 +52,21 @@ final class Events {
             }
             case "log" -> new LogRecord(LogRecord.Source.PAGE, view, constant(LogRecord.Level.class, json, "level"),
                     null, text(json, "message"));
+            case "network" -> new NetworkEvent(view, constant(NetworkEvent.Phase.class, json, "phase"), number(json, "id"),
+                    text(json, "kind"), text(json, "method"), text(json, "url"), number(json, "startedAt"),
+                    (int) number(json, "status"), text(json, "statusText"), number(json, "durationMs"), number(json, "size"),
+                    text(json, "mimeType"), text(json, "error"), strings(json, "requestHeaders"), text(json, "requestBody"),
+                    strings(json, "responseHeaders"), text(json, "responseBody"));
             default -> null;
         };
+    }
+
+    /** An object of strings (headers), in order; empty when absent. */
+    static Map<String, String> strings(Map<String, Object> json, String key) {
+        if (!(json.get(key) instanceof Map<?, ?> map)) return Map.of();
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        map.forEach((k, v) -> out.put(String.valueOf(k), v == null ? "" : String.valueOf(v)));
+        return java.util.Collections.unmodifiableMap(out);
     }
 
     static String text(Map<String, Object> json, String key) {

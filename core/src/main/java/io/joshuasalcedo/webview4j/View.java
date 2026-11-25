@@ -54,17 +54,67 @@ public final class View {
     }
 
     /** The cookies the page would send to {@code url}, HttpOnly ones included. */
-    @SuppressWarnings("unchecked")
     public CompletableFuture<List<Cookie>> cookies(String url) {
-        return app.request(message("cookies").withText(url, "text/plain")).thenApply(reply -> {
-            List<Cookie> cookies = new ArrayList<>();
-            for (Object item : (List<Object>) reply.json()) {
-                Map<String, Object> c = (Map<String, Object>) item;
-                cookies.add(new Cookie(Events.text(c, "name"), Events.text(c, "value"), Events.text(c, "domain"),
-                        Events.text(c, "path"), Boolean.TRUE.equals(c.get("httpOnly")), Boolean.TRUE.equals(c.get("secure"))));
-            }
-            return List.copyOf(cookies);
-        });
+        return app.request(message("cookies").withText(url, "text/plain")).thenApply(View::cookieList);
+    }
+
+    /** The page's {@code localStorage}: what it keeps for its origin, across sessions. */
+    public PageStorage localStorage() {
+        return new PageStorage(this, "localStorage");
+    }
+
+    /** The page's {@code sessionStorage}: what it keeps for its origin while the window is open. */
+    public PageStorage sessionStorage() {
+        return new PageStorage(this, "sessionStorage");
+    }
+
+    /** Every cookie in the view's browser profile, whatever site, HttpOnly ones included. */
+    public CompletableFuture<List<Cookie>> allCookies() {
+        return app.request(message("cookies.all")).thenApply(View::cookieList);
+    }
+
+    /** Sets a session cookie (gone when the browser profile's session ends); its path is "/" unless given. */
+    public CompletableFuture<Void> setCookie(Cookie cookie) {
+        return setCookie(cookie, null, null);
+    }
+
+    /**
+     * Sets a cookie that lives {@code maxAge} (null: a session cookie), sent {@code sameSite} (null: the browser's
+     * default, Lax).
+     */
+    public CompletableFuture<Void> setCookie(Cookie cookie, java.time.Duration maxAge, Cookie.SameSite sameSite) {
+        Map<String, Object> body = cookieBody(cookie);
+        if (maxAge != null) body.put("maxAge", maxAge.toSeconds());
+        if (sameSite != null) body.put("sameSite", sameSite.word);
+        return done(message("cookies.set").withJson(body));
+    }
+
+    /** Deletes the cookie of this name, domain and path (as {@link #allCookies()} lists them). */
+    public CompletableFuture<Void> deleteCookie(Cookie cookie) {
+        return done(message("cookies.delete").withJson(cookieBody(cookie)));
+    }
+
+    private static Map<String, Object> cookieBody(Cookie cookie) {
+        java.util.Objects.requireNonNull(cookie, "cookie");
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("name", cookie.name());
+        body.put("value", cookie.value() == null ? "" : cookie.value());
+        if (cookie.domain() != null && !cookie.domain().isEmpty()) body.put("domain", cookie.domain());
+        if (cookie.path() != null && !cookie.path().isEmpty()) body.put("path", cookie.path());
+        body.put("secure", cookie.secure());
+        body.put("httpOnly", cookie.httpOnly());
+        return body;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Cookie> cookieList(Message reply) {
+        List<Cookie> cookies = new ArrayList<>();
+        for (Object item : (List<Object>) reply.json()) {
+            Map<String, Object> c = (Map<String, Object>) item;
+            cookies.add(new Cookie(Events.text(c, "name"), Events.text(c, "value"), Events.text(c, "domain"),
+                    Events.text(c, "path"), Boolean.TRUE.equals(c.get("httpOnly")), Boolean.TRUE.equals(c.get("secure"))));
+        }
+        return List.copyOf(cookies);
     }
 
     // ---- the window ----
@@ -129,6 +179,42 @@ public final class View {
     /** No minimum size any more. */
     public CompletableFuture<Void> clearMinSize() {
         return done(message("min-size").withJson(Map.of("width", 0, "height", 0)));
+    }
+
+    /**
+     * Opens its developer tools (Elements, Console, Network, Sources...), as F12 does. The window must have been
+     * opened with {@link WindowOptions#devtools(boolean) devtools(true)}.
+     */
+    public CompletableFuture<Void> openDevTools() {
+        return app.request(message("devtools").withJson(Map.of("open", true))).thenApply(reply -> null);
+    }
+
+    /** Closes its developer tools. On Windows nothing: WebView2 cannot close them (the person closes them). */
+    public CompletableFuture<Void> closeDevTools() {
+        return app.request(message("devtools").withJson(Map.of("open", false))).thenApply(reply -> null);
+    }
+
+    /** Whether its developer tools are open; empty where the system cannot say (Windows). */
+    @SuppressWarnings("unchecked")
+    public CompletableFuture<java.util.Optional<Boolean>> devToolsOpen() {
+        return app.request(message("devtools")).thenApply(reply -> {
+            Object open = ((Map<String, Object>) reply.json()).get("open");
+            return open instanceof Boolean b ? java.util.Optional.of(b) : java.util.Optional.empty();
+        });
+    }
+
+    /**
+     * The window's native handle, for code that talks to the system itself (JNA, a Swing window it should own): an
+     * {@code HWND} on Windows, an {@code NSWindow*} on macOS. To make one of the app's windows own another, use
+     * {@link WindowOptions#owner(View)} instead. Fails on Linux (not given there yet), and for an embedded view (it
+     * has no window of its own).
+     */
+    public CompletableFuture<Long> nativeHandle() {
+        return app.request(message("handle")).thenApply(reply -> {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> h = (Map<String, Object>) reply.json();
+            return ((Number) h.get("handle")).longValue();
+        });
     }
 
     /** Where the window is and how it is shown now: to save its place and restore it next time. */
@@ -273,6 +359,25 @@ public final class View {
     public CompletableFuture<Void> capture(Set<Capture> on) {
         Set<Capture> exactly = on.isEmpty() ? EnumSet.noneOf(Capture.class) : EnumSet.copyOf(on);
         return done(message("capture").withJson(WindowOptions.switches(exactly)));
+    }
+
+    // ---- the DevTools Protocol (Windows) ----
+
+    /**
+     * Calls a method of the page's Chrome DevTools Protocol, e.g. {@code devTools("Page.captureScreenshot", Map.of())}
+     * or {@code Input.dispatchMouseEvent}; its result comes back as JSON values. Windows only, for now.
+     */
+    public CompletableFuture<Object> devTools(String method, Map<String, ?> params) {
+        Objects.requireNonNull(method, "method");
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("method", method);
+        body.put("params", params == null ? Map.of() : params);
+        return app.request(message("cdp.call").withJson(body)).thenApply(Message::json);
+    }
+
+    /** Reports the page's DevTools Protocol {@code event} as {@link DevToolsEvent}s from now on (once per name). */
+    public CompletableFuture<Void> listenDevTools(String event) {
+        return done(message("cdp.listen").withText(Objects.requireNonNull(event, "event"), "text/plain"));
     }
 
     /** Events of one kind from this view only. */

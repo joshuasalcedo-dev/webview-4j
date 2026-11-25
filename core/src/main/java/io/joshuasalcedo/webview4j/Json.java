@@ -58,6 +58,7 @@ public final class Json {
             case Double d when d.isNaN() || d.isInfinite() -> throw new IllegalArgumentException("JSON has no " + d);
             case Float f when f.isNaN() || f.isInfinite() -> throw new IllegalArgumentException("JSON has no " + f);
             case Number n -> out.append(n);
+            case JsonValue v -> write(v.json(), out);
             case Enum<?> e -> quote(e.name(), out);
             case java.util.Optional<?> optional -> write(optional.orElse(null), out);
             case Record record -> write(components(record), out);
@@ -85,6 +86,16 @@ public final class Json {
             }
             default -> throw new IllegalArgumentException("cannot write " + value.getClass().getName() + " as JSON");
         }
+    }
+
+    /**
+     * A record as an object of its components, in declaration order, without those that are null: for a page that
+     * tells a part left out from one given (an optional prop). Generated records write themselves with it.
+     */
+    public static Map<String, Object> withoutNulls(Record record) {
+        Map<String, Object> fields = components(record);
+        fields.values().removeIf(java.util.Objects::isNull);
+        return fields;
     }
 
     /** A record as an object of its components, in declaration order. */

@@ -1,0 +1,28 @@
+{
+  "$comment": "React components java-gen.ts makes Java classes for (bun run java-gen). type: the node type Java sends; java: the class in io.joshuasalcedo.webview4j.ui.components; skip: props left out on purpose.",
+  "components": [
+    { "type": "emptyState", "component": "EmptyState", "from": "src/components/usecase/collection/states.tsx", "java": "EmptyState" },
+    { "type": "pages", "component": "Pages", "from": "src/components/usecase/collection/states.tsx", "java": "Pages" },
+    { "type": "skeletonRows", "component": "SkeletonRows", "from": "src/components/usecase/collection/states.tsx", "java": "SkeletonRows" },
+    { "type": "chatHeader", "component": "ChatHeader", "from": "src/components/chat/chat-header.tsx", "java": "ChatHeader" },
+    { "type": "conversationList", "component": "ConversationList", "from": "src/components/chat/conversation-list.tsx", "java": "ConversationList" },
+    { "type": "messageList", "component": "MessageList", "from": "src/components/chat/message-list.tsx", "java": "MessageList" },
+    { "type": "voiceNote", "component": "VoiceNote", "from": "src/components/chat/message-bubble.tsx", "java": "VoiceNote" },
+    { "type": "chatComposer", "component": "ChatComposer", "from": "src/components/chat/chat-composer.tsx", "java": "ChatComposer" },
+    { "type": "tooltip", "component": "Tooltip", "from": "src/components/controls.tsx", "java": "Tooltip" },
+    { "type": "slider", "component": "Slider", "from": "src/components/controls.tsx", "java": "Slider" },
+    { "type": "radioGroup", "component": "RadioGroup", "from": "src/components/controls.tsx", "java": "RadioGroup" },
+    { "type": "toggleButton", "component": "Toggle", "from": "src/components/controls.tsx", "java": "ToggleButton" },
+    { "type": "separator", "component": "Separator", "from": "src/components/controls.tsx", "java": "Separator" },
+    { "type": "chart", "component": "Chart", "from": "src/components/chart.tsx", "java": "Chart", "lazy": true },
+    { "type": "popover", "component": "Popover", "from": "src/components/overlays.tsx", "java": "Popover" },
+    { "type": "hoverCard", "component": "HoverCard", "from": "src/components/overlays.tsx", "java": "HoverCard" },
+    { "type": "sheet", "component": "Sheet", "from": "src/components/overlays.tsx", "java": "Sheet" },
+    { "type": "combobox", "component": "Combobox", "from": "src/components/pickers.tsx", "java": "Combobox" },
+    { "type": "calendar", "component": "Calendar", "from": "src/components/pickers.tsx", "java": "Calendar" },
+    { "type": "aspectRatio", "component": "AspectRatio", "from": "src/components/structure.tsx", "java": "AspectRatio" },
+    { "type": "buttonGroup", "component": "ButtonGroup", "from": "src/components/structure.tsx", "java": "ButtonGroup" },
+    { "type": "inputGroup", "component": "InputGroup", "from": "src/components/structure.tsx", "java": "InputGroup" },
+    { "type": "navigationMenu", "component": "NavigationMenu", "from": "src/components/structure.tsx", "java": "NavigationMenu" }
+  ]
+}

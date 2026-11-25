@@ -79,4 +79,48 @@ class GrammarTest {
             assertEquals(0, draft.mistakes);
         }
     }
+
+    static final class Typing implements Screen {
+        volatile String text = "";
+        volatile int checks;
+        volatile int mistakes = -1;
+
+        @Override
+        public Component<?> render() {
+            return column(grammarTextArea("Message").value(text).checkDelay(Duration.ofMillis(600))
+                    .onChange(v -> text = v).onMistakes(n -> { checks++; mistakes = n; })).padding(16);
+        }
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    @Timeout(90)
+    void itChecksOnlyOnceTypingPauses() throws Exception {
+        try (App app = App.start()) {
+            Typing screen = new Typing();
+            View view = Ui.open(app, screen, o -> o.headless(true).size(600, 400)).join().view();
+            Automation.of(view).timeout(Duration.ofSeconds(30)).waitForText("Message");
+            Thread.sleep(2_000);   // the WebAssembly loaded, the empty text checked
+            int before = screen.checks;
+
+            // a key every 100 ms: each sooner than the 600 ms pause, so no check while typing
+            String sentence = "This is an test.";
+            String type = """
+                    (() => { const t = document.querySelector('.nt-grammar-input');
+                      const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+                      set.call(t, %s); t.dispatchEvent(new Event('input', {bubbles: true})); })()""";
+            for (int i = 1; i <= sentence.length(); i++) {
+                view.eval(type.formatted(Json.write(sentence.substring(0, i)))).join();
+                Thread.sleep(100);
+            }
+            assertEquals(sentence, screen.text, "Java got every key");
+            assertEquals(before, screen.checks, "no check while typing");
+
+            // then the pause: one check, which finds "an"
+            for (int i = 0; i < 50 && screen.checks == before; i++) Thread.sleep(100);
+            assertEquals(1, screen.mistakes);
+            Thread.sleep(1_000);
+            assertEquals(before + 1, screen.checks, "checked once, after typing stopped");
+        }
+    }
 }

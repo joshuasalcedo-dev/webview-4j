@@ -33,8 +33,31 @@ final class Assets {
             Map.entry("woff2", "font/woff2"),
             Map.entry("ttf", "font/ttf"),
             Map.entry("otf", "font/otf"),
+            Map.entry("avif", "image/avif"),
+            Map.entry("bmp", "image/bmp"),
             Map.entry("wasm", "application/wasm"),
-            Map.entry("txt", "text/plain; charset=utf-8"));
+            Map.entry("txt", "text/plain; charset=utf-8"),
+            Map.entry("md", "text/markdown; charset=utf-8"),
+            Map.entry("csv", "text/csv; charset=utf-8"),
+            Map.entry("xml", "application/xml"),
+            Map.entry("pdf", "application/pdf"),
+            // Sound and video: a player plays them, and seeks with range requests (the native side answers them).
+            Map.entry("mp3", "audio/mpeg"),
+            Map.entry("m4a", "audio/mp4"),
+            Map.entry("aac", "audio/aac"),
+            Map.entry("ogg", "audio/ogg"),
+            Map.entry("oga", "audio/ogg"),
+            Map.entry("opus", "audio/ogg"),
+            Map.entry("wav", "audio/wav"),
+            Map.entry("flac", "audio/flac"),
+            Map.entry("weba", "audio/webm"),
+            Map.entry("mp4", "video/mp4"),
+            Map.entry("m4v", "video/mp4"),
+            Map.entry("webm", "video/webm"),
+            Map.entry("ogv", "video/ogg"),
+            Map.entry("mov", "video/quicktime"),
+            // Captions and subtitles for <track>.
+            Map.entry("vtt", "text/vtt; charset=utf-8"));
 
     /** The directories windows were opened with, and the loader that reads each. */
     private final Map<String, ClassLoader> roots = new ConcurrentHashMap<>();

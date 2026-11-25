@@ -1,0 +1,597 @@
+/* Popover, HoverCard, Sheet, CommandPalette, Combobox, Calendar, AspectRatio, ButtonGroup, InputGroup,
+   NavigationMenu, Menubar: the kit's tokens, light and dark. */
+
+/* --- floating panels (popover, hover card, combobox list, navigation panel) --- */
+.nt-popover-anchor {
+  display: inline-flex;
+}
+
+.nt-popover {
+  position: fixed;
+  z-index: 60;
+  min-width: 160px;
+  max-width: min(360px, calc(100vw - 8px));
+  max-height: min(420px, calc(100vh - 8px));
+  overflow: auto;
+  padding: 12px;
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius-large);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.08);
+  animation: nt-float-in 0.12s ease-out;
+}
+
+.nt-popover-title {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.nt-hovercard {
+  width: 300px;
+}
+
+@keyframes nt-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+/* --- Sheet (and drawer) --- */
+.nt-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(0, 0, 0, 0.32);
+  animation: nt-fade-in 0.15s ease-out;
+}
+
+.nt-sheet {
+  position: fixed;
+  z-index: 71;
+  display: flex;
+  flex-direction: column;
+  max-width: 100vw;
+  max-height: 100vh;
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.25);
+  outline: none;
+}
+
+.nt-sheet[data-side="right"] {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-left: 1px solid var(--nt-surface-border);
+  animation: nt-sheet-right 0.2s ease-out;
+}
+
+.nt-sheet[data-side="left"] {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-right: 1px solid var(--nt-surface-border);
+  animation: nt-sheet-left 0.2s ease-out;
+}
+
+.nt-sheet[data-side="bottom"] {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-top: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius-large) var(--nt-radius-large) 0 0;
+  animation: nt-sheet-bottom 0.2s ease-out;
+}
+
+.nt-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 8px 20px;
+}
+
+.nt-sheet-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.nt-sheet-description {
+  margin-top: 2px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-sheet-close {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 18px;
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-sheet-close:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 20px 20px;
+}
+
+@keyframes nt-fade-in {
+  from { opacity: 0; }
+}
+@keyframes nt-sheet-right {
+  from { transform: translateX(100%); }
+}
+@keyframes nt-sheet-left {
+  from { transform: translateX(-100%); }
+}
+@keyframes nt-sheet-bottom {
+  from { transform: translateY(100%); }
+}
+
+/* --- CommandPalette --- */
+.nt-command {
+  position: fixed;
+  top: 14vh;
+  left: 50%;
+  z-index: 71;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100vw - 24px));
+  max-height: 60vh;
+  overflow: hidden;
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius-large);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+  transform: translateX(-50%);
+  animation: nt-fade-in 0.12s ease-out;
+}
+
+.nt-command-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--nt-surface-border);
+}
+
+.nt-command-search svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--nt-text-secondary);
+}
+
+.nt-command-search input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.nt-command-list {
+  overflow: auto;
+  padding: 6px;
+}
+
+.nt-command-group {
+  padding: 8px 10px 4px;
+  font-size: var(--nt-small);
+  font-weight: 600;
+  color: var(--nt-text-secondary);
+}
+
+.nt-command-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--nt-radius);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-command-item[aria-selected="true"] {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-command-item svg,
+.nt-command-noicon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.nt-command-label {
+  flex: 1;
+}
+
+.nt-command-item kbd {
+  font: inherit;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-command-empty {
+  padding: 20px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+  text-align: center;
+}
+
+/* --- Combobox --- */
+.nt-combobox .nt-input-box {
+  display: flex;
+  align-items: center;
+}
+
+.nt-combobox input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.nt-combobox-chevron {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.nt-combobox-list {
+  padding: 4px;
+  max-width: none;
+}
+
+.nt-combobox-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--nt-radius);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-combobox-option[data-active] {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-combobox-option[aria-disabled] {
+  color: var(--nt-text-disabled);
+  cursor: default;
+}
+
+.nt-combobox-tick {
+  width: 14px;
+  color: var(--nt-accent);
+}
+
+/* --- Calendar --- */
+.nt-calendar {
+  justify-self: start;
+  align-self: start;
+  width: max-content;
+  display: inline-grid;
+  gap: 8px;
+  padding: 12px;
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nt-calendar-title {
+  font-weight: 600;
+}
+
+.nt-calendar-nav {
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+  color: var(--nt-text);
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-calendar-nav:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 36px);
+  gap: 2px;
+}
+
+.nt-calendar-weekday {
+  font-size: var(--nt-small);
+  line-height: 28px;
+  color: var(--nt-text-secondary);
+  text-align: center;
+}
+
+.nt-calendar-day {
+  height: 36px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--nt-text);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-calendar-day:hover:not(:disabled) {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-calendar-day[data-outside] {
+  color: var(--nt-text-disabled);
+}
+
+.nt-calendar-day[data-today] {
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--nt-accent);
+}
+
+.nt-calendar-day[aria-selected="true"] {
+  color: var(--nt-on-accent);
+  background: var(--nt-accent);
+}
+
+.nt-calendar-day:disabled {
+  color: var(--nt-text-disabled);
+  text-decoration: line-through;
+  cursor: default;
+}
+
+.nt-calendar-day:focus-visible {
+  outline: 2px solid var(--nt-focus);
+  outline-offset: 1px;
+}
+
+/* --- AspectRatio --- */
+.nt-aspect {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-aspect > * {
+  width: 100%;
+  height: 100%;
+}
+
+.nt-aspect img,
+.nt-aspect video {
+  object-fit: cover;
+}
+
+/* --- ButtonGroup: shared edges, one outline --- */
+.nt-button-group {
+  display: inline-flex;
+}
+
+.nt-button-group[data-orientation="vertical"] {
+  flex-direction: column;
+}
+
+.nt-button-group[data-orientation="horizontal"] > *:not(:first-child) {
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.nt-button-group[data-orientation="horizontal"] > *:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.nt-button-group[data-orientation="vertical"] > *:not(:first-child) {
+  margin-top: -1px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.nt-button-group[data-orientation="vertical"] > *:not(:last-child) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.nt-button-group > *:hover,
+.nt-button-group > *:focus-visible {
+  z-index: 1;
+}
+
+/* --- InputGroup --- */
+.nt-input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.nt-input-group-field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nt-input-group-field svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--nt-text-secondary);
+}
+
+.nt-input-group-field input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.nt-input-group-addon {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  color: var(--nt-text-secondary);
+  white-space: nowrap;
+  background: var(--nt-subtle-hover);
+  border: 1px solid var(--nt-control-border);
+}
+
+.nt-input-group-addon:first-child {
+  border-right: none;
+  border-radius: var(--nt-radius) 0 0 var(--nt-radius);
+}
+
+.nt-input-group-addon:last-child {
+  border-left: none;
+  border-radius: 0 var(--nt-radius) var(--nt-radius) 0;
+}
+
+.nt-input-group-addon:first-child + .nt-input-group-field {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.nt-input-group-field:has(+ .nt-input-group-addon) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.nt-input-group[data-disabled] {
+  opacity: 0.55;
+}
+
+/* --- NavigationMenu and Menubar --- */
+.nt-navmenu,
+.nt-menubar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.nt-navmenu-item,
+.nt-menubar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  font: inherit;
+  color: var(--nt-text);
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-menubar-item {
+  height: 28px;
+  padding: 0 10px;
+}
+
+.nt-navmenu-item svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+}
+
+.nt-navmenu-item:hover,
+.nt-navmenu-item[aria-expanded="true"],
+.nt-menubar-item:hover,
+.nt-menubar-item[aria-expanded="true"] {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-navmenu-item[aria-current="page"] {
+  font-weight: 600;
+  color: var(--nt-accent);
+}
+
+.nt-navmenu-item:focus-visible,
+.nt-menubar-item:focus-visible,
+.nt-navmenu-link:focus-visible {
+  outline: 2px solid var(--nt-focus);
+  outline-offset: -2px;
+}
+
+.nt-navmenu-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 420px;
+  max-width: calc(100vw - 8px);
+  padding: 8px;
+}
+
+.nt-navmenu-link {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--nt-text);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-navmenu-link:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-navmenu-link[aria-current="page"] .nt-navmenu-link-label {
+  color: var(--nt-accent);
+}
+
+.nt-navmenu-link-label {
+  font-weight: 600;
+}
+
+.nt-navmenu-link-description {
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-popover, .nt-sheet, .nt-sheet-backdrop, .nt-command { animation: none; }
+}

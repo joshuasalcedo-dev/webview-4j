@@ -99,6 +99,46 @@ public final class Ui {
 
     /** A text area that checks spelling and grammar as it is typed (in the page, as WebAssembly). */
     public static GrammarTextArea grammarTextArea(String label) { return new GrammarTextArea(label); }
+    /** A sound or a video with its controls: an app file, an address, or {@link MediaPlayer#of bytes}. */
+    public static MediaPlayer mediaPlayer(String src) { return new MediaPlayer(src); }
+    /** The menu a right-click on {@code target} opens: {@code contextMenu(row).item("Open", ...).separator()...}. */
+    public static ContextMenu contextMenu(Component<?> target) { return new ContextMenu(target); }
+    /** A button that opens a menu under it. */
+    public static DropdownMenu dropdownMenu(String label) { return new DropdownMenu(label); }
+    /** A value picked by dragging along a track. */
+    public static Slider slider(String label, double value) { return new Slider(label, value); }
+    /** One of a few choices, all in sight: {@code radioGroup(List.of(new RadioOption("s", "Small"), ...))}. */
+    public static RadioGroup radioGroup(List<RadioOption> options) { return new RadioGroup(options); }
+    /** A button that stays pressed until pressed again. */
+    public static ToggleButton toggleButton(String label, boolean pressed) { return new ToggleButton(label, pressed); }
+    /** A thin line between groups of things. */
+    public static Separator separator() { return new Separator(); }
+    /** A short explanation shown when the pointer rests on {@code target}: {@code tooltip("Saves it", button("Save"))}. */
+    public static Tooltip tooltip(String content, Component<?> target) { return new Tooltip(content).with(target); }
+    /** A panel a click on {@code trigger} opens beside it: {@code popover("Filters", checkbox(...), ...)}. */
+    public static Popover popover(String trigger, Component<?>... content) { return new Popover(trigger).with(content); }
+    /** A card with more about {@code trigger}, shown while the pointer rests on it. */
+    public static HoverCard hoverCard(String trigger, Component<?>... content) { return new HoverCard(trigger).with(content); }
+    /** A panel sliding in from an edge (right unless {@code side}), the rest dimmed; from the bottom, a drawer. */
+    public static Sheet sheet(boolean open, Component<?>... content) { return new Sheet(open).with(content); }
+    /** A choice from a long list, found by typing: {@code combobox("Country", List.of(new ComboboxOption("ph", "Philippines"), ...))}. */
+    public static Combobox combobox(String label, List<ComboboxOption> options) { return new Combobox(options).label(label); }
+    /** A month to pick a day on; days as ISO text ({@code "2026-11-25"}). */
+    public static Calendar calendar(String value) { return new Calendar().value(value); }
+    /** Keeps {@code content} at one shape (width over height) as its width changes. */
+    public static AspectRatio aspectRatio(double ratio, Component<?> content) { return new AspectRatio().ratio(ratio).with(content); }
+    /** Buttons joined into one control. */
+    public static ButtonGroup buttonGroup(Component<?>... buttons) { return new ButtonGroup().with(buttons); }
+    /** A text field with a prefix, a unit, an icon or a button joined to it. */
+    public static InputGroup inputGroup(String label) { return new InputGroup().label(label); }
+    /** Top navigation: {@code navigationMenu(List.of(new NavigationItem("docs", "Docs").withLinks(...)))}. */
+    public static NavigationMenu navigationMenu(List<NavigationItem> items) { return new NavigationMenu(items); }
+    /** A desktop app's menus across the top. */
+    public static Menubar menubar() { return new Menubar(); }
+    /** The app's commands, found by typing (Ctrl+K / ⌘K). */
+    public static CommandPalette commandPalette(boolean open) { return new CommandPalette(open); }
+    /** The app's own CSS, for the classes it gives components ({@code className("note")}). */
+    public static StyleSheet styleSheet(String css) { return new StyleSheet(css); }
 
     /** A part of a sidebar built from parts, under a small heading ({@code null}: no heading). */
     public static SidebarGroup sidebarGroup(String label, Component<?>... items) { return new SidebarGroup(label, items); }

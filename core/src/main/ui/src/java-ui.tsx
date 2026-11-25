@@ -13,6 +13,7 @@ import { InfiniteScroll } from "./components/infinite-scroll"
 import { Inspector, InspectorSection } from "./components/inspector"
 import { LogView } from "./components/log-view"
 import { applyLayout, layoutOf, type MdiLayout, type MdiWindowState, MdiArea, useMdi } from "./components/mdi"
+import { MediaPlayer } from "./components/media-player"
 import { MoneyField } from "./components/money"
 import { PillGroup } from "./components/pill"
 import { Quantity, QuantityField } from "./components/quantity"
@@ -20,7 +21,7 @@ import { RichTextEditor } from "./components/rich-text"
 import { SearchField } from "./components/search-field"
 import { Swipeable } from "./components/swipeable"
 import { Tabs } from "./components/tabs"
-import { NumberField, PasswordField, TokenField } from "./components/text-inputs"
+import { allowedText, NumberField, PasswordField, TokenField } from "./components/text-inputs"
 import {
   CardNumberField,
   CountrySelect,
@@ -84,6 +85,13 @@ import {
   SidebarTrigger,
 } from "./components/sidebar"
 import { NamedIcon } from "./lib/named-icons"
+import { ContextMenu, type MenuEntry } from "./components/context-menu"
+import { DropdownMenu } from "./components/controls"
+import { htmlTags, voidTags } from "./html-tags.generated"
+import "./html-controls.css"
+import { CommandPalette } from "./components/overlays"
+import { Menubar } from "./components/structure"
+import { renderGenerated } from "./java-ui.generated"
 import { GrammarTextArea } from "./components/grammar-text-area"
 import { JavaCsvViewer, JavaXlsxEditor, JavaXlsxViewer } from "./components/usecase/xlsx/java"
 import { JavaBoundingBoxCitations, JavaDocumentSplits, JavaFileThumbnail, JavaPdfViewer } from "./components/usecase/pdf/java"
@@ -185,6 +193,7 @@ function JavaGrammarTextArea({ node }: { node: JavaNode }) {
         rows={num(p.rows)}
         dialect={(str(p.dialect) as "en-US" | undefined) ?? "en-US"}
         check={p.check === undefined ? true : bool(p.check)}
+        checkDelay={num(p.checkDelay)}
         onChange={(v) => {
           setValue(v)
           if (typeof p.onChange === "string") send(p.onChange, v)
@@ -319,9 +328,294 @@ function sizing(p: Record<string, unknown>): React.CSSProperties {
   }
 }
 
+/**
+ * A Java menu's entries (ContextMenu, DropdownMenu) as the page's menu takes them: each item's Java code by its
+ * handler's name, read when the menu opens, so it is always the newest tree's.
+ */
+function menuEntries(p: Record<string, unknown>, send: (handler: unknown, value?: unknown) => void, list: unknown = p.entries): MenuEntry[] {
+  return ((list as unknown[]) ?? []).map((e): MenuEntry => {
+    if (e === "separator") return "separator"
+    const item = e as { label: string; handler: string; shortcut?: string; icon?: string; checked?: boolean; disabled?: boolean }
+    return {
+      label: item.label,
+      shortcut: item.shortcut,
+      icon: item.icon ? <NamedIcon name={item.icon} /> : undefined,
+      checked: item.checked,
+      disabled: item.disabled,
+      onSelect: typeof p[item.handler] === "string" ? () => send(p[item.handler]) : undefined,
+    }
+  })
+}
+
+/** Fields one line tall: as wide as a form's field, not the whole window, unless sized. */
+const LINE_FIELDS = new Set([
+  "textField", "passwordField", "searchField", "numberField", "tokenField", "moneyField", "quantityField", "select",
+  "emailField", "phoneField", "urlField", "dateField", "percentField", "ibanField", "cardNumberField", "countrySelect",
+  "currencySelect", "languageSelect", "valueField", "codeField", "inputGroup", "combobox",
+])
+/** Fields for paragraphs: wider, still not the whole window. */
+const AREA_FIELDS = new Set(["textArea", "grammarTextArea"])
+
+/**
+ * A field without a width of its own (width, maxWidth, grow) is at most 360 px wide (560 for a text area), as
+ * forms are in Windows 11's and macOS's apps: a row or column no longer stretches it across the window.
+ */
+function withFieldWidth(node: JavaNode): JavaNode {
+  const p = node.p
+  const line = LINE_FIELDS.has(node.t)
+  if (!line && !AREA_FIELDS.has(node.t)) return node
+  if (p.grow === true || typeof p.width === "number" || typeof p.maxWidth === "number") return node
+  return { ...node, p: { ...p, maxWidth: line ? 360 : 560 } }
+}
+
+/** HTML's shape on any component (Component's id, className, attributes, style), as Java sends it. */
+type HtmlSettings = {
+  id?: string
+  className?: string[]
+  attrs?: Record<string, string>
+  style?: Record<string, string>
+  /** hoverStyle, focusStyle, pressedStyle: CSS declarations by state. */
+  states?: Record<string, Record<string, string>>
+}
+
+const STATE_SELECTOR: Record<string, string> = { hover: ":hover", focus: ":focus-within", pressed: ":active" }
+
+/**
+ * A component's state styles as one CSS rule set, under a class made from what they say (the same styles share
+ * one): over the kit's own hover look and the component's inline style, so with !important. Values are Java's,
+ * already checked (Style.set).
+ */
+function stateRules(states: HtmlSettings["states"]): { className: string; css: string } | undefined {
+  if (!states || !Object.keys(states).length) return undefined
+  const text = JSON.stringify(states)
+  let hash = 5381
+  for (let i = 0; i < text.length; i++) hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0
+  const className = `nt-s-${(hash >>> 0).toString(36)}`
+  const css = Object.entries(states)
+    .filter(([state]) => STATE_SELECTOR[state])
+    .map(([state, decl]) => `.${className}${STATE_SELECTOR[state]}{${Object.entries(decl).map(([k, v]) => `${k}:${v} !important`).join(";")}}`)
+    .join("\n")
+  return { className, css }
+}
+
+/**
+ * Puts a component's HTML settings on its outermost element in the page, whatever the component: no component
+ * needs code for it. The wrapper draws no box of its own (display: contents); it is there only when a component
+ * has settings. Applied again after every draw, and taken off when they change.
+ */
+function WithHtml({ html, onHover, children }: { html: HtmlSettings; onHover?: (hovering: boolean) => void; children: React.ReactNode }) {
+  const box = React.useRef<HTMLSpanElement>(null)
+  const focused = React.useRef<Element | null>(null)
+  const states = stateRules(html.states)
+  // the newest onHover: the listeners stay, the handler changes with each draw
+  const hover = React.useRef(onHover)
+  hover.current = onHover
+  React.useLayoutEffect(() => {
+    const el = box.current?.firstElementChild as HTMLElement | null
+    if (!el || !onHover) return
+    const enter = () => hover.current?.(true)
+    const leave = () => hover.current?.(false)
+    el.addEventListener("pointerenter", enter)
+    el.addEventListener("pointerleave", leave)
+    return () => {
+      el.removeEventListener("pointerenter", enter)
+      el.removeEventListener("pointerleave", leave)
+    }
+  }, [!!onHover]) // eslint-disable-line react-hooks/exhaustive-deps
+  React.useLayoutEffect(() => {
+    const el = box.current?.firstElementChild as HTMLElement | null
+    if (!el) return
+    // autofocus works only as an element first appears: the focus goes there once, as the page would have done
+    if (html.attrs && "autofocus" in html.attrs && focused.current !== el) {
+      focused.current = el
+      requestAnimationFrame(() => el.focus())
+    }
+    const undo: (() => void)[] = []
+    if (html.id && !el.id) {
+      el.id = html.id
+      undo.push(() => el.removeAttribute("id"))
+    }
+    for (const c of [...(html.className ?? []), ...(states ? [states.className] : [])]) {
+      if (!el.classList.contains(c)) {
+        el.classList.add(c)
+        undo.push(() => el.classList.remove(c))
+      }
+    }
+    for (const [name, value] of Object.entries(html.attrs ?? {})) {
+      // names are Java's checked ones: global attributes, data-*, aria-*; never an event
+      if (/^on/i.test(name)) continue
+      const before = el.getAttribute(name)
+      el.setAttribute(name, value)
+      undo.push(() => (before === null ? el.removeAttribute(name) : el.setAttribute(name, before)))
+    }
+    const style = { ...(html.style ?? {}) }
+    // the kit's own display rules would show a hidden one anyway: hidden is hidden
+    if (html.attrs && "hidden" in html.attrs) style.display = "none"
+    for (const [property, value] of Object.entries(style)) {
+      const before = el.style.getPropertyValue(property)
+      const priority = el.style.getPropertyPriority(property)
+      el.style.setProperty(property, value, property === "display" ? "important" : "")
+      undo.push(() => el.style.setProperty(property, before, priority))
+    }
+    return () => undo.reverse().forEach((u) => u())
+  })
+  return (
+    <span ref={box} style={{ display: "contents" }}>
+      {children}
+      {states && <style>{states.css}</style>}
+    </span>
+  )
+}
+
+/** A URL a page may follow or load: not javascript:, vbscript: or a data: document (Java checked it already). */
+function safeUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const v = value.replace(/[\s\u0000-\u001f]/g, "").toLowerCase()
+  const scheme = /^[a-z][a-z0-9+.-]*:/.test(v)
+  const ok = !scheme || /^(https?|mailto|tel|blob):/.test(v) || /^data:(image|audio|video)\//.test(v)
+  return ok ? value : undefined
+}
+
+/** The input types that are a text field to look at (the kit's nt-input). */
+const TEXT_INPUTS = new Set(["text", "email", "password", "search", "tel", "url", "number", "date", "time", "datetime-local", "month", "week"])
+
+const URL_ATTRIBUTES = new Set(["href", "src", "action", "formAction", "poster", "cite", "data", "ping", "manifest", "codeBase", "itemType"])
+
+/** A form's fields by name, as Java gets them: a name given more than once (checkboxes) as a list. */
+function formFields(form: HTMLFormElement): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  new FormData(form).forEach((value, name) => {
+    const v = typeof value === "string" ? value : value.name
+    out[name] = name in out ? ([] as unknown[]).concat(out[name], v) : v
+  })
+  return out
+}
+
+/** An HTML element from Java (Html.java): only the tags html-gen allows, only Java's events. */
+function HtmlNode({ node }: { node: JavaNode }) {
+  const send = React.useContext(SendContext)
+  const p = node.p
+  const tag = str(p.tag) ?? ""
+  const ref = React.useRef<HTMLElement>(null)
+  const given = (p.a as Record<string, unknown> | undefined) ?? {}
+  // what an input holds: from Java, but never over what is being typed (Java's answer can be a key behind)
+  const field = tag === "input" || tag === "textarea" || tag === "select"
+  React.useLayoutEffect(() => {
+    const el = ref.current as HTMLInputElement | null
+    if (!el || !field || document.activeElement === el) return
+    if ("value" in given && el.value !== String(given.value ?? "")) el.value = String(given.value ?? "")
+    if ("checked" in given) el.checked = given.checked === true
+  })
+  if (!htmlTags.has(tag)) return <Text tone="error">No HTML element "{tag}"</Text>
+  const attrs: Record<string, unknown> = {}
+  for (const [name, value] of Object.entries(given)) {
+    if (/^on/i.test(name) || ["dangerouslySetInnerHTML", "ref", "key", "children", "style", "className"].includes(name)) continue
+    if (field && (name === "value" || name === "checked")) {
+      attrs[name === "value" ? "defaultValue" : "defaultChecked"] = value
+      continue
+    }
+    attrs[name] = URL_ATTRIBUTES.has(name) ? safeUrl(value) : value
+  }
+  const id = (name: string) => (typeof p[name] === "string" ? p[name] : undefined)
+  const valueOf = (t: EventTarget) => {
+    const el = t as HTMLInputElement
+    return el.type === "checkbox" || el.type === "radio" ? String(el.checked) : (el.value ?? el.textContent ?? "")
+  }
+  const events: Record<string, unknown> = {}
+  if (id("onClick")) events.onClick = () => send(p.onClick)
+  if (id("onDoubleClick")) events.onDoubleClick = () => send(p.onDoubleClick)
+  const hoverId = id("onHover")
+  if (id("onPointerEnter") || hoverId)
+    events.onPointerEnter = () => {
+      if (id("onPointerEnter")) send(p.onPointerEnter)
+      if (hoverId) send(p.onHover, true)
+    }
+  if (id("onPointerLeave") || hoverId)
+    events.onPointerLeave = () => {
+      if (id("onPointerLeave")) send(p.onPointerLeave)
+      if (hoverId) send(p.onHover, false)
+    }
+  if (id("onFocus")) events.onFocus = () => send(p.onFocus)
+  if (id("onBlur")) events.onBlur = () => send(p.onBlur)
+  if (id("onKeyDown")) events.onKeyDown = (e: React.KeyboardEvent) => send(p.onKeyDown, e.key)
+  if (id("onInput")) events.onInput = (e: React.FormEvent) => send(p.onInput, valueOf(e.target))
+  if (id("onChange")) events.onChange = (e: React.ChangeEvent) => send(p.onChange, valueOf(e.target))
+  if (id("onToggle")) events.onToggle = (e: React.SyntheticEvent) => send(p.onToggle, (e.currentTarget as HTMLDetailsElement).open === true)
+  // a form never leaves the app's page: its fields go to Java
+  if (tag === "form") {
+    events.onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault()
+      if (id("onSubmit")) send(p.onSubmit, formFields(e.currentTarget))
+    }
+  }
+  const children = voidTags.has(tag)
+    ? []
+    : (node.c ?? []).map((c, i) => (c.t === "htmlText" ? str(c.p.text) ?? "" : <Render key={c.k ?? i} node={c} />))
+  // its global attributes, classes and style straight on it: no wrapper, so the app's CSS (main > h1) still meets it
+  const html = (p.html as HtmlSettings | undefined) ?? {}
+  const style: Record<string, string> = {}
+  for (const [k, v] of Object.entries(html.style ?? {})) style[k.startsWith("--") ? k : k.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())] = v
+  const global: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(html.attrs ?? {})) if (!/^on/i.test(k)) global[k] = v
+  if ("hidden" in global) style.display = "none"
+  const states = stateRules(html.states)
+  // the kit's look by default: its own classes on what it has them for (html-controls.css for the rest)
+  const kit: string[] = []
+  const look: Record<string, string> = {}
+  if (p.browser !== true) {
+    kit.push("nt-html")
+    const type = String(given.type ?? "text")
+    if (tag === "input" && TEXT_INPUTS.has(type)) kit.push("nt-input")
+    if (tag === "textarea") kit.push("nt-input", "nt-textarea")
+    if (tag === "select") kit.push("nt-input")
+    if (tag === "button") {
+      kit.push("nt-button")
+      // a form's submit is its main action
+      if (given.type === "submit") look["data-variant"] = "accent"
+    }
+  }
+  const classes = [...kit, ...(html.className ?? []), ...(states ? [states.className] : [])]
+  const element = React.createElement(
+    tag,
+    {
+      ...look,
+      ...global,
+      ...attrs,
+      ...events,
+      ref,
+      id: html.id,
+      className: classes.join(" ") || undefined,
+      style: { ...sizing(p), ...style },
+    },
+    ...children
+  )
+  return states ? (
+    <>
+      {element}
+      <style>{states.css}</style>
+    </>
+  ) : (
+    element
+  )
+}
+
 function Render({ node }: { node: JavaNode }): React.ReactNode {
   const send = React.useContext(SendContext)
+  const html = node.p.html as HtmlSettings | undefined
+  const onHover = typeof node.p.onHover === "string" ? (hovering: boolean) => send(node.p.onHover, hovering) : undefined
+  // an HTML element takes its own (HtmlNode); a kit component through the wrapper
+  if ((!html && !onHover) || node.t === "html") return <RenderNode node={node} />
+  return (
+    <WithHtml html={html ?? {}} onHover={onHover}>
+      <RenderNode node={node} />
+    </WithHtml>
+  )
+}
+
+function RenderNode({ node: given }: { node: JavaNode }): React.ReactNode {
+  const send = React.useContext(SendContext)
   const sendAndWait = React.useContext(SendAndWaitContext)
+  const node = withFieldWidth(given)
   const p = node.p
   const style = sizing(p)
   switch (node.t) {
@@ -330,15 +624,31 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
       const toolbar = slot(node, "toolbar")
       const statusBar = slot(node, "statusBar")
       const body = slot(node, "body")
+      const sidebar = slot(node, "sidebar")
       const platform = (str(p.platform) ?? "auto") as "auto" | "windows" | "mac"
       const theme = (str(p.theme) ?? "system") as "system" | "light" | "dark"
+      const main = (
+        <>
+          {toolbar && <Render node={toolbar} />}
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "auto" }}>{body && <Render node={body} />}</div>
+          {statusBar && <Render node={statusBar} />}
+        </>
+      )
       return (
         <NativeProvider platform={platform} theme={theme} accent={str(p.accent)} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
           <Notice notice={p.notice as NoticeData | undefined} />
           {titleBar && <Render node={titleBar} />}
-          {toolbar && <Render node={toolbar} />}
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "auto" }}>{body && <Render node={body} />}</div>
-          {statusBar && <Render node={statusBar} />}
+          {sidebar ? (
+            // The side bar as tall as the window under the title bar; the toolbar and status bar beside it.
+            // The side bar is the row's own child: stretched to the row's height, it scrolls inside itself (a wrapper
+            // let it grow to its whole list, and the window scrolled instead).
+            <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "stretch", overflow: "hidden" }}>
+              <Render node={sidebar} />
+              <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>{main}</div>
+            </div>
+          ) : (
+            main
+          )}
         </NativeProvider>
       )
     }
@@ -572,6 +882,76 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     }
     case "progress":
       return <ProgressBar aria-label={str(p.label) ?? "Progress"} value={num(p.value)} style={style} />
+    case "contextMenu":
+      return (
+        <ContextMenu entries={() => menuEntries(p, send)}>
+          <Children nodes={node.c} />
+        </ContextMenu>
+      )
+    case "menubar":
+      return (
+        <Menubar
+          menus={((p.menus as { label: string; entries: unknown[] }[]) ?? []).map((m) => ({ label: m.label, entries: () => menuEntries(p, send, m.entries) }))}
+          style={style}
+        />
+      )
+    case "commandPalette":
+      return (
+        <CommandPalette
+          open={bool(p.open)}
+          onOpenChange={(open) => send(p.onOpenChange, open)}
+          shortcut={str(p.shortcut)}
+          placeholder={str(p.placeholder)}
+          emptyText={str(p.emptyText)}
+          commands={((p.commands as { id: string; label: string; group?: string; shortcut?: string; icon?: string }[]) ?? []).map((c) => ({
+            ...c,
+            onSelect: typeof p[c.id] === "string" ? () => send(p[c.id]) : undefined,
+          }))}
+        />
+      )
+    case "dropdownMenu":
+      return (
+        <DropdownMenu
+          label={str(p.label) ?? ""}
+          icon={str(p.icon)}
+          variant={(str(p.variant) as "subtle" | "accent" | undefined) ?? "default"}
+          disabled={bool(p.disabled)}
+          entries={() => menuEntries(p, send)}
+          style={style}
+        />
+      )
+    case "mediaPlayer": {
+      const handler = (name: string) => (typeof p[name] === "string" ? (value?: unknown) => send(p[name], value) : undefined)
+      return (
+        <MediaPlayer
+          src={str(p.src) ?? ""}
+          kind={str(p.kind) as "audio" | "video" | undefined}
+          title={str(p.title)}
+          poster={str(p.poster)}
+          captions={str(p.captions)}
+          captionsLanguage={str(p.captionsLanguage)}
+          autoPlay={bool(p.autoPlay)}
+          loop={bool(p.loop)}
+          muted={bool(p.muted)}
+          volume={num(p.volume)}
+          rate={num(p.rate)}
+          showRate={p.showRate !== false}
+          onPlay={handler("onPlay")}
+          onPause={handler("onPause")}
+          onEnded={handler("onEnded")}
+          onSeek={handler("onSeek")}
+          onError={handler("onError")}
+          style={style}
+        />
+      )
+    }
+    case "html":
+      return <HtmlNode node={node} />
+    case "htmlText":
+      return str(p.text) ?? ""
+    case "styleSheet":
+      // the app's own CSS, for its className()es; text, never markup
+      return <style>{str(p.css) ?? ""}</style>
     case "spinner":
       return <Spinner label={str(p.label)} size={num(p.size)} />
     case "avatar":
@@ -1150,12 +1530,16 @@ function Render({ node }: { node: JavaNode }): React.ReactNode {
     case "dataTree":
     case "dataMap":
       return <JavaCollection node={node} />
-    default:
+    default: {
+      // Components java-gen made from their props (java-gen.json): asked only for types with no case above.
+      const generated = renderGenerated(node, { send, style, child: (c, i) => <Render key={c.k ?? i} node={c} /> })
+      if (generated !== undefined) return generated
       return (
         <Text tone="error" style={style}>
           No component "{node.t}"
         </Text>
       )
+    }
   }
 }
 
@@ -1553,10 +1937,14 @@ function JavaTextField({ node }: { node: JavaNode }) {
       placeholder={str(p.placeholder)}
       type={bool(p.password) ? "password" : "text"}
       disabled={bool(p.disabled)}
+      maxLength={num(p.maxLength)}
       value={value}
       onChange={(e) => {
-        setValue(e.target.value)
-        send(p.onChange, e.target.value)
+        // what allow() and maxLength() refuse does not appear: a letter in a code field, the 11th character
+        const kept = allowedText(e.target.value, str(p.allow), num(p.maxLength))
+        if (kept === value) return
+        setValue(kept)
+        send(p.onChange, kept)
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && typeof p.onSubmit === "string") send(p.onSubmit, (e.target as HTMLInputElement).value)

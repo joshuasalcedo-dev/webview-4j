@@ -42,4 +42,18 @@ class WindowOptionsTest {
         assertThrows(IllegalStateException.class, () -> WindowOptions.url("https://example.com").page("x.html"));
         assertThrows(IllegalArgumentException.class, () -> WindowOptions.app("web").page("../secret.html"));
     }
+
+    @org.junit.jupiter.api.Test
+    void developerToolsAreOffUnlessAWindowOrTheRunAsksForThem() {
+        String before = System.getProperty("webview4j.devtools");
+        try {
+            System.clearProperty("webview4j.devtools");
+            org.junit.jupiter.api.Assertions.assertEquals(false, WindowOptions.blank().toPayload().get("devtools"));
+            System.setProperty("webview4j.devtools", "true");
+            org.junit.jupiter.api.Assertions.assertEquals(true, WindowOptions.blank().toPayload().get("devtools"), "a development run");
+            org.junit.jupiter.api.Assertions.assertEquals(false, WindowOptions.blank().devtools(false).toPayload().get("devtools"), "a window says no");
+        } finally {
+            if (before == null) System.clearProperty("webview4j.devtools"); else System.setProperty("webview4j.devtools", before);
+        }
+    }
 }

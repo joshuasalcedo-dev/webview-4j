@@ -32,6 +32,10 @@ pub struct OpenRequest {
     /// owner, hides with it and has no taskbar entry, so a host can dock it over its own UI.
     #[serde(default)]
     pub owner_window: Option<isize>,
+    /// The view whose window owns this one: it stays above that window, is minimized with it, has no taskbar
+    /// entry of its own, and closes before it (Windows: an owned window; macOS: a child window; Linux: transient).
+    #[serde(default)]
+    pub owner: Option<String>,
     /// `false` removes the title bar and borders.
     #[serde(default = "default_true")]
     pub decorations: bool,
@@ -42,6 +46,10 @@ pub struct OpenRequest {
     /// Unless given: the origin of `url`, or `null` (an opaque origin) for `html`.
     #[serde(default)]
     pub origins: Option<Vec<String>>,
+    /// More origins whose pages open in the window when a link goes there (a sign-in page the server sends it
+    /// to): any other site opens in the system's browser.
+    #[serde(default)]
+    pub navigation: Option<Vec<String>>,
     /// The app's own files, by the name Java gave them (a class path directory): `GET <base>app/<path>`
     /// is asked of Java as `view.<view>.asset`. None serves no files.
     #[serde(default)]
@@ -79,6 +87,10 @@ pub struct OpenRequest {
     /// A window opens at `x`, `y` (logical pixels on the desktop), not where the system puts it.
     #[serde(default)]
     pub positioned: bool,
+    /// Drawn for Java, not for the person (a JavaFX node shows its page from the DevTools screencast): all but
+    /// invisible, and the mouse goes through it. Windows only; elsewhere a normal window.
+    #[serde(default)]
+    pub offscreen: bool,
     #[serde(default)]
     pub x: f64,
     #[serde(default)]
@@ -130,6 +142,8 @@ pub struct CaptureBody {
     pub dom_events: Option<bool>,
     pub websocket: Option<bool>,
     pub console: Option<bool>,
+    /// Every request, start to end, with headers and bodies (Capture.NETWORK).
+    pub network: Option<bool>,
 }
 
 /// One open webview, as `app.list` reports it.
@@ -152,6 +166,61 @@ pub struct CookieRecord {
     pub path: String,
     pub http_only: bool,
     pub secure: bool,
+}
+
+/// `view.<view>.cookies.set` and `.delete`: a cookie as Java gives it. To delete, its name, domain and path say
+/// which one. Cookie values are credentials: no Debug.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CookieBody {
+    pub name: String,
+    #[serde(default)]
+    pub value: String,
+    #[serde(default)]
+    pub domain: Option<String>,
+    #[serde(default)]
+    pub path: Option<String>,
+    #[serde(default)]
+    pub secure: bool,
+    #[serde(default)]
+    pub http_only: bool,
+    /// "Strict", "Lax" or "None"; the browser's default when absent.
+    #[serde(default)]
+    pub same_site: Option<String>,
+    /// Seconds it lives; a session cookie when absent.
+    #[serde(default)]
+    pub max_age: Option<i64>,
+}
+
+impl CookieBody {
+    /// The cookie wry sets or deletes; 400 for a name or value a cookie cannot hold.
+    pub fn cookie(self) -> Result<wry::cookie::Cookie<'static>, Outcome> {
+        let token = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_graphic() && !"()<>@,;:\\\"/[]?={}".contains(c));
+        if !token(&self.name) {
+            return Err(Outcome::error(400, "a cookie's name is a token: letters, digits and !#$%&'*+-.^_`|~"));
+        }
+        if self.value.chars().any(|c| c.is_control() || c == ';' || c == ',' || c == '"' || c == '\\' || c == ' ') {
+            return Err(Outcome::error(400, "a cookie's value cannot hold spaces, ; , \" \\ or control characters"));
+        }
+        let mut cookie = wry::cookie::Cookie::new(self.name, self.value);
+        if let Some(domain) = self.domain.filter(|d| !d.is_empty()) {
+            cookie.set_domain(domain);
+        }
+        cookie.set_path(self.path.filter(|p| !p.is_empty()).unwrap_or_else(|| "/".into()));
+        cookie.set_secure(self.secure);
+        cookie.set_http_only(self.http_only);
+        match self.same_site.as_deref() {
+            None => {}
+            Some("Strict") => cookie.set_same_site(wry::cookie::SameSite::Strict),
+            Some("Lax") => cookie.set_same_site(wry::cookie::SameSite::Lax),
+            Some("None") => cookie.set_same_site(wry::cookie::SameSite::None),
+            Some(other) => return Err(Outcome::error(400, format!("sameSite is Strict, Lax or None: {other}"))),
+        }
+        if let Some(seconds) = self.max_age {
+            cookie.set_max_age(wry::cookie::time::Duration::seconds(seconds));
+        }
+        Ok(cookie)
+    }
 }
 
 #[derive(Deserialize)]
@@ -382,5 +451,8 @@ mod tests {
         let embed = json::<OpenRequest>(br#"{"url":"https://example.com","parent":"wv-1","x":10,"y":20,"width":300,"height":200}"#).unwrap();
         assert_eq!((embed.parent.as_deref(), embed.x, embed.y, embed.width), (Some("wv-1"), 10.0, 20.0, 300.0));
         assert!(json::<PlaceBody>(br#"{"x":1,"y":2,"width":3}"#).is_err(), "a place needs all four");
+        let owned = json::<OpenRequest>(br#"{"title":"Tool","owner":"wv-1"}"#).unwrap();
+        assert_eq!((owned.owner.as_deref(), owned.owner_window), (Some("wv-1"), None));
+        assert_eq!(json::<OpenRequest>(br#"{}"#).unwrap().owner, None, "not owned unless asked");
     }
 }

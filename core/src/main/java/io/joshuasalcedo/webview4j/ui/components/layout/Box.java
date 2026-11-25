@@ -22,6 +22,12 @@ public final class Box extends Component<Box> {
     /** Scrolls when its children do not fit. */
     public Box scroll() { return prop("scroll", true); }
     public Box with(Component<?>... children) { return add(children); }
+    /** Adds children at the end; a window showing it draws them. */
+    @Override public Box add(Component<?>... children) { return super.add(children); }
+    /** Takes {@code child} out; a window showing it draws again. */
+    @Override public Box remove(Component<?> child) { return super.remove(child); }
+    /** Takes every child out. */
+    @Override public Box clear() { return super.clear(); }
     public Box with(java.util.List<? extends Component<?>> children) { return add(children); }
     /** Any property for the renderer, such as an accessibility role. */
     public Box attribute(String name, Object value) { return prop(name, value); }

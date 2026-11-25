@@ -69,7 +69,8 @@ public final class SamplerScreen implements Screen {
 
     @Override
     public Component<?> render() {
-        return frame(split(navigation(), page()))
+        return frame(page())
+                .sidebar(navigation())
                 .platform(platform)
                 .scheme(theme)
                 .titleBar(titleBar("webview-4j Sampler").sidebarTrigger(() -> folded = !folded))

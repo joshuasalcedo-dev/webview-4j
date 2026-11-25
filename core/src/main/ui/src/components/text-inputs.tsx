@@ -289,6 +289,16 @@ type NumberFieldProps = Omit<
     stepper?: boolean
   }
 
+/**
+ * Whether `text` can be on its way to a number, as typed: digits, at most one `decimal` mark followed by at most
+ * `fractions` digits (none when 0), and a leading minus when `negative`. "" and "-" are fine (not done yet).
+ */
+function typable(text: string, decimal: string, fractions: number | undefined, negative: boolean): boolean {
+  const mark = decimal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const decimals = fractions === 0 ? "" : `(${mark}\\d${fractions === undefined ? "*" : `{0,${fractions}}`})?`
+  return new RegExp(`^${negative ? "-?" : ""}\\d*${decimals}$`).test(text)
+}
+
 const clamp = (n: number, min?: number, max?: number) =>
   Math.min(max ?? Infinity, Math.max(min ?? -Infinity, n))
 
@@ -396,7 +406,12 @@ function NumberField({
           setTyping(current === null ? "" : plain.format(current))
           onFocus?.(event)
         }}
-        onChange={(event) => setTyping(event.target.value)}
+        onChange={(event) => {
+          // Only what a number can hold goes in: digits, one decimal mark (none for whole numbers, no more
+          // decimals than allowed), a leading minus when below zero is allowed. A letter typed does not appear.
+          const next = event.target.value
+          if (typable(next, decimal, fractionDigits, min === undefined || min < 0)) setTyping(next)
+        }}
         onBlur={(event) => {
           if (typing !== null) {
             const n = read(typing)
@@ -681,7 +696,24 @@ function TokenField({
   )
 }
 
-export { fitHeight, NumberField, PasswordField, TextArea, TokenField }
+/**
+ * `text` with only the characters `allow` matches (one character class, e.g. "[0-9A-Za-z_-]"), at most `maxLength`
+ * long: what a field keeps of what is typed or pasted.
+ */
+function allowedText(text: string, allow?: string, maxLength?: number): string {
+  let kept = text
+  if (allow) {
+    try {
+      const one = new RegExp(`^${allow}$`, "u")
+      kept = Array.from(kept).filter((c) => one.test(c)).join("")
+    } catch {
+      // not a pattern the page can read: nothing is filtered (Java checked it already)
+    }
+  }
+  return maxLength !== undefined && maxLength >= 0 ? Array.from(kept).slice(0, maxLength).join("") : kept
+}
+
+export { allowedText, fitHeight, NumberField, PasswordField, TextArea, TokenField, typable }
 export type {
   NumberFieldProps,
   PasswordFieldProps,

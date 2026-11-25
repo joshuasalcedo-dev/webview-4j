@@ -15,7 +15,12 @@ public enum Capture {
     /** {@link WebSocketFrame}: the page's WebSockets, and sending on them. */
     WEBSOCKET("websocket"),
     /** Page {@link LogRecord}s: {@code console.*} and uncaught errors. */
-    CONSOLE("console");
+    CONSOLE("console"),
+    /**
+     * {@link NetworkEvent}: every request, as it starts and as it ends or fails, with headers and bodies; and the
+     * page's other requests (pictures, scripts, styles) with their timing. What the dev window's Network tab shows.
+     */
+    NETWORK("network");
 
     private final String key;
 

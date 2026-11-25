@@ -578,6 +578,14 @@ public final class App implements AutoCloseable {
                 quit();
                 return;
             }
+            // The browser engine starts now, while the app gets ready, not when its first window opens: that
+            // window then takes ~100 ms instead of ~450 (WebView2). -Dwebview4j.prewarm=false leaves it for then.
+            if (!"false".equals(System.getProperty("webview4j.prewarm"))) {
+                request(Message.of("app.warm")).exceptionally(e -> {
+                    LOG.log(System.Logger.Level.DEBUG, "the browser engine did not start early: {0}", e.getMessage());
+                    return null;
+                });
+            }
             ready.complete(this);
             publish(new Ready());
         } else if (subject.equals("app.log")) {

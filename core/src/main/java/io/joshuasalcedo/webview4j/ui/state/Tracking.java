@@ -60,6 +60,35 @@ public final class Tracking {
         }
     }
 
+    /**
+     * Something windows draw that can change: a component kept between renders. The windows that drew it are drawn
+     * again when it {@link #changed() changes}. A window that drew it no longer (a newer render did not) is let go.
+     */
+    public static final class Watched {
+        private java.util.Set<Reader> readers;
+
+        /** The current render draws it (no-op outside one). */
+        public void read() {
+            Reader reader = current();
+            if (reader == null) return;
+            synchronized (this) {
+                if (readers == null) readers = Collections.newSetFromMap(new java.util.WeakHashMap<>());
+                readers.add(reader);
+            }
+        }
+
+        /** Draws again the windows that show it now. */
+        public void changed() {
+            java.util.List<Reader> now;
+            synchronized (this) {
+                if (readers == null || readers.isEmpty()) return;
+                readers.removeIf(r -> !r.alive());
+                now = java.util.List.copyOf(readers);
+            }
+            for (Reader r : now) r.changed();
+        }
+    }
+
     /** {@code render} run with {@code reader} remembering what it reads. */
     public static <R> R reading(Reader reader, Supplier<R> render) {
         return ScopedValue.where(CURRENT, reader).call(render::get);

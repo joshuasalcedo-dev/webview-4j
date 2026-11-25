@@ -106,6 +106,10 @@ public final class DevWindow implements AutoCloseable {
     /** Readings of the latest second or so, for rates over a second rather than one tick. */
     private final Deque<Metrics> readings = new ArrayDeque<>();
     private final Map<String, Integer> pageFps = new LinkedHashMap<>();
+    private final NetworkPanel network;
+    private final StoragePanel storage;
+    /** The views whose network and WebSockets the window already asked for. */
+    private final java.util.Set<String> watched = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private final Subscription events;
     private final Handler javaLog;
     private final Timer ticks;
@@ -115,6 +119,8 @@ public final class DevWindow implements AutoCloseable {
 
     private DevWindow(App app) {
         this.app = app;
+        this.network = new NetworkPanel(app);
+        this.storage = new StoragePanel(app);
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         frame.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosed(java.awt.event.WindowEvent e) { close(); }
@@ -125,11 +131,19 @@ public final class DevWindow implements AutoCloseable {
         tabs.addTab("Log", logPanel());
         tabs.addTab("Actions", new JScrollPane(numbers(new JTable(actions))));
         tabs.addTab("Pages", new JScrollPane(numbers(new JTable(pages))));
+        tabs.addTab("Network", network.component());
+        tabs.addTab("Storage", storage.component());
         frame.add(tabs, BorderLayout.CENTER);
-        frame.setSize(new Dimension(1000, 640));
+        frame.setSize(new Dimension(1100, 700));
         frame.setLocationByPlatform(true);
 
         events = app.subscribe(WebViewEvent.class, event -> {
+            // a request's steps belong to the Network tab, not the log (one line each would drown it)
+            if (event instanceof io.joshuasalcedo.webview4j.NetworkEvent request) {
+                network.accept(request);
+                return;
+            }
+            if (event instanceof io.joshuasalcedo.webview4j.WebSocketFrame socket) network.accept(socket);
             if (paused) return;
             var entry = LogTableModel.Entry.of(event, Instant.now());
             SwingUtilities.invokeLater(() -> log.add(entry));
@@ -342,6 +356,14 @@ public final class DevWindow implements AutoCloseable {
         while (!closed) {
             try {
                 List<ViewInfo> views = app.views().get(5, TimeUnit.SECONDS);
+                // each view's network and WebSockets, once, for the Network tab (the app's own captures stay as they are)
+                for (ViewInfo view : views) {
+                    if (watched.add(view.id())) {
+                        var v = app.view(view.id());
+                        v.capture(io.joshuasalcedo.webview4j.Capture.NETWORK, true);
+                        v.capture(io.joshuasalcedo.webview4j.Capture.WEBSOCKET, true);
+                    }
+                }
                 Map<String, Integer> measured = new LinkedHashMap<>();
                 for (ViewInfo view : views) {
                     try {
@@ -356,6 +378,7 @@ public final class DevWindow implements AutoCloseable {
                     pageFps.putAll(measured);
                 }
                 SwingUtilities.invokeLater(() -> {
+                    storage.views(views);
                     pages.setRowCount(0);
                     for (ViewInfo view : views) {
                         pages.addRow(new Object[] {view.id(), view.title(), view.url(), measured.getOrDefault(view.id(), 0)});

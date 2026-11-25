@@ -21,6 +21,27 @@ public final class TextField extends Component<TextField> {
     public TextField onChange(java.util.function.Consumer<String> action) { return on("onChange", v -> action.accept(Keys.text(v))); }
 
     public TextField password() { return prop("password", true); }
+
+    /**
+     * Which characters can be typed, as one regular-expression character class: {@code "[0-9]"} for digits only,
+     * {@code "[A-Za-z0-9_-]"} for a user name. Anything else does not appear as it is typed, and is left out of
+     * what is pasted.
+     *
+     * @throws IllegalArgumentException if it is not one character class
+     */
+    public TextField allow(String characterClass) {
+        if (characterClass == null || !characterClass.matches("\\[\\^?(?:[^\\]\\\\]|\\\\.)+\\]")) {
+            throw new IllegalArgumentException("allow takes one character class, e.g. [0-9] or [A-Za-z_-]: " + characterClass);
+        }
+        java.util.regex.Pattern.compile(characterClass);   // a class Java cannot read, the page cannot either
+        return prop("allow", characterClass);
+    }
+
+    /** At most this many characters: the next one typed does not appear. */
+    public TextField maxLength(int characters) {
+        if (characters < 0) throw new IllegalArgumentException("maxLength cannot be negative: " + characters);
+        return prop("maxLength", characters);
+    }
     /** Enter pressed in the field. */
     public TextField onSubmit(java.util.function.Consumer<String> action) { return on("onSubmit", v -> action.accept(Keys.text(v))); }
 }

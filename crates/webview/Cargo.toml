@@ -13,7 +13,8 @@ inspector = { path = "../inspector" }
 # Spelling and grammar for Java (grammar.rs): Harper.
 grammar = { path = "../grammar" }
 tao = "0.36.0"
-wry = "0.56.0"
+# devtools: open_devtools() in release builds too (View.openDevTools). On macOS it uses a private API (App Store review).
+wry = { version = "0.56.0", features = ["devtools"] }
 serde = { workspace = true }
 serde_json = "1"
 log = "0.4"
@@ -41,4 +42,6 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_Wind
     # Pictures of the app's own windows (capture.rs): PrintWindow, a DIB, the window's visible bounds.
     "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_Storage_Xps"] }
 # MP4 recordings with Windows' own H.264 encoder, Media Foundation (mediafoundation.rs): no ffmpeg needed.
+# The page's DevTools Protocol (cdp.rs): the same WebView2 bindings wry uses.
+webview2-com = "0.38"
 windows = { version = "0.61", features = ["Win32_Media_MediaFoundation", "Win32_System_Com", "Win32_Foundation"] }

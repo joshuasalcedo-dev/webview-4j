@@ -2,6 +2,14 @@ package io.joshuasalcedo.webview4j;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import static io.joshuasalcedo.webview4j.ui.Ui.*;
+
+import io.joshuasalcedo.webview4j.ui.Component;
+import io.joshuasalcedo.webview4j.ui.Screen;
+import io.joshuasalcedo.webview4j.ui.Ui;
+import io.joshuasalcedo.webview4j.ui.UiWindow;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -120,6 +128,122 @@ class Benchmark {
                 report("page events to a Java subscriber", N / seconds(t), "events/s");
             }
         }
+    }
+
+    /** A screen built in Java: a counter, and as many rows as asked. */
+    static final class Counter implements Screen {
+        volatile int count;
+        volatile int rows;
+
+        @Override
+        public Component<?> render() {
+            List<Component<?>> lines = new ArrayList<>();
+            for (int i = 0; i < rows; i++) lines.add(text("row " + i));
+            return column(button("Add").onClick(() -> count++), text("count " + count), column(lines.toArray(Component<?>[]::new)));
+        }
+    }
+
+    /** What apps do on top of the transport: Java screens, the store, grammar, the frame codec, windows. */
+    @Test
+    @Timeout(300)
+    void measureFeatures() throws Exception {
+        // ---- the frame codec, Java only ----
+        Message frame = Message.of("view.wv-1.eval").with("Reply-To", "_inbox.42").withText("document.title", "text/javascript");
+        byte[] bytes = frame.encode();
+        for (int i = 0; i < 20_000; i++) Message.decode(frame.encode());
+        long t = System.nanoTime();
+        for (int i = 0; i < 200_000; i++) Message.decode(frame.encode());
+        report("frame encode + decode (" + bytes.length + " bytes)", micros(t) / 200_000 * 1000, "ns");
+
+        // ---- the local store (redb), through FFM ----
+        Path dir = Files.createTempDirectory("webview4j-bench");
+        try (NativeStore store = NativeStore.open(dir.resolve("bench.redb"))) {
+            byte[] value = new byte[256];
+            t = System.nanoTime();
+            for (int i = 0; i < N; i++) store.put("key." + i, value);
+            report("store put, 256 bytes, each its own transaction", micros(t) / N, "µs");
+            t = System.nanoTime();
+            for (int i = 0; i < N; i++) store.get("key." + i).orElseThrow();
+            report("store get", micros(t) / N, "µs");
+            t = System.nanoTime();
+            int keys = store.keys("key.").size();
+            report("store keys by prefix (" + keys + " keys)", millis(t), "ms");
+        }
+
+        // ---- spelling and grammar (Harper), through FFM ----
+        Grammar grammar = Grammar.english();
+        String paragraph = "This is an test of the grammer checker. It have a few mistake in it, and it should find them quick. "
+                .repeat(5);
+        grammar.check(paragraph);
+        t = System.nanoTime();
+        for (int i = 0; i < 100; i++) grammar.check(paragraph);
+        report("grammar check, " + paragraph.length() + " characters", millis(t) / 100, "ms");
+
+        long t0 = System.nanoTime();
+        try (App app = App.start()) {
+            report("App.start() again, native library loaded", millis(t0), "ms");
+
+            // ---- the first window, the engine warmed while the app got ready (app.warm) ----
+            Thread.sleep(1_000);   // the app's own start (Spring, loading data...)
+            t = System.nanoTime();
+            View main = app.open(WindowOptions.html("<p>main</p>").headless(true)).join();
+            main.eval("1").join();
+            report("open the first window, engine warmed meanwhile", millis(t), "ms");
+
+            // ---- windows: after the first, a plain one and an owned one ----
+            t = System.nanoTime();
+            View second = app.open(WindowOptions.html("<p>second</p>").headless(true)).join();
+            second.eval("1").join();
+            report("open another window until its page answers", millis(t), "ms");
+            t = System.nanoTime();
+            View tool = app.open(WindowOptions.html("<p>tool</p>").owner(main).headless(true)).join();
+            tool.eval("1").join();
+            report("open an owned window until its page answers", millis(t), "ms");
+            main.close().join();
+            second.close().join();
+
+            // ---- a Java screen: a click, its handler, the new tree, drawn ----
+            Counter screen = new Counter();
+            t = System.nanoTime();
+            UiWindow window = Ui.open(app, screen, o -> o.headless(true).size(800, 600)).join();
+            View view = window.view();
+            until(view, "count 0");
+            report("Ui.open until the screen shows", millis(t), "ms");
+            String click = "[...document.querySelectorAll('button')].find(b => b.textContent === 'Add').click()";
+            for (int i = 1; i <= 50; i++) {
+                view.eval(click).join();
+                until(view, "count " + i);
+            }
+            t = System.nanoTime();
+            for (int i = 51; i <= 250; i++) {
+                view.eval(click).join();
+                until(view, "count " + i);
+            }
+            report("click -> Java handler -> drawn again", millis(t) / 200, "ms");
+
+            // ---- a big tree, pushed from Java ----
+            for (int rows : new int[] {100, 1_000, 5_000}) {
+                screen.rows = rows;
+                t = System.nanoTime();
+                window.refresh();
+                until(view, "row " + (rows - 1));
+                report("refresh with " + rows + " rows until drawn", millis(t), "ms");
+            }
+        } finally {
+            try (var files = Files.walk(dir)) {
+                files.sorted(java.util.Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
+            }
+        }
+    }
+
+    /** Waits for text on the page, checking every few milliseconds (the wait is part of what is measured). */
+    private static void until(View view, String text) throws InterruptedException {
+        String script = "document.body.innerText.includes(" + Json.write(text) + ")";
+        for (int i = 0; i < 20_000; i++) {
+            if (Boolean.TRUE.equals(view.eval(script).join())) return;
+            Thread.sleep(1);
+        }
+        throw new AssertionError("never showed '" + text + "'");
     }
 
     private static double millis(long start) { return (System.nanoTime() - start) / 1e6; }

@@ -51,6 +51,42 @@ pub fn script() -> String {
 }
 
 /// The origin of `url`, as a browser writes it in an `Origin` header; None for URLs without one.
+/// Where a link a page follows goes.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Navigation {
+    /// One of the app's own pages (or about:, data:, blob:): in the window.
+    Stay,
+    /// Someone else's site, or an e-mail: in the system's browser or mail app, the app's page left as it is.
+    Browser,
+    /// Anything else (file:, a custom scheme): nowhere.
+    Refuse,
+}
+
+/// Where following `url` goes, for a window whose own pages are on the `home` origins.
+pub fn navigation(url: &str, home: &[String]) -> Navigation {
+    let lower = url.trim().to_ascii_lowercase();
+    if lower.starts_with("about:") || lower.starts_with("data:") || lower.starts_with("blob:") {
+        return Navigation::Stay;
+    }
+    if let Some(origin) = origin_of(url) {
+        if home.iter().any(|h| h.eq_ignore_ascii_case(&origin)) {
+            return Navigation::Stay;
+        }
+    }
+    // `*`: a browser, which goes to any website itself (the bridge still answers only its origins).
+    if home.iter().any(|h| h == "*") && browsable(url) && !url.trim().to_ascii_lowercase().starts_with("mailto:") {
+        return Navigation::Stay;
+    }
+    if browsable(url) { Navigation::Browser } else { Navigation::Refuse }
+}
+
+/// An http(s) or mailto address in one piece: what the system's browser is given (as one argument, no shell).
+pub fn browsable(url: &str) -> bool {
+    let lower = url.trim().to_ascii_lowercase();
+    (lower.starts_with("https://") || lower.starts_with("http://") || lower.starts_with("mailto:"))
+        && !url.trim().chars().any(|c| c.is_control() || c == ' ' || c == '"')
+}
+
 pub fn origin_of(url: &str) -> Option<String> {
     let uri: wry::http::Uri = url.parse().ok()?;
     let scheme = uri.scheme_str()?;
@@ -83,6 +119,8 @@ enum Waiting {
     Fetch(RequestAsyncResponder, String),
     /// A call that came over IPC: the answer settles it by the page's own number.
     Posted(u64),
+    /// A request for one of the app's files, with the part of it asked for (a `Range` header), if any.
+    Asset(RequestAsyncResponder, String, Option<String>),
 }
 
 /// The page script that settles the page's call `page_call`: `value` is the answer (200) or what
@@ -288,7 +326,9 @@ impl Link {
             .header("Reply-To", format!("view.{}.call.{call}", self.view))
             .header("Root", root)
             .header("Path", path);
-        self.calls.insert(call, Waiting::Fetch(responder, origin));
+        // Java sends the whole file; the part a player seeks to is cut from it here.
+        let range = request.headers().get(header::RANGE).and_then(|r| r.to_str().ok()).map(str::to_owned);
+        self.calls.insert(call, Waiting::Asset(responder, origin, range));
         Some(message)
     }
 
@@ -336,6 +376,10 @@ impl Link {
         match self.calls.remove(&call)? {
             Waiting::Fetch(responder, origin) => {
                 respond_with(responder, &origin, answer);
+                None
+            }
+            Waiting::Asset(responder, origin, range) => {
+                responder.respond(asset_response(&origin, range.as_deref(), answer));
                 None
             }
             Waiting::Posted(page_call) => {
@@ -401,7 +445,7 @@ impl Link {
             poll.respond(response(410, Some(&origin), "text/plain", b"the window closed".to_vec()));
         }
         for (_, waiting) in self.calls.drain() {
-            if let Waiting::Fetch(responder, origin) = waiting {
+            if let Waiting::Fetch(responder, origin) | Waiting::Asset(responder, origin, _) = waiting {
                 responder.respond(response(503, Some(&origin), "text/plain", b"the window closed".to_vec()));
             }
         }
@@ -452,6 +496,62 @@ fn respond_with(responder: RequestAsyncResponder, origin: &str, answer: Message)
     responder.respond(response(status, origin, &content_type, answer.payload));
 }
 
+/// One of the app's files, from Java's answer (the whole file): all of it, or for a `Range` request the part asked
+/// for (`206`, so a player can seek). Every file says it can be asked for in parts (`Accept-Ranges`).
+fn asset_response(origin: &str, range: Option<&str>, answer: Message) -> Response<Vec<u8>> {
+    let status = answer.get("Status").and_then(|s| s.parse::<u16>().ok()).unwrap_or(500);
+    let content_type = answer.get("Content-Type").unwrap_or("application/octet-stream").to_string();
+    let origin = Some(origin).filter(|o| !o.is_empty());
+    let mut body = answer.payload;
+    let length = body.len() as u64;
+    let (status, content_range) = match (status, range) {
+        (200, Some(range)) => match byte_range(range, length) {
+            Some((start, end)) => {
+                body = body[start as usize..=end as usize].to_vec();
+                (206, Some(format!("bytes {start}-{end}/{length}")))
+            }
+            None => {
+                body = Vec::new();
+                (416, Some(format!("bytes */{length}")))
+            }
+        },
+        (status, _) => (status, None),
+    };
+    let mut response = response(status, origin, &content_type, body);
+    let headers = response.headers_mut();
+    if status == 200 || status == 206 || status == 416 {
+        headers.insert(header::ACCEPT_RANGES, header::HeaderValue::from_static("bytes"));
+    }
+    if let Some(value) = content_range.and_then(|v| header::HeaderValue::from_str(&v).ok()) {
+        headers.insert(header::CONTENT_RANGE, value);
+    }
+    response
+}
+
+/// The first and last byte a `Range: bytes=...` header asks for, in a file of `length` bytes: one range
+/// (`a-b`, `a-`, `-n`, the end clamped to the file). None when it cannot be met (416); several ranges are
+/// answered with the first.
+fn byte_range(header: &str, length: u64) -> Option<(u64, u64)> {
+    let spec = header.trim().strip_prefix("bytes=")?.split(',').next()?.trim();
+    let (from, to) = spec.split_once('-')?;
+    if length == 0 {
+        return None;
+    }
+    let (start, end) = match (from.trim(), to.trim()) {
+        ("", "") => return None,
+        ("", suffix) => {
+            let n: u64 = suffix.parse().ok()?;
+            if n == 0 {
+                return None;
+            }
+            (length.saturating_sub(n), length - 1)
+        }
+        (from, "") => (from.parse().ok()?, length - 1),
+        (from, to) => (from.parse().ok()?, to.parse::<u64>().ok()?.min(length - 1)),
+    };
+    (start <= end && start < length).then_some((start, end))
+}
+
 fn response(status: u16, origin: Option<&str>, content_type: &str, body: Vec<u8>) -> Response<Vec<u8>> {
     let mut response = Response::builder()
         .status(status)
@@ -500,6 +600,71 @@ mod tests {
         for bad in ["", "../secret", "a/../../b", "a//b", ".env", "a/.git/config", "a\\b", "C:/x", "a%2F..%2Fb", "a b", "a\u{0}b"] {
             assert!(!safe_asset_path(bad), "{bad:?} is refused");
         }
+    }
+
+    #[test]
+    fn a_link_out_of_the_app_goes_to_the_browser_not_into_the_window() {
+        let home = vec!["https://webview4j.localhost".to_string(), "http://localhost:8080".to_string()];
+        assert_eq!(navigation("https://webview4j.localhost/ui/index.html", &home), Navigation::Stay);
+        assert_eq!(navigation("http://localhost:8080/orders?page=2", &home), Navigation::Stay);
+        assert_eq!(navigation("HTTP://LOCALHOST:8080/", &home), Navigation::Stay);
+        assert_eq!(navigation("about:blank", &home), Navigation::Stay);
+        assert_eq!(navigation("data:text/html,hi", &home), Navigation::Stay);
+        assert_eq!(navigation("https://github.com/joshuasalcedo-dev/webview-4j", &home), Navigation::Browser);
+        assert_eq!(navigation("http://localhost:9090/", &home), Navigation::Browser, "another port is another site");
+        assert_eq!(navigation("mailto:ana@example.com", &home), Navigation::Browser);
+        for refused in ["file:///C:/Windows/win.ini", "ms-settings:privacy", "javascript:alert(1)", "https://a.example/x y", "https://a\n.example"] {
+            assert_eq!(navigation(refused, &home), Navigation::Refuse, "{refused:?}");
+        }
+    }
+
+    #[test]
+    fn a_browser_goes_to_any_website_itself() {
+        let home = vec!["https://webview4j.localhost".to_string(), "*".to_string()];
+        assert_eq!(navigation("https://github.com/joshuasalcedo-dev/webview-4j", &home), Navigation::Stay);
+        assert_eq!(navigation("http://localhost:9090/", &home), Navigation::Stay);
+        assert_eq!(navigation("mailto:ana@example.com", &home), Navigation::Browser, "mail still goes to the mail app");
+        for refused in ["file:///C:/Windows/win.ini", "ms-settings:privacy", "javascript:alert(1)"] {
+            assert_eq!(navigation(refused, &home), Navigation::Refuse, "{refused:?}");
+        }
+    }
+
+    #[test]
+    fn byte_ranges_as_a_player_asks_for_them() {
+        assert_eq!(byte_range("bytes=0-99", 1000), Some((0, 99)));
+        assert_eq!(byte_range("bytes=500-", 1000), Some((500, 999)));
+        assert_eq!(byte_range("bytes=-100", 1000), Some((900, 999)), "the last 100");
+        assert_eq!(byte_range("bytes=900-5000", 1000), Some((900, 999)), "the end is clamped to the file");
+        assert_eq!(byte_range("bytes=0-0, 5-9", 1000), Some((0, 0)), "several: the first");
+        assert_eq!(byte_range("bytes=-5000", 1000), Some((0, 999)));
+        for bad in ["bytes=1000-", "bytes=5-2", "bytes=-0", "bytes=-", "items=0-1", "bytes=a-b", ""] {
+            assert_eq!(byte_range(bad, 1000), None, "{bad:?} cannot be met");
+        }
+        assert_eq!(byte_range("bytes=0-", 0), None, "an empty file has no bytes to give");
+    }
+
+    #[test]
+    fn a_file_is_given_whole_or_in_the_part_asked_for() {
+        let file = || Message::new("c").header("Status", "200").header("Content-Type", "audio/wav").payload(b"0123456789".to_vec());
+        let whole = asset_response("", None, file());
+        assert_eq!(whole.status(), 200);
+        assert_eq!(whole.headers()[header::ACCEPT_RANGES], "bytes");
+        assert_eq!(whole.body(), b"0123456789");
+
+        let part = asset_response("", Some("bytes=2-5"), file());
+        assert_eq!(part.status(), 206);
+        assert_eq!(part.headers()[header::CONTENT_RANGE], "bytes 2-5/10");
+        assert_eq!(part.headers()[header::CONTENT_TYPE], "audio/wav");
+        assert_eq!(part.body(), b"2345");
+
+        let past = asset_response("", Some("bytes=20-"), file());
+        assert_eq!(past.status(), 416);
+        assert_eq!(past.headers()[header::CONTENT_RANGE], "bytes */10");
+
+        let missing = Message::new("c").header("Status", "404").payload(b"no file".to_vec());
+        let not_found = asset_response("", Some("bytes=0-1"), missing);
+        assert_eq!(not_found.status(), 404, "an error is passed on, not cut");
+        assert!(not_found.headers().get(header::ACCEPT_RANGES).is_none());
     }
 
     #[test]

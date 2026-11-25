@@ -43,6 +43,11 @@ application {
     }
 }
 
+// ./gradlew run is development: right-click → Inspect and F12 in every window (the installers leave it off)
+tasks.named<JavaExec>("run") {
+    systemProperty("webview4j.devtools", "true")
+}
+
 /** GraalVM 25, for the tracing agent and native-image. */
 val graal = javaToolchains.launcherFor {
     languageVersion = JavaLanguageVersion.of(25)
@@ -55,6 +60,7 @@ tasks.test {
     useJUnitPlatform()
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     providers.gradleProperty("sampler.section").orNull?.let { systemProperty("sampler.section", it) }
+    providers.gradleProperty("sampler.screenshots").orNull?.let { systemProperty("sampler.screenshots", it) }
     if (providers.gradleProperty("nativeAgent").isPresent) {
         javaLauncher = graal
         jvmArgs("-agentlib:native-image-agent=config-merge-dir=" + layout.projectDirectory.dir("src/main/resources/META-INF/native-image/io.joshuasalcedo.webview4j/sampler").asFile.absolutePath)

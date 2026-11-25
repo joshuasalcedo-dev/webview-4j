@@ -62,9 +62,13 @@ export function applySuggestion(text: string, mistake: Mistake, suggestion: stri
   return text.slice(0, mistake.from) + suggestion + text.slice(mistake.to)
 }
 
-/** The mistakes in `text`, checked again a moment after it stops changing; `ignored` words are left alone. */
+/**
+ * The mistakes in `text`, checked again once it has not changed for `delay` ms (500 unless set): typing does not
+ * check on every key, only when it pauses. `ignored` words are left alone.
+ */
 export function useGrammar(text: string, options: { dialect?: Dialect; delay?: number; enabled?: boolean; ignored?: string[] } = {}) {
-  const { dialect = "en-US", delay = 250, enabled = true, ignored } = options
+  const { dialect = "en-US", enabled = true, ignored } = options
+  const delay = options.delay ?? 500
   const [mistakes, setMistakes] = React.useState<Mistake[]>([])
   const [ready, setReady] = React.useState(false)
   const ignoredKey = ignored?.join("\u0000") ?? ""

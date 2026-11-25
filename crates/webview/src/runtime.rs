@@ -21,7 +21,7 @@ use crate::bridge;
 use crate::frame::Message;
 use crate::inspector::{self, Capture};
 use crate::payload::{
-    self, BoundsBody, CaptureBody, CookieRecord, FileDialogBody, Geometry, MessageDialogBody, OpenRequest, Outcome, PositionBody,
+    self, BoundsBody, CaptureBody, CookieBody, CookieRecord, FileDialogBody, Geometry, MessageDialogBody, OpenRequest, Outcome, PositionBody,
     PlaceBody, SizeBody, StateBody, ThemeChoice, WebViewInfo,
 };
 
@@ -74,6 +74,8 @@ struct Instance {
     window: Rc<Window>,
     /// Set for an embedded view: the view whose window it sits in.
     parent: Option<String>,
+    /// Set for an owned window: the view whose window owns it (it closes first).
+    owner: Option<String>,
     title: String,
     capture: Arc<Capture>,
     link: Arc<Mutex<bridge::Link>>,
@@ -83,6 +85,8 @@ struct Instance {
     pushes_size: usize,
     /// The close button asks Java (`close-requested`) instead of closing.
     confirm_close: bool,
+    /// Opened with devtools: its developer tools can be opened (F12, or view.<view>.devtools).
+    devtools: bool,
     /// The last size and position the window reported this round, sent once at its end: a drag
     /// reports dozens a second.
     resized: Option<(f64, f64)>,
@@ -130,6 +134,35 @@ struct State {
     views: HashMap<String, Instance>,
     ids_by_window: HashMap<WindowId, String>,
     next_id: u64,
+    /// `app.warm`: a hidden webview that keeps the browser engine started (on Windows, WebView2's browser
+    /// process), so the first real window opens in ~100 ms instead of ~450. Dropped once a window is open.
+    warm: Option<Instance>,
+    /// When to start it: a moment after `app.warm`, unless a window opened by then.
+    warm_at: Option<std::time::Instant>,
+}
+
+/// Starts the browser engine in a hidden 1×1 view that is then taken out of the views: not listed, nothing sent
+/// about its window. It is made the way every window is (open_webview), so the engine starts with the same options
+/// (WebView2 refuses a second environment on one profile with other options, such as other custom protocols).
+/// Once a real window is open the engine stays started with it, and this one goes.
+fn warm(target: &EventLoopWindowTarget<ToLoop>, state: &mut State) -> Outcome {
+    if state.warm.is_some() || state.views.values().any(|v| v.parent.is_none()) {
+        return Outcome::ok(); // started already
+    }
+    let open = match payload::json::<OpenRequest>(br#"{"title":"webview-4j","headless":true,"width":1,"height":1}"#) {
+        Ok(open) => open,
+        Err(error) => return error,
+    };
+    let opened = open_webview(open, target, state);
+    let id = format!("wv-{}", state.next_id);
+    match state.views.remove(&id) {
+        Some(instance) => {
+            state.ids_by_window.remove(&instance.window.id());
+            state.warm = Some(instance);
+            Outcome::ok()
+        }
+        None => opened, // it failed: why
+    }
 }
 
 /// Runs the event loop on this thread until `app.quit`; returns its exit code. On macOS this must
@@ -174,16 +207,33 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
             }
             _ => {}
         }
+        // app.warm: once the app has asked for no window for a moment, the engine starts (an app that opens one at
+        // once starts it with that window, not twice).
+        if let Some(at) = state.warm_at {
+            if std::time::Instant::now() >= at {
+                state.warm_at = None;
+                let outcome = warm(target, &mut state);
+                if outcome.status >= 400 {
+                    log::debug!("the browser engine did not start early ({})", outcome.status);
+                }
+            } else if *control_flow == ControlFlow::Wait {
+                *control_flow = ControlFlow::WaitUntil(at);
+            }
+        }
     }))
 }
 
-/// Closes a view and every view embedded in it (theirs first, while its window still exists), each with a
-/// `view.<id>.closed`. False if there is no such view.
+/// Closes a view, every view embedded in it and every window it owns (theirs first, while its window still
+/// exists), each with a `view.<id>.closed`. False if there is no such view.
 fn close_view(state: &mut State, id: &str) -> bool {
     // A recording of it is finished as it is, not lost.
     crate::capture::closed(id);
-    let children: Vec<String> =
-        state.views.iter().filter(|(_, v)| v.parent.as_deref() == Some(id)).map(|(child, _)| child.clone()).collect();
+    let children: Vec<String> = state
+        .views
+        .iter()
+        .filter(|(_, v)| v.parent.as_deref() == Some(id) || v.owner.as_deref() == Some(id))
+        .map(|(child, _)| child.clone())
+        .collect();
     for child in children {
         close_view(state, &child);
     }
@@ -194,6 +244,7 @@ fn close_view(state: &mut State, id: &str) -> bool {
         state.ids_by_window.remove(&instance.window.id());
     }
     drop(instance); // the webview, then (its last reference) the window: dropping the window closes it
+    crate::cdp::forget(id);
     emit(&Message::new(format!("view.{id}.closed")));
     true
 }
@@ -389,6 +440,12 @@ fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut 
             Err(error) => error,
         },
         ["app", "list"] => Outcome::json(&list(state)),
+        ["app", "warm"] => {
+            if state.warm.is_none() && !state.views.values().any(|v| v.parent.is_none()) {
+                state.warm_at = Some(std::time::Instant::now() + std::time::Duration::from_millis(50));
+            }
+            Outcome::ok()
+        }
         ["app", "play"] => crate::sound::play(&message.payload),
         ["app", "dialog", "file"] => match payload::json::<FileDialogBody>(&message.payload) {
             Ok(body) => match parent(body.view.as_deref(), state) {
@@ -406,7 +463,16 @@ fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut 
         },
         ["app", "quit"] => {
             // Webviews before their windows and contexts, embedded ones first, while the loop is still alive.
+            state.warm = None;
             state.views.retain(|_, v| v.parent.is_none());
+            // Then owned windows before their owners: those that own none first, again until none is owned.
+            loop {
+                let owners: std::collections::HashSet<String> = state.views.values().filter_map(|v| v.owner.clone()).collect();
+                if owners.is_empty() {
+                    break;
+                }
+                state.views.retain(|id, v| v.owner.is_none() || owners.contains(id));
+            }
             state.ids_by_window.clear();
             state.views.clear();
             *control_flow = ControlFlow::Exit;
@@ -451,7 +517,7 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
         // An embedded view has no window of its own: what is about a window is refused; showing, hiding and
         // focusing are about the webview, and `place` moves it.
         match rest {
-            ["title"] | ["size"] | ["position"] | ["bounds"] | ["state"] | ["min-size"] | ["geometry"] | ["monitors"] | ["theme"]
+            ["title"] | ["size"] | ["position"] | ["bounds"] | ["state"] | ["min-size"] | ["geometry"] | ["monitors"] | ["theme"] | ["handle"]
             | ["screenshot"] | ["record"] => {
                 return Some(Outcome::error(400, format!("'{view}' is embedded: it has no window of its own (place moves it)")));
             }
@@ -482,6 +548,43 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
             Ok(html) => result(instance.webview.load_html(html)),
             Err(error) => error,
         },
+        // The page's DevTools Protocol: a method's result, and its events as view.<view>.cdp.
+        ["cdp", "call"] => match payload::json::<serde_json::Value>(payload) {
+            Ok(body) => {
+                let method = body.get("method").and_then(Value::as_str).unwrap_or_default().to_string();
+                let params = body.get("params").cloned().unwrap_or_else(|| json!({})).to_string();
+                if method.is_empty() {
+                    return Some(Outcome::error(400, "a DevTools call names its method"));
+                }
+                let later = reply.clone();
+                let called = crate::cdp::call(&instance.webview, &method, &params, move |result| {
+                    later.send(match result {
+                        Ok(json) => Outcome { status: 200, content_type: "application/json", body: json.into_bytes() },
+                        Err(error) => Outcome::error(502, error),
+                    });
+                });
+                match called {
+                    Ok(()) => return None,
+                    Err(error) => Outcome::error(500, error),
+                }
+            }
+            Err(error) => error,
+        },
+        ["cdp", "listen"] => match payload::text(payload) {
+            Ok(event) => {
+                let event = event.trim().to_string();
+                let topic = format!("view.{view}.cdp");
+                let name = event.clone();
+                match crate::cdp::listen(view, &instance.webview, &event, move |params| {
+                    let body = format!("{{\"event\":{},\"params\":{}}}", Value::String(name.clone()), params);
+                    emit(&Message::new(topic.clone()).payload(body));
+                }) {
+                    Ok(()) => Outcome::ok(),
+                    Err(error) => Outcome::error(500, error),
+                }
+            }
+            Err(error) => error,
+        },
         ["eval"] => match payload::text(payload) {
             Ok(script) => {
                 let later = reply.clone();
@@ -499,20 +602,27 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
         },
         ["cookies"] => match payload::text(payload) {
             Ok(url) => match instance.webview.cookies_for_url(url) {
-                Ok(cookies) => Outcome::json(
-                    &cookies
-                        .into_iter()
-                        .map(|cookie| CookieRecord {
-                            name: cookie.name().to_string(),
-                            value: cookie.value().to_string(),
-                            domain: cookie.domain().unwrap_or_default().to_string(),
-                            path: cookie.path().unwrap_or_default().to_string(),
-                            http_only: cookie.http_only().unwrap_or(false),
-                            secure: cookie.secure().unwrap_or(false),
-                        })
-                        .collect::<Vec<_>>(),
-                ),
+                Ok(cookies) => Outcome::json(&cookie_records(cookies)),
                 Err(error) => Outcome::error(500, error.to_string()),
+            },
+            Err(error) => error,
+        },
+        // every cookie of the view's browser profile, whatever site
+        ["cookies", "all"] => match instance.webview.cookies() {
+            Ok(cookies) => Outcome::json(&cookie_records(cookies)),
+            Err(error) => Outcome::error(500, error.to_string()),
+        },
+        ["cookies", "set"] => match payload::json::<CookieBody>(payload).and_then(|body| on_the_pages_site(instance, body)) {
+            Ok(body) => match body.cookie() {
+                Ok(cookie) => result(instance.webview.set_cookie(&cookie)),
+                Err(error) => error,
+            },
+            Err(error) => error,
+        },
+        ["cookies", "delete"] => match payload::json::<CookieBody>(payload).and_then(|body| on_the_pages_site(instance, body)) {
+            Ok(body) => match body.cookie() {
+                Ok(cookie) => result(instance.webview.delete_cookie(&cookie)),
+                Err(error) => error,
             },
             Err(error) => error,
         },
@@ -596,6 +706,8 @@ fn on_view(view: &str, rest: &[&str], message: &Message, reply: &ReplyTo, state:
             Err(error) => error,
         },
         ["geometry"] => Outcome::json(&geometry(&instance.window)),
+        ["handle"] => native_handle(&instance.window),
+        ["devtools"] => devtools(instance, payload),
         ["monitors"] => Outcome::json(&monitors(&instance.window)),
         ["screenshot"] => match payload::json::<crate::capture::ShotBody>(payload) {
             Ok(body) => match crate::capture::grab(window_handle(&instance.window)).and_then(|f| f.scaled(body.scale.unwrap_or(1.0)).png()) {
@@ -825,9 +937,19 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
     if parent.is_some() && !EMBEDDING {
         return Outcome::error(501, "embedded views are not supported on this system yet");
     }
+    // The window that owns this one: by its view (an embedded view's is the window it sits in).
+    let owner = match &open.owner {
+        None => None,
+        Some(_) if parent.is_some() => return Outcome::error(400, "an embedded view has no window of its own to be owned: owner or parent"),
+        Some(_) if open.owner_window.is_some() => return Outcome::error(400, "owner or ownerWindow, not both"),
+        Some(owner) => match state.views.get(owner) {
+            Some(instance) => Some((instance.parent.clone().unwrap_or_else(|| owner.clone()), Rc::clone(&instance.window))),
+            None => return not_found(owner),
+        },
+    };
     let window = match &parent {
         Some((_, window)) => Rc::clone(window),
-        None => match window_builder(&open).build(target) {
+        None => match window_builder(&open, owner.as_ref().map(|(_, window)| &**window)).build(target) {
             Ok(window) => Rc::new(window),
             Err(e) => return Outcome::error(500, format!("failed to create the window: {e}")),
         },
@@ -849,6 +971,39 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
         (None, Some(url)) => bridge::origin_of(url).into_iter().collect(),
         (None, None) => vec!["null".to_string()],
     });
+    // Where the window's own pages are: its bridge origins, its url's, the app's files', and any Java allows. A
+    // link anywhere else opens in the system's browser, never in place of the app (an embedded site browses on).
+    let mut home: Vec<String> = origins.clone();
+    home.extend(open.url.as_deref().and_then(bridge::origin_of));
+    home.extend(bridge::origin_of(bridge::base_url()));
+    home.extend(open.navigation.clone().unwrap_or_default());
+    let embedded = parent.is_some();
+    builder = builder
+        .with_navigation_handler(move |url| {
+            if embedded {
+                return true;
+            }
+            match bridge::navigation(&url, &home) {
+                bridge::Navigation::Stay => true,
+                bridge::Navigation::Browser => {
+                    open_in_browser(&url);
+                    false
+                }
+                bridge::Navigation::Refuse => {
+                    log::warn!("a page tried to go to {url}: refused");
+                    false
+                }
+            }
+        })
+        // target=_blank and window.open: the system's browser too, never a bare browser window of WebView2's own.
+        .with_new_window_req_handler(|url, _| {
+            if bridge::browsable(&url) {
+                open_in_browser(&url);
+            } else {
+                log::warn!("a page tried to open {url} in a new window: refused");
+            }
+            wry::NewWindowResponse::Deny
+        });
     let link = bridge::Link::with_assets(&id, origins, open.assets.clone());
     let page_link = Arc::clone(&link);
     let ipc_link = Arc::clone(&link);
@@ -869,6 +1024,20 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
     if let Some(script) = &open.initialization_script {
         builder = builder.with_initialization_script(script);
     }
+    // Where the page is and what it is called, for a host's address bar and tab title (a JavaFX browser pane).
+    let load_view = id.clone();
+    let title_view = id.clone();
+    builder = builder
+        .with_on_page_load_handler(move |event, url| {
+            let state = match event {
+                wry::PageLoadEvent::Started => "started",
+                wry::PageLoadEvent::Finished => "finished",
+            };
+            emit(&Message::new(format!("view.{load_view}.page-load")).payload(json!({"state": state, "url": url}).to_string()));
+        })
+        .with_document_title_changed_handler(move |title| {
+            emit(&Message::new(format!("view.{title_view}.title-changed")).payload(json!({"title": title}).to_string()));
+        });
     if open.file_drop {
         let drop_view = id.clone();
         builder = builder.with_drag_drop_handler(move |event| {
@@ -894,12 +1063,19 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
         Err(e) => return Outcome::error(500, format!("failed to create the webview: {e}")),
     };
 
+    if parent.is_none() && open.offscreen {
+        crate::cdp::offscreen(&window);
+    }
     if parent.is_none() {
         state.ids_by_window.insert(window.id(), id.clone());
+        // A real window keeps the engine started now: the warm-up's work is done (or not needed).
+        state.warm = None;
+        state.warm_at = None;
     }
     let instance = Instance {
         window,
         parent: parent.map(|(parent, _)| parent),
+        owner: owner.map(|(owner, _)| owner),
         webview,
         title: open.title,
         capture,
@@ -907,6 +1083,7 @@ fn open_webview(open: OpenRequest, target: &EventLoopWindowTarget<ToLoop>, state
         pushes: Vec::new(),
         pushes_size: 0,
         confirm_close: open.confirm_close,
+        devtools: open.devtools,
         resized: None,
         moved: None,
         context,
@@ -991,11 +1168,43 @@ fn result(result: Result<(), wry::Error>) -> Outcome {
     }
 }
 
+/// Opens an http(s) or mailto address in the system's browser or mail app: the address as one argument, never
+/// through a shell, on a thread of its own (the loop does not wait for the browser).
+fn open_in_browser(url: &str) {
+    if !bridge::browsable(url) {
+        return;
+    }
+    let url = url.trim().to_string();
+    log::info!("opening {url} in the system's browser");
+    // Tests: the decision is made and logged, no browser starts.
+    if std::env::var("WEBVIEW4J_BROWSER").is_ok_and(|v| v == "off") {
+        return;
+    }
+    let _ = std::thread::Builder::new().name("webview4j-browser".into()).spawn(move || {
+        let mut command = if cfg!(target_os = "windows") {
+            let mut c = std::process::Command::new("rundll32");
+            c.args(["url.dll,FileProtocolHandler", &url]);
+            c
+        } else if cfg!(target_os = "macos") {
+            let mut c = std::process::Command::new("open");
+            c.arg(&url);
+            c
+        } else {
+            let mut c = std::process::Command::new("xdg-open");
+            c.arg(&url);
+            c
+        };
+        if let Err(error) = command.status() {
+            log::warn!("no browser opened {url}: {error}");
+        }
+    });
+}
+
 fn not_found(view: &str) -> Outcome {
     Outcome::error(404, format!("no view '{view}'"))
 }
 
-fn window_builder(open: &OpenRequest) -> WindowBuilder {
+fn window_builder(open: &OpenRequest, owner: Option<&Window>) -> WindowBuilder {
     let mut builder = WindowBuilder::new()
         .with_title(&open.title)
         .with_inner_size(LogicalSize::new(open.width, open.height))
@@ -1021,7 +1230,78 @@ fn window_builder(open: &OpenRequest) -> WindowBuilder {
             Err(reason) => log::warn!("the window's icon is not used: {reason}"),
         }
     }
-    owned(builder, open.owner_window)
+    match owner {
+        Some(owner) => owned_by(builder, owner),
+        None => owned(builder, open.owner_window),
+    }
+}
+
+/// Owned by another of the app's windows: above it, minimized with it, no taskbar entry of its own. Unlike a
+/// docked `ownerWindow`, it keeps its frame's shadow: it is a window of its own (a tool window, a dialog).
+#[cfg(target_os = "windows")]
+fn owned_by(builder: WindowBuilder, owner: &Window) -> WindowBuilder {
+    use tao::platform::windows::{WindowBuilderExtWindows, WindowExtWindows};
+    builder.with_owner_window(owner.hwnd()).with_skip_taskbar(true)
+}
+
+/// A child window of the owner's (NSWindow addChildWindow): it moves with it and stays above it.
+#[cfg(target_os = "macos")]
+fn owned_by(builder: WindowBuilder, owner: &Window) -> WindowBuilder {
+    use tao::platform::macos::{WindowBuilderExtMacOS, WindowExtMacOS};
+    builder.with_parent_window(owner.ns_window())
+}
+
+/// Transient for the owner's window: the window manager keeps it above it.
+#[cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))]
+fn owned_by(builder: WindowBuilder, owner: &Window) -> WindowBuilder {
+    use tao::platform::unix::{WindowBuilderExtUnix, WindowExtUnix};
+    builder.with_transient_for(owner.gtk_window()).with_skip_taskbar(true)
+}
+
+/// `view.<view>.devtools`: opens (`{"open":true}`) or closes (`{"open":false}`) the view's developer tools, or with
+/// no payload only says. Answers `{"open": true | false | null}`: null where the system cannot tell (Windows,
+/// whose WebView2 can open its tools but neither close them nor say whether they are open).
+fn devtools(instance: &Instance, payload: &[u8]) -> Outcome {
+    if !instance.devtools {
+        return Outcome::error(400, "its developer tools are off: open the window with WindowOptions.devtools(true)");
+    }
+    #[derive(serde::Deserialize)]
+    struct Body {
+        open: Option<bool>,
+    }
+    let body = if payload.is_empty() {
+        Body { open: None }
+    } else {
+        match serde_json::from_slice::<Body>(payload) {
+            Ok(body) => body,
+            Err(e) => return Outcome::error(400, format!("devtools takes {{\"open\": true|false}}: {e}")),
+        }
+    };
+    match body.open {
+        Some(true) => instance.webview.open_devtools(),
+        Some(false) => instance.webview.close_devtools(),
+        None => {}
+    }
+    let open = if cfg!(target_os = "windows") { serde_json::Value::Null } else { serde_json::Value::Bool(instance.webview.is_devtools_open()) };
+    Outcome::json(&json!({ "open": open }))
+}
+
+/// The window's native handle, for code that talks to the system itself (an HWND, an NSWindow pointer).
+#[cfg(target_os = "windows")]
+fn native_handle(window: &Window) -> Outcome {
+    use tao::platform::windows::WindowExtWindows;
+    Outcome::json(&json!({"kind": "hwnd", "handle": window.hwnd() as i64}))
+}
+
+#[cfg(target_os = "macos")]
+fn native_handle(window: &Window) -> Outcome {
+    use tao::platform::macos::WindowExtMacOS;
+    Outcome::json(&json!({"kind": "nswindow", "handle": window.ns_window() as usize as i64}))
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn native_handle(_window: &Window) -> Outcome {
+    Outcome::error(501, "a window's native handle is not given on this system yet")
 }
 
 /// The icon in the title bar and the window switcher, and on Windows the taskbar's too.
@@ -1045,7 +1325,9 @@ fn owned(builder: WindowBuilder, owner: Option<isize>) -> WindowBuilder {
             .with_owner_window(owner)
             .with_skip_taskbar(true)
             // A docked view must end exactly at its bounds: no drop shadow around it.
-            .with_undecorated_shadow(false),
+            .with_undecorated_shadow(false)
+            // Shown without taking the focus from the window it is docked in (a JavaFX or Swing app's).
+            .with_focused(false),
         None => builder,
     }
 }
@@ -1065,5 +1347,59 @@ fn set_bounds(window: &Window, x: i32, y: i32, width: u32, height: u32) {
         let inner_width = (2 * width).saturating_sub(outer.width).max(1);
         let inner_height = (2 * height).saturating_sub(outer.height).max(1);
         window.set_inner_size(PhysicalSize::new(inner_width, inner_height));
+    }
+}
+
+/// The view's cookies as Java reads them (Cookie.java), values included: they are credentials, never logged.
+fn cookie_records(cookies: Vec<wry::cookie::Cookie<'static>>) -> Vec<CookieRecord> {
+    cookies
+        .into_iter()
+        .map(|cookie| CookieRecord {
+            name: cookie.name().to_string(),
+            value: cookie.value().to_string(),
+            domain: cookie.domain().unwrap_or_default().to_string(),
+            path: cookie.path().unwrap_or_default().to_string(),
+            http_only: cookie.http_only().unwrap_or(false),
+            secure: cookie.secure().unwrap_or(false),
+        })
+        .collect()
+}
+
+/// A cookie without a domain is the page's own site's (WebView2 cannot set one without); 400 when the page has
+/// no site (about:blank, a data: page).
+fn on_the_pages_site(instance: &Instance, mut body: CookieBody) -> Result<CookieBody, Outcome> {
+    if body.domain.as_deref().is_some_and(|d| !d.is_empty()) {
+        return Ok(body);
+    }
+    let host = instance.webview.url().ok().and_then(|url| host_of(&url));
+    match host {
+        Some(host) => {
+            body.domain = Some(host);
+            Ok(body)
+        }
+        None => Err(Outcome::error(400, "this page has no site of its own (about:blank, data:): give the cookie a domain")),
+    }
+}
+
+/// The host of an http(s) URL ("https://a.example.com:8080/x" → "a.example.com"); None for any other.
+fn host_of(url: &str) -> Option<String> {
+    let rest = url.strip_prefix("https://").or_else(|| url.strip_prefix("http://"))?;
+    let authority = rest.split(['/', '?', '#']).next()?;
+    let authority = authority.rsplit('@').next()?;
+    let host = if authority.starts_with('[') { authority.split(']').next().map(|h| &h[1..])? } else { authority.split(':').next()? };
+    (!host.is_empty()).then(|| host.to_ascii_lowercase())
+}
+
+#[cfg(test)]
+mod host_tests {
+    use super::host_of;
+
+    #[test]
+    fn a_pages_host_is_its_cookies_domain() {
+        assert_eq!(host_of("https://webview4j.localhost/app/index.html").as_deref(), Some("webview4j.localhost"));
+        assert_eq!(host_of("http://user@A.Example.com:8080/x?y#z").as_deref(), Some("a.example.com"));
+        assert_eq!(host_of("about:blank"), None);
+        assert_eq!(host_of("data:text/html,x"), None);
+        assert_eq!(host_of("https:///x"), None);
     }
 }

@@ -12,9 +12,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
- * The native library's three functions (PROTOCOL.md §6), one downcall handle each. Handles are
- * static constants, which keeps them visible to GraalVM native-image. Frames go in through
- * {@link #send} and come out on the consumer {@link #run} was given.
+ * The native library's message transport (PROTOCOL.md §6): {@code wv_run}, {@code wv_send} and
+ * {@code wv_version}, one downcall handle each. Handles are static constants, which keeps them
+ * visible to GraalVM native-image. Frames go in through {@link #send} and come out on the consumer
+ * {@link #run} was given. The library's other functions are called directly, outside the loop:
+ * the store ({@link NativeStore}), the system's vault ({@link SecretStore}) and spelling and
+ * grammar ({@link Grammar}).
  */
 final class Native {
 

@@ -41,7 +41,13 @@ public final class Gallery {
             AuthenticationDemos::new,
             XlsxDemos::new,
             PdfDemos::new,
-            DocxDemos::new);
+            DocxDemos::new,
+            ChatDemos::new,
+            WindowDemos::new,
+            MediaDemos::new,
+            ControlsDemos::new,
+            ChartDemos::new,
+            OverlayDemos::new);
 
     private final Map<String, Page> pages = new LinkedHashMap<>();
 
@@ -100,6 +106,7 @@ public final class Gallery {
         }
         found.sort(Comparator.comparing(Class::getName));
         return found;
+
     }
 
     private static void collect(Path base, Path dir, List<Class<?>> found) throws IOException {

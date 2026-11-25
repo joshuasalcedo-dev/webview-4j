@@ -1,0 +1,29 @@
+/* The demo's dark theme for JavaFX's own controls: Modena works everything else out from these. */
+.root {
+    -fx-base: #27272a;
+    -fx-background: #18181b;
+    -fx-control-inner-background: #1f1f23;
+    -fx-control-inner-background-alt: #232328;
+    -fx-accent: #6366f1;
+    -fx-focus-color: #818cf8;
+    -fx-faint-focus-color: #818cf822;
+    -fx-text-base-color: #f4f4f5;
+    -fx-text-background-color: #f4f4f5;
+    -fx-selection-bar-non-focused: #3f3f46;
+}
+
+.label, .check-box, .tab-label {
+    -fx-text-fill: #e4e4e7;
+}
+
+.text-field, .text-area {
+    -fx-prompt-text-fill: #71717a;
+}
+
+.text-area .content {
+    -fx-background-color: #1f1f23;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-background-color: #27272a;
+}

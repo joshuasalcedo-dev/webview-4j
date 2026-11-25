@@ -11,6 +11,8 @@ import java.util.Map;
 final class ActionsAndInputDemos implements Demos {
 
     private int clicks;
+    private boolean menuPinned;
+    private String menuSaid = "Right-click the card (or Shift+F10 on it).";
     private String name = "";
     private String notes = "";
     private String draft = "I recieved there package yesterday and its an great day.";
@@ -68,6 +70,25 @@ final class ActionsAndInputDemos implements Demos {
                 link("webview-4j on GitHub", "https://github.com/...")
                 link("A link that runs Java", "#").onClick(() -> clicks++)""",
                 Link.class);
+        gallery.page("Actions", "Context menu", () -> column(
+                contextMenu(surface("Right-click here", text("report-2026.pdf"), text(menuPinned ? "Pinned" : "Not pinned").tone(Tone.SECONDARY)))
+                        .item(ContextMenu.menuItem("Open", () -> menuSaid = "Opened report-2026.pdf").icon("file"))
+                        .item(ContextMenu.menuItem("Copy", () -> menuSaid = "Copied").shortcut("Mod+C").icon("download"))
+                        .item("Rename", "F2", () -> menuSaid = "Renaming…")
+                        .separator()
+                        .check("Pinned", menuPinned, on -> { menuPinned = on; menuSaid = on ? "Pinned" : "Unpinned"; })
+                        .separator()
+                        .item(ContextMenu.menuItem("Delete", () -> menuSaid = "Deleted").shortcut("Delete").disabled(menuPinned)),
+                text(menuSaid).tone(Tone.SECONDARY)).gap(12),
+                """
+                contextMenu(surface("Right-click here", ...))
+                        .item(ContextMenu.menuItem("Open", () -> open()).icon("file"))
+                        .item(ContextMenu.menuItem("Copy", () -> copy()).shortcut("Mod+C"))   // Ctrl+C on Windows, ⌘C on a Mac
+                        .item("Rename", "F2", () -> rename())
+                        .separator()
+                        .check("Pinned", pinned, on -> pinned = on)
+                        .item(ContextMenu.menuItem("Delete", () -> delete()).disabled(pinned))""",
+                ContextMenu.class);
         gallery.page("Input", "Grammar", () -> column(
                 segmented("English", ordered("en-US", "American", "en-GB", "British", "en-AU", "Australian"))
                         .value(draftDialect).onChange(v -> draftDialect = v),

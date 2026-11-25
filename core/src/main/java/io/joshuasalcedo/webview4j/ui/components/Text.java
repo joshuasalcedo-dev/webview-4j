@@ -10,6 +10,8 @@ public final class Text extends Component<Text> {
         prop("text", text);
     }
 
+    /** Says this now; a window showing it draws again. */
+    public Text text(String text) { return prop("text", text); }
     public Text variant(TextVariant variant) { return prop("variant", variant.key()); }
     public Text tone(Tone tone) { return prop("tone", tone.key()); }
     public Text strong() { return prop("strong", true); }

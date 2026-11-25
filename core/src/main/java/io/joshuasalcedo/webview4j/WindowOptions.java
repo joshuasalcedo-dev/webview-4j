@@ -24,16 +24,25 @@ public final class WindowOptions {
     private double height = 768;
     private boolean resizable = true;
     private boolean decorations = true;
-    private boolean devtools;
+    /** {@link #devtools(boolean)}; null: {@code -Dwebview4j.devtools}. */
+    private Boolean devtools;
     private boolean headless;
     private String initializationScript;
     private Path dataDirectory;
     private Set<Capture> capture;
     private List<String> origins;
+    /** {@link #navigation}: more sites that open in the window. */
+    private List<String> navigation;
+    /** {@link #browse()}: any website opens in the window itself. */
+    private boolean browse;
+    /** {@link #offscreen()}: drawn for Java, not for the person. */
+    private boolean offscreen;
     private String assets;
     private ClassLoader assetLoader;
     private byte[] icon;
     private long ownerWindow;
+    /** {@link #owner(View)}: the owning view's id. */
+    private String owner;
     private double minWidth;
     private double minHeight;
     private boolean maximized;
@@ -132,12 +141,31 @@ public final class WindowOptions {
      */
     public WindowOptions ownerWindow(long hwnd) {
         if (hwnd == 0) throw new IllegalArgumentException("ownerWindow needs a window handle, not 0");
+        if (owner != null) throw new IllegalStateException("owner or ownerWindow, not both");
         this.ownerWindow = hwnd;
+        return this;
+    }
+
+    /**
+     * Another of the app's windows owns this one: a tool window, an inspector, a dialog of its own. It stays above
+     * its owner, is minimized with it, has no taskbar button of its own, and closes (with its {@link Closed}) just
+     * before its owner does. Windows: an owned window; macOS: a child window, which also moves with its owner;
+     * Linux: a transient window. An embedded view's owner is the window it sits in.
+     *
+     * @throws IllegalStateException if {@link #ownerWindow(long)} was set too
+     */
+    public WindowOptions owner(View owner) {
+        if (ownerWindow != 0) throw new IllegalStateException("owner or ownerWindow, not both");
+        this.owner = java.util.Objects.requireNonNull(owner, "owner").id();
         return this;
     }
 
     /** False removes the title bar and borders. */
     public WindowOptions decorations(boolean value) { this.decorations = value; return this; }
+    /**
+     * The browser's developer tools: right-click → Inspect, F12, Ctrl+Shift+I, {@link View#openDevTools()}. Off
+     * unless set here or by {@code -Dwebview4j.devtools=true} (for every window that does not say: development runs).
+     */
     public WindowOptions devtools(boolean value)    { this.devtools = value; return this; }
     /** True keeps the window hidden: for automation and tests. */
     public WindowOptions headless(boolean value)    { this.headless = value; return this; }
@@ -238,6 +266,39 @@ public final class WindowOptions {
      * Unless given: the origin of the {@link #url url}, or {@code "null"} for {@link #html html}.
      * Any other page the window navigates to gets {@code 403}.
      */
+    /**
+     * More sites whose pages open in this window when a link or a redirect goes there, e.g. the sign-in page a
+     * server sends the window to ({@code "https://sso.example.com"}). The window's own pages always stay; a link to
+     * any other site opens in the system's browser (and {@code mailto:} in the mail app), never in place of the app.
+     */
+    public WindowOptions navigation(String... origins) {
+        for (String origin : origins) {
+            if (!origin.matches("https?://[^/?#\\s]+")) throw new IllegalArgumentException("not an origin (scheme://host[:port]): " + origin);
+        }
+        this.navigation = List.of(origins);
+        return this;
+    }
+
+    /**
+     * A browser: links and redirects to any http(s) website open in this window itself, not in the system's
+     * browser. The bridge still answers only {@link #origins(String...) its origins}, so a site it browses to cannot
+     * call the app. {@code mailto:} still opens the mail app; other schemes are refused.
+     */
+    public WindowOptions browse() {
+        this.browse = true;
+        return this;
+    }
+
+    /**
+     * Windows only: a window drawn for Java, not for the person: all but invisible, and the mouse goes through it to
+     * the window below. Java shows its page itself, from the DevTools screencast (a JavaFX node does: webview-4j-fx).
+     * It stays on the screen so the engine keeps drawing, and its pop-ups (a select's list) open where they should.
+     */
+    public WindowOptions offscreen() {
+        this.offscreen = true;
+        return this;
+    }
+
     public WindowOptions origins(String... origins) {
         for (String origin : origins) {
             if (!origin.equals("null") && !origin.matches("https?://[^/?#\\s]+")) {
@@ -258,15 +319,23 @@ public final class WindowOptions {
         payload.put("height", height);
         payload.put("resizable", resizable);
         payload.put("decorations", decorations);
-        payload.put("devtools", devtools);
+        payload.put("devtools", devtools != null ? devtools : Boolean.getBoolean("webview4j.devtools"));
         payload.put("headless", headless);
         if (initializationScript != null) payload.put("initializationScript", initializationScript);
         if (dataDirectory != null) payload.put("dataDirectory", dataDirectory.toString());
         if (capture != null) payload.put("capture", switches(capture));
         if (origins != null) payload.put("origins", origins);
+        if (browse) {
+            List<String> anywhere = new java.util.ArrayList<>(navigation == null ? List.of() : navigation);
+            anywhere.add("*");
+            payload.put("navigation", anywhere);
+        } else if (navigation != null) {
+            payload.put("navigation", navigation);
+        }
         if (assets != null) payload.put("assets", assets);
         if (icon != null) payload.put("icon", java.util.Base64.getEncoder().encodeToString(icon));
         if (ownerWindow != 0) payload.put("ownerWindow", ownerWindow);
+        if (owner != null) payload.put("owner", owner);
         if (minWidth > 0) {
             payload.put("minWidth", minWidth);
             payload.put("minHeight", minHeight);
@@ -278,6 +347,7 @@ public final class WindowOptions {
             payload.put("y", y);
         }
         if (fullscreen) payload.put("fullscreen", true);
+        if (offscreen) payload.put("offscreen", true);
         if (alwaysOnTop) payload.put("alwaysOnTop", true);
         if (confirmClose) payload.put("confirmClose", true);
         if (fileDrop) payload.put("fileDrop", true);

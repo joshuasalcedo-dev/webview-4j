@@ -10,6 +10,8 @@ public final class Button extends Component<Button> {
         prop("label", label);
     }
 
+    /** Says this now; a window showing it draws again. */
+    public Button label(String label) { return prop("label", label); }
     /** The window's main action: one per window. */
     public Button accent() { return prop("variant", "accent"); }
     /** No fill until hovered: toolbars, icon buttons. */

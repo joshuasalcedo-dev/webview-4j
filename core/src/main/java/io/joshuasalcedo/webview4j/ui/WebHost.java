@@ -397,7 +397,7 @@ public final class WebHost implements AutoCloseable {
         // runs in a blob: worker, and documents arrive as data: URLs and are read through blob: ones.
         headers.put("Content-Security-Policy", "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; "
                 + "font-src 'self' data:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self' blob:; "
-                + "connect-src 'self' ws: wss: blob: data:; frame-ancestors 'self'");
+                + "connect-src 'self' ws: wss: blob: data:; media-src 'self' data: blob:; frame-ancestors 'self'");
         String html = PAGE.replace("%TITLE%", escape(config.title));
         respond(out, 200, "text/html; charset=utf-8", html.getBytes(StandardCharsets.UTF_8), headers);
     }

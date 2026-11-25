@@ -89,6 +89,7 @@ A refused frame is never half-processed: the receiver drops it and, if it can te
 |---|---|---|
 | `app.open` | `application/json`: window options (§5.1) | `200`, `{"view":"wv-1"}` |
 | `app.list` | none | `200`, a list of views (§5.2) |
+| `app.warm` | none | `200`. Starts the browser engine (WebView2's browser process) 50 ms later in a hidden webview that is no view (not listed, no events), unless a window opens first; it goes once a window is open. The first window then opens in ~100 ms instead of ~450. Nothing when a window is open already |
 | `app.quit` | none | `200`, then every window closes and the loop ends |
 | `app.play` | the bytes of an MP3, WAV, Ogg Vorbis or FLAC, up to 4 MiB (§5.6) | `200` once it starts, `415` if it is not a sound |
 | `app.dialog.file` | a file dialog (§5.7) | `200`, `{"paths":[…]}` once the user chooses; empty if cancelled |
@@ -97,6 +98,9 @@ A refused frame is never half-processed: the receiver drops it and, if it can te
 | `view.<view>.load-html` | `text/html`: the page | `200` |
 | `view.<view>.eval` | `text/javascript`: a script | `200`, `application/json`: its value |
 | `view.<view>.cookies` | `text/plain`: the URL | `200`, a list of cookies (§5.3) |
+| `view.<view>.cookies.all` | none | `200`, every cookie of the view's browser profile (§5.3) |
+| `view.<view>.cookies.set` / `cookies.delete` | a cookie (§5.3) | `200`; `400` for a name or value a cookie cannot hold, or no domain on a page with no site |
+| `view.<view>.devtools` | `{"open":true|false}`, or none to ask | `200`, `{"open":bool}` (`null` on Windows, which cannot tell); `400` unless the window was opened with `devtools` |
 | `view.<view>.title` | `text/plain`: the title | `200` |
 | `view.<view>.size` | `{"width":800,"height":600}` logical pixels | `200` |
 | `view.<view>.position` | `{"x":10,"y":10}` logical pixels | `200` |
@@ -105,6 +109,7 @@ A refused frame is never half-processed: the receiver drops it and, if it can te
 | `view.<view>.state` | `{"minimized":bool,"maximized":bool,"fullscreen":bool,"alwaysOnTop":bool,"resizable":bool}`, keys left out stay as they are | `200` |
 | `view.<view>.min-size` | `{"width":400,"height":300}` logical pixels; `0` for none | `200` |
 | `view.<view>.geometry` | none | `200`, where the window is and how it is shown (§5.8) |
+| `view.<view>.handle` | none | `200`, `{"kind":"hwnd","handle":…}` on Windows, `{"kind":"nswindow",…}` on macOS; `501` on Linux, `400` for an embedded view |
 | `view.<view>.place` | `{"x":0,"y":0,"width":800,"height":600}` logical pixels | `200`: where an embedded view sits in its window; `400` for a view that is not embedded |
 | `view.<view>.theme` | `text/plain`: `system`, `light` or `dark` | `200`: the window's frame and the page's `prefers-color-scheme` |
 | `view.<view>.capture` | `{"api":true,"clicks":false,...}`, keys left out keep their setting (§5.4) | `200` |
@@ -132,6 +137,7 @@ answers each exactly once (§4).
 | `view.<view>.click` | §5.5 | capture `clicks` |
 | `view.<view>.dom-event` | §5.5 | capture `domEvents` |
 | `view.<view>.websocket` | `{"socket":3,"url":"…","direction":"open|in|out|close","frame":"…"}` | capture `websocket` |
+| `view.<view>.network` | §5.5 | capture `network` |
 | `view.<view>.invoke.<…command>` | the page's arguments, untouched | always on; header `Reply-To: view.<view>.call.<call>` |
 | `view.<view>.request` | the request body, untouched | a page's request to a controller route (§2.4); headers `Method`, `Path` (e.g. `/users/42`, still percent-encoded), `Query` (raw, may be empty), `Content-Type`, `Reply-To`; answered like a call, `204` for no content |
 | `view.<view>.asset` | none | a page's request for one of the app's files (§2.4); headers `Root` (the window's `assets`, §5.1), `Path` (checked, e.g. `assets/main.js`), `Reply-To`; answered `200` with the file and its `Content-Type`, or `404` |
@@ -266,6 +272,7 @@ sent (`400`), so a typo fails loudly instead of being half-understood.
 | `initializationScript` | string | |
 | `dataDirectory` | absolute path | |
 | `ownerWindow` | integer, native handle (Windows) | |
+| `owner` | a view id: that view's window owns this one (an embedded view's, the window it sits in). It stays above it, is minimized with it, has no taskbar entry, and closes, with its `closed`, before it. Windows: an owned window; macOS: a child window; Linux: transient. `404` if the view is not open, `400` with `parent` or `ownerWindow` | |
 | `capture` | §5.4 | console only |
 | `origins` | array of origins | the origin of `url`, or `null` |
 | `assets` | string, a class path directory Java serves the app's files from | none |
@@ -286,10 +293,15 @@ sent (`400`), so a typo fails loudly instead of being half-understood.
 `[{"name":"…","value":"…","domain":"…","path":"…","httpOnly":true,"secure":true}]`. Values are
 credentials: implementations must not log them.
 
+To set or delete one: `{"name":"…","value":"…","domain":"…","path":"/","secure":false,"httpOnly":false,
+"sameSite":"Strict|Lax|None","maxAge":3600}`. Only `name` is needed; `domain` defaults to the page's
+host and `path` to `/`; without `maxAge` it is a session cookie. A delete finds the cookie by name,
+domain and path.
+
 ### 5.4 Capture switches
 
-`{"api":bool,"clicks":bool,"domEvents":bool,"websocket":bool,"console":bool}`. Only `console` is
-on unless set.
+`{"api":bool,"clicks":bool,"domEvents":bool,"websocket":bool,"console":bool,"network":bool}`. Only
+`console` is on unless set.
 
 ### 5.5 Page reports
 
@@ -301,6 +313,17 @@ As the inspector scripts write them, minus any `viewId` or `sessionKey` the page
   element (`id`, `classes`, `role`, `ariaLabel`, `href`, `title`, `dataAttrs`)
 - `dom-event`: `kind` (`click`, `hover`, `input`, `keyDown`, …), `element` (a snapshot), `x`, `y`,
   `button`, `key`
+- `network`: one step of a request, by `phase`; `id` numbers the page's requests, so a `start` and
+  its `end` or `error` share it:
+  - `start`: `kind` (`fetch`, `xhr`), `method`, `url`, `startedAt` (epoch ms), `requestHeaders`,
+    `requestBody`
+  - `end`: `status`, `statusText`, `durationMs`, `mimeType`, `size` (bytes), `responseHeaders`,
+    `responseBody`, `redirected`, `finalUrl`
+  - `error`: `durationMs`, `error` (`aborted`, `timed out`, the browser's message)
+  - `resource`: the page's other loads (pictures, scripts, styles, fonts): `kind` (the initiator:
+    `img`, `script`, `link`, …), `url`, `startedAt`, `durationMs`, `status`, `size`
+
+  Bodies are text clipped to 32 KB; a binary one is `<binary, N bytes>`.
 
 ### 5.6 Sounds
 
@@ -340,6 +363,42 @@ const char *wv_version(void);
   what the frame asks for, comes back as a reply.
 - `wv_quit`, `wv_call`, `wv_submit`, `wv_actions` and `wv_free` go away: `app.quit` and replies
   replace them.
+
+### 6.1 Direct calls
+
+Besides the transport, the library has functions that Java calls directly, from any thread, with
+or without a running loop. They carry no frames: they are plain calls on bytes, for work that has
+nothing to do with a window.
+
+```c
+// The app's local store (store.rs, redb): keys and bytes in one ACID file.
+uint64_t wv_store_open(const uint8_t *path, size_t len);            // a handle, or 0
+int32_t  wv_store_put(uint64_t h, const uint8_t *key, size_t key_len, const uint8_t *value, size_t value_len);
+int32_t  wv_store_get(uint64_t h, const uint8_t *key, size_t key_len, uint8_t **out, size_t *out_len);
+int32_t  wv_store_delete(uint64_t h, const uint8_t *key, size_t key_len);
+int32_t  wv_store_keys(uint64_t h, const uint8_t *prefix, size_t prefix_len, uint8_t **out, size_t *out_len);
+void     wv_store_free(uint8_t *ptr, size_t len);
+void     wv_store_close(uint64_t h);
+
+// Secrets in the system's vault (secret.rs): Credential Manager, the Keychain, the Secret Service.
+int32_t wv_secret_set(const uint8_t *service, size_t slen, const uint8_t *account, size_t alen, const uint8_t *secret, size_t len);
+int32_t wv_secret_get(const uint8_t *service, size_t slen, const uint8_t *account, size_t alen, uint8_t **out, size_t *out_len);
+int32_t wv_secret_delete(const uint8_t *service, size_t slen, const uint8_t *account, size_t alen);
+
+// Spelling and grammar (grammar.rs, Harper).
+void   *wv_grammar_new(const uint8_t *tag, size_t len);              // a checker, or null
+int32_t wv_grammar_check(const void *checker, const uint8_t *text, size_t len, uint8_t **out, size_t *out_len);
+void    wv_grammar_free(void *checker);
+```
+
+- Text (paths, keys, names, secrets, language tags) is UTF-8, given as a pointer and a length.
+- Results: `-1` is an error; a lookup (`get`, `delete`) gives `1` found and `0` not there; a write
+  gives `0`. `wv_store_keys` gives the keys that start with `prefix`, NUL-separated, in order;
+  `wv_grammar_check` gives the mistakes as UTF-8 JSON, positions counted in UTF-16 as Java's
+  `String` counts them.
+- Bytes handed out through `out` belong to the caller, who gives them back exactly once with
+  `wv_store_free(out, out_len)`, whichever function gave them.
+- A panic never crosses into Java: it becomes `-1`, `0` or null.
 
 ## 7. Conformance
 

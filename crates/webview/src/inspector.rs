@@ -19,6 +19,8 @@ impl Capture {
     pub const DOM_EVENTS: u8 = 1 << 2;
     pub const WEBSOCKET: u8 = 1 << 3;
     pub const CONSOLE: u8 = 1 << 4;
+    /// Every request, start to end, with headers and bodies (network.js): the dev window's Network tab.
+    pub const NETWORK: u8 = 1 << 5;
 
     /// The console only, unless the body says otherwise.
     pub fn new(body: Option<CaptureBody>) -> Self {
@@ -37,6 +39,7 @@ impl Capture {
             (body.dom_events, Self::DOM_EVENTS),
             (body.websocket, Self::WEBSOCKET),
             (body.console, Self::CONSOLE),
+            (body.network, Self::NETWORK),
         ] {
             match setting {
                 Some(true) => bits |= bit,
@@ -66,7 +69,7 @@ pub fn initialization_script() -> String {
         ws_pattern: ".*",
         ws_event: "ws",
     });
-    format!("{}\n{inspector}\n{}", include_str!("console.js"), include_str!("dom.js"))
+    format!("{}\n{inspector}\n{}\n{}", include_str!("console.js"), include_str!("dom.js"), include_str!("network.js"))
 }
 
 /// The report a page message becomes, if it is well formed and switched on: its kind, the last
@@ -113,6 +116,13 @@ pub fn event(raw: &str, capture: &Capture) -> Option<(&'static str, Value)> {
             }
             "websocket"
         }
+        "network" if capture.has(Capture::NETWORK) => {
+            let phase_ok = matches!(payload.get("phase").and_then(Value::as_str), Some("start" | "end" | "error" | "resource"));
+            if !phase_ok || payload.get("id").and_then(Value::as_u64).is_none() {
+                return None;
+            }
+            "network"
+        }
         "console" if capture.has(Capture::CONSOLE) => {
             if !has_str(&payload, "level") || !has_str(&payload, "message") {
                 return None;
@@ -137,8 +147,21 @@ mod tests {
             dom_events: Some(true),
             websocket: Some(true),
             console: Some(true),
+            network: Some(true),
         });
         capture
+    }
+
+    #[test]
+    fn network_reports_go_when_the_view_captures_the_network() {
+        let start = r#"{"event":"network","payload":{"phase":"start","id":7,"kind":"fetch","method":"POST","url":"https://example.com/a","viewId":"spoofed"}}"#;
+        let (kind, payload) = event(start, &all()).unwrap();
+        assert_eq!(kind, "network");
+        assert_eq!(payload["phase"], "start");
+        assert!(payload.get("viewId").is_none(), "the page cannot say which view it is");
+        assert!(event(start, &Capture::new(None)).is_none(), "off unless asked for");
+        assert!(event(r#"{"event":"network","payload":{"phase":"later","id":7}}"#, &all()).is_none(), "an unknown phase");
+        assert!(event(r#"{"event":"network","payload":{"phase":"end"}}"#, &all()).is_none(), "no id");
     }
 
     #[test]

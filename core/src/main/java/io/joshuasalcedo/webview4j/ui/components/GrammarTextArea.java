@@ -33,6 +33,12 @@ public final class GrammarTextArea extends Component<GrammarTextArea> {
     /** Checks as it is typed (on unless false). */
     public GrammarTextArea check(boolean check) { return prop("check", check); }
 
+    /** How long typing must pause before the text is checked (500 ms unless set): no check on every key. */
+    public GrammarTextArea checkDelay(java.time.Duration pause) {
+        if (pause.isNegative()) throw new IllegalArgumentException("checkDelay cannot be negative: " + pause);
+        return prop("checkDelay", pause.toMillis());
+    }
+
     /** How many mistakes there are, each time the text is checked (e.g. to warn before it is sent). */
     public GrammarTextArea onMistakes(Consumer<Integer> action) {
         return on("onMistakes", v -> action.accept(v instanceof Number n ? n.intValue() : 0));

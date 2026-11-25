@@ -34,6 +34,10 @@
     "build": "vite build && tsc -p tsconfig.build.json",
     "bundle": "vite build -c vite.bundle.ts",
     "typecheck": "tsc --noEmit",
+    "java-gen": "bun scripts/java-gen.ts",
+    "java-gen:check": "bun scripts/java-gen.ts --check",
+    "html-gen": "bun scripts/html-gen.ts",
+    "html-gen:check": "bun scripts/html-gen.ts --check",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
     "egui": "cargo build -p egui-4j --target wasm32-unknown-unknown --release && wasm-bindgen ../../../../target/wasm32-unknown-unknown/release/egui4j.wasm --target web --out-dir src/egui4j --out-name egui4j",
@@ -73,6 +77,7 @@
     "monaco-editor": "0.57.0",
     "pdf-lib": "^1.17.1",
     "react-markdown": "^10",
+    "recharts": "^3.11.1",
     "remark-gfm": "^4"
   },
   "devDependencies": {

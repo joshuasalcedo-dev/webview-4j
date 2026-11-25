@@ -12,6 +12,8 @@ type GrammarTextAreaProps = Omit<React.ComponentProps<"textarea">, "value" | "on
   dialect?: Dialect
   /** Checks as it is typed (on unless false). */
   check?: boolean
+  /** How long typing must pause before the text is checked, in ms (500 unless set): no check on every key. */
+  checkDelay?: number
   /** How many lines tall (4 unless set). */
   rows?: number
   /** The mistakes found, each time they are checked (e.g. to count them, or to stop a send). */
@@ -29,6 +31,7 @@ function GrammarTextArea({
   onChange,
   dialect = "en-US",
   check = true,
+  checkDelay,
   rows = 4,
   onMistakes,
   className,
@@ -37,12 +40,13 @@ function GrammarTextArea({
   onKeyUp,
   onClick,
   onScroll,
+  onKeyDown,
   ...props
 }: GrammarTextAreaProps) {
   const [own, setOwn] = React.useState(defaultValue)
   const text = value ?? own
   const [ignored, setIgnored] = React.useState<string[]>([])
-  const { mistakes, ready } = useGrammar(text, { dialect, enabled: check, ignored })
+  const { mistakes, ready } = useGrammar(text, { dialect, enabled: check, ignored, delay: checkDelay })
   const [caret, setCaret] = React.useState<number | null>(null)
   const area = React.useRef<HTMLTextAreaElement>(null)
   const backdrop = React.useRef<HTMLDivElement>(null)
@@ -77,6 +81,28 @@ function GrammarTextArea({
   const current = mistakes.filter((m) => m.to <= text.length)
   const here = caret == null ? undefined : current.find((m) => caret >= m.from && caret <= m.to)
 
+  // The card for the mistake at the caret, as Grammarly's: under the marked word, inside the field's width. Esc
+  // closes it until the caret goes to another mistake.
+  const root = React.useRef<HTMLDivElement>(null)
+  const [scrolled, setScrolled] = React.useState(0)
+  const [dismissed, setDismissed] = React.useState<number | null>(null)
+  const [place, setPlace] = React.useState<{ top: number; left: number } | null>(null)
+  const open = here && dismissed !== here.from ? here : undefined
+  React.useEffect(() => {
+    if (here?.from !== dismissed) setDismissed(null)
+  }, [here?.from]) // eslint-disable-line react-hooks/exhaustive-deps
+  React.useLayoutEffect(() => {
+    const mark = open ? backdrop.current?.querySelector<HTMLElement>("mark[data-here]") : null
+    const box = root.current?.getBoundingClientRect()
+    if (!mark || !box) {
+      setPlace(null)
+      return
+    }
+    const word = mark.getBoundingClientRect()
+    const width = Math.min(320, box.width)
+    setPlace({ top: word.bottom - box.top + 6, left: Math.max(0, Math.min(word.left - box.left, box.width - width)) })
+  }, [open, text, scrolled])
+
   // the backdrop: the same text, laid out as the text area lays it out, the mistakes marked
   const pieces: React.ReactNode[] = []
   let at = 0
@@ -93,7 +119,7 @@ function GrammarTextArea({
   pieces.push(text.slice(at) + "\n")
 
   return (
-    <div className={cn("nt-grammar", className)} style={style}>
+    <div ref={root} className={cn("nt-grammar", className)} style={style}>
       <div className="nt-grammar-field">
         <div ref={backdrop} className="nt-grammar-backdrop" aria-hidden="true">
           {pieces}
@@ -104,7 +130,14 @@ function GrammarTextArea({
           rows={rows}
           spellCheck={false}
           value={text}
-          aria-describedby={here ? id : undefined}
+          aria-describedby={open ? id : undefined}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && open) {
+              e.preventDefault()
+              setDismissed(open.from)
+            }
+            onKeyDown?.(e)
+          }}
           onChange={(e) => {
             set(e.target.value)
             setCaret(e.target.selectionStart)
@@ -123,25 +156,43 @@ function GrammarTextArea({
           }}
           onScroll={(e) => {
             if (backdrop.current) backdrop.current.scrollTop = e.currentTarget.scrollTop
+            setScrolled(e.currentTarget.scrollTop)
             onScroll?.(e)
           }}
           {...props}
         />
       </div>
-      {here ? (
-        <div className="nt-grammar-hint" id={id} role="status">
-          <span className="nt-grammar-kind" data-kind={here.kind === "Spelling" ? "spelling" : "grammar"}>
-            {here.kind === "Miscellaneous" ? "Grammar" : here.kind.replace(/([a-z])([A-Z])/g, "$1 $2")}
-          </span>
-          <span className="nt-grammar-message">{here.message.replace(/`/g, "")}</span>
-          <span className="nt-grammar-fixes">
-            {here.suggestions.slice(0, 4).map((s) => (
+      {open && (
+        <div
+          className="nt-grammar-card"
+          id={id}
+          role="status"
+          data-kind={open.kind === "Spelling" ? "spelling" : "grammar"}
+          style={place ? { top: place.top, left: place.left } : { visibility: "hidden" }}
+        >
+          <div className="nt-grammar-card-head">
+            <span className="nt-grammar-kind" data-kind={open.kind === "Spelling" ? "spelling" : "grammar"}>
+              {open.kind === "Miscellaneous" ? "Grammar" : open.kind.replace(/([a-z])([A-Z])/g, "$1 $2")}
+            </span>
+            <button
+              type="button"
+              className="nt-grammar-close"
+              aria-label="Close"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setDismissed(open.from)}
+            >
+              ×
+            </button>
+          </div>
+          <div className="nt-grammar-message">{open.message.replace(/`/g, "")}</div>
+          <div className="nt-grammar-fixes">
+            {open.suggestions.slice(0, 4).map((s) => (
               <button
                 key={s}
                 type="button"
                 className="nt-grammar-fix"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => set(applySuggestion(text, here, s), here.from + s.length)}
+                onClick={() => set(applySuggestion(text, open, s), open.from + s.length)}
               >
                 {s === "" ? "Remove it" : s}
               </button>
@@ -150,18 +201,17 @@ function GrammarTextArea({
               type="button"
               className="nt-grammar-ignore"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setIgnored([...ignored, text.slice(here.from, here.to)])}
+              onClick={() => setIgnored([...ignored, text.slice(open.from, open.to)])}
             >
               Ignore
             </button>
-          </span>
-        </div>
-      ) : (
-        check && (
-          <div className="nt-grammar-status" aria-live="polite">
-            {!ready ? "Checking…" : current.length === 0 ? "No mistakes" : `${current.length} to look at`}
           </div>
-        )
+        </div>
+      )}
+      {check && (
+        <div className="nt-grammar-status" aria-live="polite">
+          {!ready ? "Checking…" : current.length === 0 ? "No mistakes" : `${current.length} to look at`}
+        </div>
       )}
     </div>
   )

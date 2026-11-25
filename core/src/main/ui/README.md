@@ -102,3 +102,20 @@ cargo install wasm-bindgen-cli --version <wasm-bindgen's version in Cargo.lock>
 ```
 
 Each component is run in Rust first (`cargo run -p egui-4j --example <component>`, `cargo test -p egui-4j`).
+
+## Java classes from the components (java-gen)
+
+A component can be used from Java screens without writing its Java class or its case in `src/java-ui.tsx` by
+hand: name it in [`java-gen.json`](java-gen.json) and run `bun run java-gen`. [`scripts/java-gen.ts`](scripts/java-gen.ts)
+reads its props with TypeScript's type checker and writes:
+
+- `io.joshuasalcedo.webview4j.ui.components.<Java>` (in `core/src/main/java`): required props are the constructor's,
+  the others are methods; a string union is an enum, a `ReactNode` takes a text or any component, a callback takes
+  a `Runnable` or a typed `Consumer`, and data (arrays, objects) goes as records, lists or maps;
+- its case in `src/java-ui.generated.tsx`, which `java-ui.tsx` asks only for types it has no case of its own for.
+
+It does not touch hand-written classes or types `java-ui.tsx` already draws: either is an error. What has no Java
+form (a function whose result the component uses, a ref, an object holding functions) is left out, and the run says
+so; a required one stops it. `tsc` checks the generated renderer against the real props, and `bun run
+java-gen:check` (Gradle's `:core:uiJavaGenCheck`, part of `check`) fails when the props changed and it was not run
+again. `GeneratedComponentsTest` draws each one in a real window.

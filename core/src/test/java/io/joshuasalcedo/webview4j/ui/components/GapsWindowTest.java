@@ -46,8 +46,10 @@ class GapsWindowTest {
                     (() => { const row = [...document.querySelectorAll('[role=row], [role=option], li, tr')].find(e => e.innerText.includes('notes.txt'));
                       row.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, clientX: 50, clientY: 50})); })()
                     """).join();
-            Thread.sleep(300);
-            view.eval("[...document.querySelectorAll('[role=menuitem]')].find(m => m.innerText.includes('Rename')).click()").join();
+            // the menu opens on the page's next frames: wait for it, not a fixed time (slow under a full test run)
+            String rename = "[...document.querySelectorAll('[role=menuitem]')].find(m => m.innerText.includes('Rename'))";
+            for (int i = 0; i < 100 && !"true".equals(js(view, "!!" + rename)); i++) Thread.sleep(50);
+            view.eval(rename + ".click()").join();
             until(view, "A new name for notes.txt");
             view.eval("""
                     (() => { const i = document.querySelector('input[aria-label="New name"]');
