@@ -1,11 +1,12 @@
-# Builds and tests every module on each OS for every push to main and every pull request.
-# (Releases: release.yml, on a tag vX.Y.Z.)
+# Builds and tests every module on each OS, for a release (release.yml publishes it, on the same tag vX.Y.Z).
 name: CI
 
+# Only for a release: a version tag (v0.2.0), or started by hand (Actions > CI > Run workflow). Pushes to main
+# while developing do not run it.
 on:
   push:
-    branches: [main]
-  pull_request:
+    tags: ['v*']
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
