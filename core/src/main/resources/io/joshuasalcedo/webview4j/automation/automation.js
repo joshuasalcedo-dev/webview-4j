@@ -130,11 +130,18 @@
     }
   }
 
+  // A value as typing or choosing sets it. React treats input and change alike, and between two events it puts a
+  // controlled field back to what it was: a select gets only its change, a text field its value again before change.
   function setValue(el, value) {
     const proto = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : el.tagName === "SELECT" ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
     const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
     setter.call(el, value);
+    if (el.tagName === "SELECT") {
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      return;
+    }
     el.dispatchEvent(new Event("input", { bubbles: true }));
+    if (el.value !== value) setter.call(el, value);
     el.dispatchEvent(new Event("change", { bubbles: true }));
   }
 

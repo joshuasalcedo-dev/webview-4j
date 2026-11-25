@@ -99,10 +99,14 @@ public final class Recorder {
     /** Stops recording: the script, named {@code name}. */
     public Script stop(String name) {
         try {
+            // The page writes down what is still being typed, and stops listening. When the window has closed
+            // already there is no page to ask: every step it sent is here.
             automation.call("__w4jAuto.stopRecording()");
             Thread.sleep(150);   // the last steps on their way
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } catch (RuntimeException closed) {
+            // the window is gone (closing it is how a recording often ends)
         } finally {
             RECORDING.remove(automation.view().id(), this);
         }

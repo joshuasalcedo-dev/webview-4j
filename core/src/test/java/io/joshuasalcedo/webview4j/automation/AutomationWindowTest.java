@@ -131,4 +131,28 @@ class AutomationWindowTest {
             assertTrue(Files.size(dir.resolve("shots/after.png")) > 1000, "the screenshot step");
         }
     }
+
+    @Test
+    @Timeout(60)
+    void closingTheWindowEndsARecordingAndKeepsItsSteps() throws Exception {
+        try (App app = App.start()) {
+            View view = Ui.open(app, new Settings(), o -> o.headless(true).size(700, 700)).join().view();
+            Automation ui = Automation.of(view);
+            ui.waitForText("nothing saved");
+            Recorder recorder = ui.record();
+            ui.field("Name").type("Ana");
+            ui.checkbox("Remember me").check();     // leaves the name field: its typing is written down
+            ui.button("Save").click();
+            ui.waitForText("saved Ana");
+            Thread.sleep(200);
+            view.close().join();                     // as a person ends it: the window closes
+            Thread.sleep(300);
+            Script script = recorder.stop("closed");
+            List<String> kinds = script.steps().stream().map(s -> s.getClass().getSimpleName()).toList();
+            assertTrue(kinds.containsAll(List.of("Type", "Click")) && kinds.size() >= 3, "the steps before the close: " + kinds);
+            Path file = dir.resolve("closed.automation.json");
+            script.save(file);
+            assertTrue(Files.readString(file).contains("\"Ana\""), Files.readString(file));
+        }
+    }
 }
