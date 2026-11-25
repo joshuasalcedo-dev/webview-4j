@@ -33,6 +33,8 @@ const ZOOMS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3]
 const PAGE_GAP = 16
 const THUMB = { width: 112, gap: 8, imagePadding: 6, labelHeight: 20, paddingY: 12 }
 const SEARCH_DELAY = 300
+/** How long the engine may take to load, and then to open a PDF, before the viewer says it could not. */
+const OPEN_TIMEOUT = 30_000
 
 function zoomLevel(zoom: PdfZoom): ZoomLevel {
   switch (zoom) {
@@ -51,12 +53,15 @@ function useEngine() {
   const [state, setState] = React.useState<{ engine?: PdfEngine; error?: string }>({})
   React.useEffect(() => {
     let gone = false
+    // an engine that never answers (no error either) is a failure too, not a loading bar for ever
+    const timer = window.setTimeout(() => !gone && setState((s) => (s.engine ? s : { error: "the PDF engine did not start" })), OPEN_TIMEOUT)
     loadPdfEngine().then(
       (engine) => !gone && setState({ engine }),
       (e: unknown) => !gone && setState({ error: e instanceof Error ? e.message : String(e) })
-    )
+    ).finally(() => window.clearTimeout(timer))
     return () => {
       gone = true
+      window.clearTimeout(timer)
     }
   }, [])
   return state
@@ -102,6 +107,12 @@ type EmbedProps = PdfViewerProps
 const PdfViewerEmbed = React.forwardRef<PdfViewerHandle, EmbedProps>(function PdfViewerEmbed(props, ref) {
   const { defaultZoom = "automatic", showToolbar = true, className, style } = props
   const { engine, error } = useEngine()
+  const reported = React.useRef(false)
+  React.useEffect(() => {
+    if (!error || !props.src || reported.current) return
+    reported.current = true
+    props.onDocumentLoadError?.(error)
+  }, [error]) // eslint-disable-line react-hooks/exhaustive-deps
   const [plugins] = React.useState(() => [
     createPluginRegistration(DocumentManagerPluginPackage),
     createPluginRegistration(ViewportPluginPackage, { viewportGap: PAGE_GAP }),
@@ -121,7 +132,7 @@ const PdfViewerEmbed = React.forwardRef<PdfViewerHandle, EmbedProps>(function Pd
       <div className={cn("nt-pdf", className)} style={style}>
         {showToolbar && <div className="nt-pdf-toolbar" aria-hidden="true" />}
         <div className="nt-pdf-body">
-          <div className="nt-pdf-state">{error ? <span role="alert">The PDF engine could not be loaded.</span> : <ProgressBar aria-label="Loading the PDF engine" style={{ width: 160 }} />}</div>
+          <div className="nt-pdf-state">{error ? <span role="alert">The PDF could not be opened.</span> : <ProgressBar aria-label="Loading the PDF engine" style={{ width: 160 }} />}</div>
         </div>
       </div>
     )
@@ -160,11 +171,16 @@ function Loader(props: LoaderProps) {
     let gone = false
     setFailed(undefined)
     const before = manager.getOpenDocuments().map((d) => d.id)
+    let settled = false
     const fail = (message: string) => {
-      if (gone) return
+      if (gone || settled) return
+      settled = true
+      window.clearTimeout(timer)
       setFailed(message)
       latest.current.onDocumentLoadError?.(message)
     }
+    // the engine may never answer (as when its worker cannot start): after a while, the PDF could not be opened
+    const timer = window.setTimeout(() => fail("it took too long to open"), OPEN_TIMEOUT)
     readPdf(file).then(
       (content) => {
         if (gone) return
@@ -175,18 +191,23 @@ function Loader(props: LoaderProps) {
             opened.task.wait(
               (doc) => {
                 if (gone) return
+                window.clearTimeout(timer)
+                // opened after all (after the time ran out): shown
+                if (settled) setFailed(undefined)
+                settled = true
                 latest.current.onDocumentLoadSuccess?.(doc.pageCount)
                 for (const id of before) manager.closeDocument(id).wait(() => undefined, () => undefined)
               },
-              (e) => fail(e.reason?.message ?? "This PDF could not be opened.")
+              (e) => fail(e.reason?.message ?? "The PDF could not be opened.")
             ),
-          (e) => fail(e.reason?.message ?? "This PDF could not be opened.")
+          (e) => fail(e.reason?.message ?? "The PDF could not be opened.")
         )
       },
       (e: unknown) => fail(e instanceof Error ? e.message : String(e))
     )
     return () => {
       gone = true
+      window.clearTimeout(timer)
     }
   }, [manager, file]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -219,7 +240,7 @@ function Frame({ className, style, showToolbar = true, showUpload = true, state,
       <div className="nt-pdf-body">
         <div className="nt-pdf-state">
           {state === "loading" && <ProgressBar aria-label="Opening the PDF" style={{ width: 160 }} />}
-          {state === "error" && <span role="alert">{message ? `This PDF could not be opened: ${message}` : "This PDF could not be opened."}</span>}
+          {state === "error" && <span role="alert">{message ? `The PDF could not be opened: ${message}` : "The PDF could not be opened."}</span>}
           {state === "empty" && (
             <div className="nt-pdf-empty">
               <strong>No PDF</strong>
