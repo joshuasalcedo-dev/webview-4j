@@ -26,7 +26,7 @@ import java.util.logging.Logger;
  * (Java's, the native side's, the pages' console), every call a page makes (fetch and XHR, with bodies, headers,
  * status and time), every call a page makes to Java (commands and routes, with what was sent and answered), with
  * statistics, groups and charts. It is {@code @webview4j/ui}'s {@code DevLogger} (egui-4j's {@code dev-logger}),
- * fed from here. The Spring Boot starter opens it in development.
+ * fed from here.
  * <pre>{@code
  * DevLogger logger = DevLogger.open(app).join();
  * logger.watch(mainView);   // its fetch and XHR calls too
@@ -55,18 +55,8 @@ public final class DevLogger implements AutoCloseable {
     /** At most this many matches go back to the page (the latest). */
     static final int MAX_FOUND = 500;
 
-    static final String PAGE = """
-            <!doctype html>
-            <meta charset="utf-8">
-            <title>Dev logger</title>
-            <link rel="stylesheet" href="%1$sui.css">
-            <style>html, body, #root { height: 100%%; margin: 0; }</style>
-            <div id="root"></div>
-            <script type="module">
-              import { mountDevLogger } from "%1$sui.js";
-              mountDevLogger(document.getElementById("root"));
-            </script>
-            """.formatted(App.UI_URL);
+    /** Its page: a static file of core's jar (src/main/ui/pages/dev-logger.html), beside the kit it loads. */
+    static final String PAGE = App.UI_URL + "dev-logger.html";
 
     private static final Logger ROOT = Logger.getLogger("");
 
@@ -121,7 +111,7 @@ public final class DevLogger implements AutoCloseable {
     /** Opens the dev logger in a window of its own, with options of yours (e.g. its size or place). */
     public static CompletableFuture<DevLogger> open(App app, UnaryOperator<WindowOptions> options) {
         Objects.requireNonNull(app, "app");
-        WindowOptions page = Objects.requireNonNull(options, "options").apply(WindowOptions.html(PAGE).title("Dev logger").size(1100, 700));
+        WindowOptions page = Objects.requireNonNull(options, "options").apply(WindowOptions.url(PAGE).title("Dev logger").size(1100, 700));
         Path file = Path.of(System.getProperty("java.io.tmpdir"), "webview4j", "dev-logger-" + ProcessHandle.current().pid() + ".ndjson");
         return app.open(page).thenApply(view -> new DevLogger(app, view, file));
     }
@@ -170,7 +160,7 @@ public final class DevLogger implements AutoCloseable {
 
     /**
      * Whether Java's own logging ({@code java.util.logging}, where {@code System.Logger} goes) is shown: on at first.
-     * Off when the app's logging framework is shown another way (the Spring Boot starter's Logback appender, which
+     * Off when the app's logging framework is shown another way (an appender of its own that
      * gets {@code java.util.logging} too), so no line shows twice.
      */
     public void javaLogging(boolean on) {

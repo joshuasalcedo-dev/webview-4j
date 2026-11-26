@@ -41,12 +41,6 @@ jobs:
       # The tests open real (headless) windows: on Linux GTK still needs a display, so a virtual one.
       - run: ${{ runner.os == 'Linux' && 'xvfb-run -a ' || '' }}./gradlew build --console=plain
         shell: bash
-      # The samples, builds of their own, against this repository's sources: the Notes template, and the Sampler
-      # (every component has a page; its pages draw on Windows, where its window tests run).
-      - run: ./gradlew -p samples/notes build --console=plain
-        shell: bash
-      - run: ${{ runner.os == 'Linux' && 'xvfb-run -a ' || '' }}./gradlew -p samples/sampler build --console=plain
-        shell: bash
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

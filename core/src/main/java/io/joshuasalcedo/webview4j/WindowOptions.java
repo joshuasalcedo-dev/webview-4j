@@ -115,6 +115,9 @@ public final class WindowOptions {
 
     public WindowOptions title(String title)        { this.title = Objects.requireNonNull(title, "title"); return this; }
 
+    /** The title set now (App's live-reload placements go by it). */
+    String currentTitle() { return title; }
+
     /**
      * The window's icon, a PNG (a square of 256 pixels reads well everywhere): in its title bar,
      * the taskbar and the window switcher, instead of the Java program's. A picture that is not a
@@ -291,7 +294,7 @@ public final class WindowOptions {
 
     /**
      * Windows only: a window drawn for Java, not for the person: all but invisible, and the mouse goes through it to
-     * the window below. Java shows its page itself, from the DevTools screencast (a JavaFX node does: webview-4j-fx).
+     * the window below. Java shows its page itself, from the DevTools screencast (as a toolkit's own node can).
      * It stays on the screen so the engine keeps drawing, and its pop-ups (a select's list) open where they should.
      */
     public WindowOptions offscreen() {

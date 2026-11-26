@@ -3,7 +3,7 @@ package io.joshuasalcedo.webview4j;
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.joshuasalcedo.webview4j.automation.Automation;
+import io.joshuasalcedo.webview4j.plugin.automation.Automation;
 import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.Screen;
 import io.joshuasalcedo.webview4j.ui.Ui;

@@ -34,6 +34,8 @@ public final class SidebarMenuButton extends Component<SidebarMenuButton> {
      * drawn as they are.
      */
     public SidebarMenuButton icon(String icon) { return prop("icon", icon); }
+    /** One of Lucide's icons on it. */
+    public SidebarMenuButton icon(io.joshuasalcedo.webview4j.ui.icons.Icon icon) { return prop("icon", icon == null ? null : icon.key()); }
 
     /** It is the page shown now. */
     public SidebarMenuButton active(boolean active) { return prop("active", active); }

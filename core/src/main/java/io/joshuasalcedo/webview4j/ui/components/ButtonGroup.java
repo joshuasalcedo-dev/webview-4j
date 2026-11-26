@@ -3,6 +3,7 @@
 package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * Buttons joined into one control: shared edges, one outline.
@@ -29,4 +30,10 @@ public final class ButtonGroup extends Component<ButtonGroup> {
     public ButtonGroup orientation(Orientation orientation) { return prop("orientation", orientation == null ? null : orientation.key); }
     /** What it holds. */
     public ButtonGroup with(Component<?>... children) { return add(children); }
+    /** Adds children at the end (Swing's {@code add}); a window showing it draws them. */
+    @Override public ButtonGroup add(Component<?>... children) { return super.add(children); }
+    /** Takes {@code child} out; a window showing it draws again. */
+    @Override public ButtonGroup remove(Component<?> child) { return super.remove(child); }
+    /** Takes every child out (Swing's {@code removeAll}). */
+    public ButtonGroup removeAll() { return clear(); }
 }

@@ -8,6 +8,7 @@ public final class TextArea extends Component<TextArea> {
     public TextArea(String label) {
         super("textArea");
         prop("label", label);
+        keep("onChange", "value", Keys::text);
     }
 
     public TextArea value(String value) { return prop("value", value == null ? "" : value); }
@@ -23,4 +24,14 @@ public final class TextArea extends Component<TextArea> {
     public TextArea rows(int rows) { return prop("rows", rows); }
     /** A limit, with a count under the box. */
     public TextArea maxLength(int length) { return prop("maxLength", length); }
+
+    // --- as Swing writes it ---
+
+    /** What is in it now: what the user typed, or what was set. */
+    public String getText() { return get("value") instanceof String s ? s : ""; }
+    /** Puts {@code text} in it; a window showing it draws again. */
+    public TextArea setText(String text) { return value(text); }
+    /** Runs on each change as the user types; {@code e.getValue()} is the whole text. */
+    public TextArea addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<String> listener) { return addChange("onChange", listener, Keys::text); }
+    public TextArea removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<String> listener) { return unlisten("onChange", listener); }
 }

@@ -11,7 +11,7 @@ import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 
 /**
- * The dev logger in a real (hidden) window, as the starter opens it: an app's page calls Java, logs and fetches,
+ * The dev logger in a real (hidden) window: an app's page calls Java, logs and fetches,
  * Java logs, and the logger's page gets each of them, and draws them (egui-4j's dev-logger on its canvas).
  */
 // A real window: Windows here (macOS's event loop needs the main thread, which a test does not have).

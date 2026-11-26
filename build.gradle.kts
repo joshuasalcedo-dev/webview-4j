@@ -1,11 +1,17 @@
 plugins {
+    idea
     id("io.joshuasalcedo.pretty-docs")
     id("com.vanniktech.maven.publish") version "0.34.0" apply false
 }
 
-// What every module shares. The modules: core (the runtime), processor (the annotation
-// processor, compile time only) and devtools (a Swing window beside an app while developing it).
+// What every module shares. One module: core (the runtime, its components and use cases, dev tools among them, and
+// the annotation processor for @WebViewController).
 // Each has its own build.gradle.kts. ./gradlew prettyDocs makes the documentation site.
+// explorer is an app, not a library: it browses that site (and ships it), so it is not documented itself.
+
+prettyDocs {
+    exclude = listOf("explorer")
+}
 
 // The version: a release passes -PreleaseVersion=1.2.3 (the release workflow takes it from the tag v1.2.3).
 val releaseVersion = providers.gradleProperty("releaseVersion").getOrElse("0.2.0-SNAPSHOT")
@@ -32,9 +38,7 @@ subprojects {
                 name = "webview-4j ${project.name}"
                 description = when (project.name) {
                     "core" -> "A small Tauri-like desktop framework: a native webview driven from Java over FFM."
-                    "processor" -> "webview-4j's annotation processor: @WebViewController classes and their TypeScript."
-                    "spring-boot-starter" -> "webview-4j for Spring Boot: the app opens in a native window when it is ready."
-                    else -> "webview-4j devtools: a Swing window with an app's log and live metrics, beside it while developing."
+                    else -> "webview-4j ${project.name}"
                 }
                 url = "https://github.com/joshuasalcedo-dev/webview-4j"
                 inceptionYear = "2026"
@@ -58,6 +62,26 @@ subprojects {
                     developerConnection = "scm:git:ssh://git@github.com/joshuasalcedo-dev/webview-4j.git"
                 }
             }
+        }
+    }
+}
+
+// What IntelliJ leaves out of its index: build output and downloaded packages, ~90k files no one edits
+// (Cargo's target/, the kit's node_modules and builds). IntelliJ reads it when it syncs with Gradle.
+idea {
+    module {
+        excludeDirs.addAll(files("target", "build", ".gradle"))
+    }
+}
+project(":core") {
+    apply(plugin = "idea")
+    extensions.configure<org.gradle.plugins.ide.idea.model.IdeaModel> {
+        module {
+            excludeDirs.addAll(files(
+                "build",
+                "src/main/ui/node_modules", "src/main/ui/dist", "src/main/ui/storybook-static",
+                "src/main/typescript/node_modules", "src/main/typescript/dist",
+            ))
         }
     }
 }

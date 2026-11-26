@@ -18,7 +18,7 @@ import java.util.function.UnaryOperator;
  * <pre>{@code
  * Invalidations.listen(session, URI.create("https://office.example.com/webview4j/invalidations"));
  * }</pre>
- * On the server, the Spring Boot starter has the endpoint ({@code StateInvalidations.publish("orders.>")}); any
+ * On the server, any
  * server can send {@code data: orders.>\n\n} on a {@code text/event-stream}.
  */
 public final class Invalidations implements AutoCloseable {

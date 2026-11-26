@@ -16,7 +16,15 @@ import * as process from "node:process"
 import ts from "typescript"
 
 const UI = path.resolve(import.meta.dirname, "..")
-const JAVA_DIR = path.resolve(UI, "../java/io/joshuasalcedo/webview4j/ui/components")
+const JAVA_ROOT = path.resolve(UI, "../java/io/joshuasalcedo/webview4j")
+const DEFAULT_PACKAGE = "ui.components"
+const dirOf = (pkg: string) => path.join(JAVA_ROOT, ...pkg.split("."))
+/** The package of the entry being read: the shared types it meets first are written there. */
+let CURRENT_PACKAGE = DEFAULT_PACKAGE
+/** Every package java-gen writes into, from the manifest. */
+let PACKAGES: string[] = [DEFAULT_PACKAGE]
+/** A generated file sees the types of every other generated package. */
+const importsFor = (pkg: string) => PACKAGES.filter((p) => p !== pkg).map((p) => `import io.joshuasalcedo.webview4j.${p}.*;`)
 const MANIFEST = path.join(UI, "java-gen.json")
 const RENDERER = path.join(UI, "src/java-ui.tsx")
 const GENERATED_TSX = path.join(UI, "src/java-ui.generated.tsx")
@@ -29,8 +37,10 @@ type Entry = {
   component: string
   /** Its file, from core/src/main/ui. */
   from: string
-  /** The Java class, in io.joshuasalcedo.webview4j.ui.components. */
+  /** The Java class, in io.joshuasalcedo.webview4j.ui.components (or its package). */
   java: string
+  /** Its package under io.joshuasalcedo.webview4j: "ui.components" unless said ("plugin.chat"). */
+  package?: string
   /** Props to leave out on purpose. */
   skip?: string[]
   /** Loaded the first time a screen shows one (a large library: charts), not with the kit. */
@@ -259,6 +269,8 @@ const singular = (s: string) => (s.endsWith("ies") ? s.slice(0, -3) + "y" : s.en
 const SHARED = {
   byType: new Map<ts.Type, string>(),
   files: new Map<string, string>(),
+  /** Each shared type's package: its first user's. */
+  pkg: new Map<string, string>(),
   /** The hand-written classes in ui.components, by name: their text. */
   handWritten: new Map<string, string>(),
   /** Names no shared type may take: the components', the hand-written classes'. */
@@ -279,12 +291,18 @@ function sharedName(name: string): string {
   return n
 }
 
+function setShared(name: string, text: string) {
+  SHARED.files.set(name, text)
+  SHARED.pkg.set(name, CURRENT_PACKAGE)
+}
+
 function sharedFile(code: string, source: string): string {
   return `${HEADER} from ${source} (a type the kit's components share): do not edit.
 // Change it in TypeScript, then run \`bun run java-gen\` in core/src/main/ui.
-package io.joshuasalcedo.webview4j.ui.components;
+package io.joshuasalcedo.webview4j.${CURRENT_PACKAGE};
 
 import io.joshuasalcedo.webview4j.JsonValue;
+${importsFor(CURRENT_PACKAGE).join("\n")}
 
 ${code}
 `
@@ -386,7 +404,7 @@ function enumOf(values: ts.StringLiteralType[], type: ts.Type, ctx: TypeContext,
     const E = sharedName(share)
     SHARED.byType.set(type, E)
     const doc = type.aliasSymbol ? docOf(type.aliasSymbol, ctx.checker) : ""
-    SHARED.files.set(E, sharedFile(enumCode(E, values, "", doc), share))
+    setShared(E, sharedFile(enumCode(E, values, "", doc), share))
     return E
   }
   const E = typeName(type, ctx, hint)
@@ -495,7 +513,7 @@ function recordOf(t: ts.Type, ctx: TypeContext, hint: string, declared?: string)
     SHARED.files.set(R, "") // its name is taken while its fields are read
     const inner = innerContext(ctx, R)
     const fields = fieldsOf(t, inner)
-    SHARED.files.set(R, sharedFile(recordCode(R, fields, doc, "JsonValue", "", constantsOf(t, inner), inner.decls), share))
+    setShared(R, sharedFile(recordCode(R, fields, doc, "JsonValue", "", constantsOf(t, inner), inner.decls), share))
     return R
   }
   const R = typeName(t, ctx, hint)
@@ -538,7 +556,7 @@ function sealedOf(members: ts.Type[], type: ts.Type, ctx: TypeContext, hint: str
     `${indent}public sealed interface ${S} extends JsonValue {\n${records.join("\n\n")}` +
     (share && inner.decls.length ? `\n\n${inner.decls.join("\n\n")}` : "") +
     `\n${indent}}`
-  if (share) SHARED.files.set(S, sharedFile(code, share))
+  if (share) setShared(S, sharedFile(code, share))
   else ctx.decls.push(code)
   return S
 }
@@ -662,6 +680,9 @@ function javaClass(model: Model): string {
       case "string":
         if (inherited) break
         lines.push(`${doc}    public ${C} ${p.java}(String ${p.java}) { return prop("${p.name}", ${p.java}); }`)
+        // an icon prop takes one of Lucide's, typed (icon-gen's Icon), drawn by the kit's NamedIcon
+        if (p.name === "icon")
+          lines.push(`    /** One of Lucide's icons. */\n    public ${C} icon(io.joshuasalcedo.webview4j.ui.icons.Icon icon) { return prop("icon", icon == null ? null : icon.key()); }`)
         break
       case "number":
         if (inherited) break // Component's own (width, height...) sets the same prop
@@ -711,9 +732,9 @@ function javaClass(model: Model): string {
         if (arg === "none") lines.push(`${doc}    public ${C} ${p.java}(Runnable action) { return on("${p.name}", v -> action.run()); }`)
         else {
           const [jt, conv] =
-            arg === "string" ? ["String", "Keys.text(v)"]
-            : arg === "number" ? ["Double", "Keys.number(v)"]
-            : arg === "boolean" ? ["Boolean", "Keys.flag(v)"]
+            arg === "string" ? ["String", "pageText(v)"]
+            : arg === "number" ? ["Double", "pageNumber(v)"]
+            : arg === "boolean" ? ["Boolean", "pageFlag(v)"]
             : arg === "args" ? ["List<Object>", "v instanceof List<?> l ? java.util.Collections.unmodifiableList(new java.util.ArrayList<Object>(l)) : List.of()"]
             : ["Object", "v"]
           lines.push(`${doc}    public ${C} ${p.java}(Consumer<${jt}> action) { return on("${p.name}", v -> action.accept(${conv})); }`)
@@ -723,15 +744,52 @@ function javaClass(model: Model): string {
       }
     }
   }
-  if (model.children) lines.push(`    /** What it holds. */\n    public ${C} with(Component<?>... children) { return add(children); }`)
+  if (model.children)
+    lines.push(
+      `    /** What it holds. */\n    public ${C} with(Component<?>... children) { return add(children); }`,
+      `    /** Adds children at the end (Swing's {@code add}); a window showing it draws them. */\n    @Override public ${C} add(Component<?>... children) { return super.add(children); }`,
+      `    /** Takes {@code child} out; a window showing it draws again. */\n    @Override public ${C} remove(Component<?> child) { return super.remove(child); }`,
+      `    /** Takes every child out (Swing's {@code removeAll}). */\n    public ${C} removeAll() { return clear(); }`
+    )
+
+  // A value the user changes (value + onChange, pressed + onPressedChange, open + onOpenChange): the component keeps
+  // it as the page sends it, and has Swing's getter, setter and change listener for it.
+  const keeps: string[] = []
+  for (const p of model.props) {
+    const k = p.kind.k
+    if (k !== "string" && k !== "number" && k !== "boolean") continue
+    const event = p.name === "value" ? "onChange" : `on${p.name[0].toUpperCase()}${p.name.slice(1)}Change`
+    const cb = model.props.find((q) => q.name === event)
+    if (!cb || cb.kind.k !== "callback" || cb.kind.arg !== k) continue
+    const [jt, conv, param] =
+      k === "string" ? ["String", "Component::pageText", "String"] : k === "number" ? ["Double", "Component::pageNumber", "double"] : ["Boolean", "Component::pageFlag", "boolean"]
+    const Name = `${p.java[0].toUpperCase()}${p.java.slice(1)}`
+    keeps.push(`        keep("${event}", "${p.name}", ${conv});`)
+    const read =
+      k === "string" ? `get("${p.name}") instanceof String s ? s : null`
+      : k === "number" ? `get("${p.name}") instanceof Number n ? n.doubleValue() : null`
+      : `Boolean.TRUE.equals(get("${p.name}"))`
+    const getter = k === "boolean" ? `public boolean is${Name}()` : `public ${jt} get${Name}()`
+    lines.push(
+      `\n    // --- as Swing writes it ---\n`,
+      `    /** ${k === "boolean" ? `Whether it is ${p.java}` : `Its ${p.java}`} now: as the user left it, or as set. */\n    ${getter} { return ${read}; }`,
+      `    public ${C} set${Name}(${param} ${p.java}) { return ${p.java}(${p.java}); }`,
+      `    /** Runs when the user changes ${k === "boolean" ? `whether it is ${p.java}` : `its ${p.java}`}; {@code e.getValue()} is the new one. */\n` +
+        `    public ${C} addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<${jt}> listener) { return addChange("${event}", listener, ${conv}); }`,
+      `    public ${C} removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<${jt}> listener) { return unlisten("${event}", listener); }`
+    )
+  }
 
   const ctorBody = [`        super("${entry.type}");`]
   for (const p of required) ctorBody.push(`        prop("${p.name}", ${javaValue(p, p.java)});`)
+  ctorBody.push(...keeps)
 
+  const pkg = entry.package ?? DEFAULT_PACKAGE
   const imports = ["import io.joshuasalcedo.webview4j.ui.Component;"]
   if (model.types.length) imports.unshift("import io.joshuasalcedo.webview4j.JsonValue;")
   if (usesList) imports.push("import java.util.List;")
   if (usesConsumer) imports.push("import java.util.function.Consumer;")
+  imports.push(...importsFor(pkg))
   // the records and enums its data is made of, before the rest
   if (model.types.length) enums.push(...model.types)
 
@@ -741,7 +799,7 @@ function javaClass(model: Model): string {
   const classDoc = (model.doc || `{@code ${entry.component}} from {@code @webview4j/ui}.`).replace(/\*\//g, "*&#47;")
   return `${HEADER} from ${entry.from} (${entry.component}): do not edit.
 // Change the component's props, then run \`bun run java-gen\` in core/src/main/ui.
-package io.joshuasalcedo.webview4j.ui.components;
+package io.joshuasalcedo.webview4j.${pkg};
 
 ${imports.join("\n")}
 
@@ -881,29 +939,36 @@ function main() {
   const taken = handWrittenTypes()
   for (const e of entries) if (taken.has(e.type)) fail(`"${e.type}" already has a case in java-ui.tsx: give ${e.component} another type`)
 
+  PACKAGES = [...new Set([DEFAULT_PACKAGE, ...entries.map((e) => e.package ?? DEFAULT_PACKAGE)])]
+  const dirs = PACKAGES.map(dirOf).filter((d) => fs.existsSync(d))
   // the hand-written classes beside the generated ones: reused when they fit (PillColor), their names never taken
-  for (const f of fs.readdirSync(JAVA_DIR).filter((f) => f.endsWith(".java"))) {
-    const text = fs.readFileSync(path.join(JAVA_DIR, f), "utf8")
-    if (!text.startsWith(HEADER)) SHARED.handWritten.set(f.slice(0, -5), text)
+  for (const dir of dirs) {
+    for (const f of fs.readdirSync(dir).filter((f) => f.endsWith(".java"))) {
+      const text = fs.readFileSync(path.join(dir, f), "utf8")
+      if (!text.startsWith(HEADER)) SHARED.handWritten.set(f.slice(0, -5), text)
+    }
   }
   for (const name of SHARED.handWritten.keys()) SHARED.reserved.add(name)
   for (const e of entries) SHARED.reserved.add(e.java)
 
   const prog = program()
-  const models = entries.map((e) => readModel(e, prog))
+  const models = entries.map((e) => {
+    CURRENT_PACKAGE = e.package ?? DEFAULT_PACKAGE
+    return readModel(e, prog)
+  })
 
   const outputs = new Map<string, string>()
-  for (const m of models) outputs.set(path.join(JAVA_DIR, `${m.entry.java}.java`), javaClass(m))
+  for (const m of models) outputs.set(path.join(dirOf(m.entry.package ?? DEFAULT_PACKAGE), `${m.entry.java}.java`), javaClass(m))
   // the types they share, one file each
   for (const [name, text] of SHARED.files) {
     if (!text) fail(`${name}: its type was never finished (a loop java-gen cannot follow)`)
-    outputs.set(path.join(JAVA_DIR, `${name}.java`), text)
+    outputs.set(path.join(dirOf(SHARED.pkg.get(name) ?? DEFAULT_PACKAGE), `${name}.java`), text)
   }
   outputs.set(GENERATED_TSX, generatedTsx(models))
 
   // Generated Java files no longer in the manifest: removed with it.
-  const stale = fs.readdirSync(JAVA_DIR)
-    .map((f) => path.join(JAVA_DIR, f))
+  const stale = dirs
+    .flatMap((d) => fs.readdirSync(d).map((f) => path.join(d, f)))
     .filter((f) => f.endsWith(".java") && !outputs.has(f) && fs.readFileSync(f, "utf8").startsWith(HEADER))
 
   for (const [file] of outputs) {
@@ -921,7 +986,10 @@ function main() {
     console.log(`java-gen: ${models.length} components up to date`)
     return
   }
-  for (const [file, text] of differ) fs.writeFileSync(file, text)
+  for (const [file, text] of differ) {
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, text)
+  }
   for (const f of stale) fs.rmSync(f)
   for (const m of models) {
     const made = m.props.map((p) => p.name).join(", ")

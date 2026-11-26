@@ -7,8 +7,8 @@ import { NativeProvider } from "./provider"
 /*
  * The dev logger (egui-4j's `dev-logger`): an app's log lines, every API call with its bodies, headers, status and
  * time, the calls between the page and Java, and performance samples, in one list, with statistics, groups and
- * charts in panes that dock like an IDE's. Java feeds it (io.joshuasalcedo.webview4j.DevLogger, opened by the
- * Spring Boot starter in development); a page can feed it too, through the handle.
+ * charts in panes that dock like an IDE's. Java feeds it (io.joshuasalcedo.webview4j.DevLogger);
+ * a page can feed it too, through the handle.
  */
 
 /** One entry: the dev-logger's format (crates/egui-4j/src/dev_logger.rs). */

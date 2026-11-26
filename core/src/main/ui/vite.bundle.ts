@@ -12,6 +12,8 @@ const out = process.env.WEBVIEW4J_UI_OUT ?? resolve(dir, "../../../build/generat
 export default defineConfig({
   // Chunks and assets are found from ui.js itself, whatever page loads it.
   base: "./",
+  // The pages Java windows open (pages/screen.html...), copied as they are beside ui.js: never HTML in Java.
+  publicDir: resolve(dir, "pages"),
   plugins: [react()],
   define: { "process.env.NODE_ENV": JSON.stringify("production") },
   resolve: { alias: [{ find: /^@webview4j\/ui\//, replacement: resolve(dir, "src") + "/" }] },

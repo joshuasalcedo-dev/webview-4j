@@ -1,5 +1,6 @@
-// Icons by name, so Java can ask for one ("home", "table"): 16px strokes in currentColor, drawn here (no icon
-// library). An unknown name draws nothing; one or two characters (an emoji, initials) are drawn as text.
+// Icons by name, so Java can ask for one: Lucide's ("lucide:home", Java's Icon enum, loaded when first drawn) and the
+// kit's own few ("table"), 16px strokes in currentColor. An unknown name draws nothing; one or two characters (an
+// emoji, initials) are drawn as text.
 import * as React from "react"
 
 const props = {
@@ -70,12 +71,42 @@ const paths: Record<string, React.ReactNode> = {
 /** The names Java can give ({@code icon("table")}). */
 const iconNames = Object.keys(paths)
 
-/** The icon called {@code name}; one or two characters (an emoji, initials) are drawn as they are. */
-function NamedIcon({ name }: { name: string }) {
+/** Lucide's components by name: its own and its older names (all of lucide-react's exports). */
+type LucideIcons = Record<string, React.ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean; absoluteStrokeWidth?: boolean }>>
+let lucide: LucideIcons | undefined
+let loadingLucide: Promise<LucideIcons> | undefined
+
+/** Lucide's icons, loaded once, the first time one is drawn (its own chunk: pages without one never load it). */
+function loadLucide(): Promise<LucideIcons> {
+  loadingLucide ??= import("lucide-react").then((m) => (lucide = m as unknown as LucideIcons))
+  return loadingLucide
+}
+
+/** "shopping-cart" as Lucide's component name, "ShoppingCart". */
+const pascal = (kebab: string) => kebab.split("-").map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join("")
+
+/** A Lucide icon ("lucide:shopping-cart", Java's Icon): the kit's size and stroke, in the text's colour. */
+function LucideIcon({ name, size = 16 }: { name: string; size?: number }) {
+  const [icons, setIcons] = React.useState(lucide)
+  React.useEffect(() => {
+    if (!icons) void loadLucide().then(setIcons)
+  }, [icons])
+  const Drawn = icons?.[pascal(name)]
+  // while Lucide loads: the icon's room, so nothing moves when it arrives
+  if (!Drawn) return <span aria-hidden style={{ display: "inline-block", width: size, height: size }} />
+  return <Drawn size={size} strokeWidth={1.6} aria-hidden absoluteStrokeWidth={false} />
+}
+
+/**
+ * The icon called {@code name}: one of Lucide's ("lucide:shopping-cart", from Java's Icon), one of the kit's own
+ * ("table"), or one or two characters (an emoji, initials) drawn as they are.
+ */
+function NamedIcon({ name, size }: { name: string; size?: number }) {
+  if (name.startsWith("lucide:")) return <LucideIcon name={name.slice(7)} size={size} />
   const path = paths[name]
   if (path) return <svg {...props}>{path}</svg>
   if ([...name].length <= 2) return <span className="nt-named-icon-text">{name}</span>
   return null
 }
 
-export { iconNames, NamedIcon }
+export { iconNames, LucideIcon, loadLucide, NamedIcon }

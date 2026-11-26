@@ -8,6 +8,7 @@ public final class NumberField extends Component<NumberField> {
     public NumberField(String label) {
         super("numberField");
         prop("label", label);
+        keep("onChange", "value", Keys::number);
     }
 
     public NumberField value(Double value) { return prop("value", value); }
@@ -22,4 +23,13 @@ public final class NumberField extends Component<NumberField> {
     public NumberField error(String error) { return prop("error", error); }
     /** The number as it changes; null when the box is empty. */
     public NumberField onChange(java.util.function.Consumer<Double> action) { return on("onChange", v -> action.accept(Keys.number(v))); }
+
+    // --- as Swing writes it ---
+
+    /** The number in it now, or null when it is empty. */
+    public Double getValue() { return get("value") instanceof Number n ? n.doubleValue() : null; }
+    public NumberField setValue(Double value) { return value(value); }
+    /** Runs when the number changes; {@code e.getValue()} is null when the box is empty. */
+    public NumberField addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Double> listener) { return addChange("onChange", listener, Keys::number); }
+    public NumberField removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Double> listener) { return unlisten("onChange", listener); }
 }

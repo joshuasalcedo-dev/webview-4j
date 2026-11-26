@@ -16,6 +16,7 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.plugins.BasePluginExtension;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
@@ -35,6 +36,7 @@ import org.gradle.api.tasks.TaskAction;
  *     version = "1.1.0"          // of pretty-docs, from the local Maven repository or Maven Central
  *     mode = "resolved"          // or "source": parse the sources only
  *     visibility = "protected"   // public, protected, package or private
+ *     exclude = listOf("explorer") // modules left out (by name): an app that ships the site itself
  * }
  * </pre>
  */
@@ -47,6 +49,7 @@ public class PrettyDocsPlugin implements Plugin<Project> {
         public abstract Property<String> getVisibility();
         public abstract Property<String> getTitle();
         public abstract Property<String> getJavaRelease();
+        public abstract ListProperty<String> getExclude();
     }
 
     @Override
@@ -58,6 +61,7 @@ public class PrettyDocsPlugin implements Plugin<Project> {
         settings.getVisibility().convention("protected");
         settings.getTitle().convention(root.getName());
         settings.getJavaRelease().convention("25");
+        settings.getExclude().convention(List.of());
 
         root.getTasks().register("prettyDocs", PrettyDocs.class, task -> {
             task.setGroup("documentation");
@@ -67,11 +71,13 @@ public class PrettyDocsPlugin implements Plugin<Project> {
             task.getVisibility().set(settings.getVisibility());
             task.getTitle().set(settings.getTitle());
             task.getJavaRelease().set(settings.getJavaRelease());
+            task.getExclude().set(settings.getExclude());
             task.getMavenProject().set(root.getLayout().getBuildDirectory().dir("pretty-docs/maven"));
             task.getOutputDirectory().set(root.getLayout().getBuildDirectory().dir("docs/pretty"));
             // SpotBugs, one of pretty-docs' checks, reads the compiled classes.
-            root.getSubprojects().forEach(module -> module.getPluginManager().withPlugin("java",
-                    java -> task.dependsOn(module.getTasks().named("classes"))));
+            root.getSubprojects().forEach(module -> module.getPluginManager().withPlugin("java", java -> {
+                if (!settings.getExclude().get().contains(module.getName())) task.dependsOn(module.getTasks().named("classes"));
+            }));
             // A site is never up to date: the sources it reads are not declared as inputs.
             task.getOutputs().upToDateWhen(t -> false);
         });
@@ -85,6 +91,7 @@ public class PrettyDocsPlugin implements Plugin<Project> {
         @Input public abstract Property<String> getVisibility();
         @Input public abstract Property<String> getTitle();
         @Input public abstract Property<String> getJavaRelease();
+        @Input public abstract ListProperty<String> getExclude();
         @Internal public abstract DirectoryProperty getMavenProject();
         @OutputDirectory public abstract DirectoryProperty getOutputDirectory();
 
@@ -94,7 +101,7 @@ public class PrettyDocsPlugin implements Plugin<Project> {
             Path maven = getMavenProject().get().getAsFile().toPath();
             List<Project> modules = new ArrayList<>();
             for (Project module : root.getSubprojects()) {
-                if (module.getPluginManager().hasPlugin("java")) modules.add(module);
+                if (module.getPluginManager().hasPlugin("java") && !getExclude().get().contains(module.getName())) modules.add(module);
             }
             if (modules.isEmpty()) throw new GradleException("no Java module to document");
 

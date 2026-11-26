@@ -41,6 +41,8 @@ public final class ContextMenu extends Component<ContextMenu> {
         public Item shortcut(String shortcut) { this.shortcut = shortcut; return this; }
         /** An icon by name ({@code "download"}, {@code "trash"}...), or one or two characters (an emoji). */
         public Item icon(String icon) { this.icon = icon; return this; }
+        /** One of Lucide's icons beside it. */
+        public Item icon(io.joshuasalcedo.webview4j.ui.icons.Icon icon) { this.icon = icon == null ? null : icon.key(); return this; }
         /** A tick before it: a checkbox item. */
         public Item checked(boolean checked) { this.checked = checked; return this; }
         /** Greyed out: it shows, it cannot be chosen. */

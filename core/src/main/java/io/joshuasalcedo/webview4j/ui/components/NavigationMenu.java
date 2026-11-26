@@ -4,6 +4,7 @@ package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 import java.util.function.Consumer;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A site's or an app's top navigation: items, some opening a panel of links with a line on what each is.
@@ -20,6 +21,6 @@ public final class NavigationMenu extends Component<NavigationMenu> {
     /** The id of the page shown now (an item's or a link's). */
     public NavigationMenu current(String current) { return prop("current", current); }
     /** An item or a link was chosen: its id. */
-    public NavigationMenu onNavigate(Consumer<String> action) { return on("onNavigate", v -> action.accept(Keys.text(v))); }
+    public NavigationMenu onNavigate(Consumer<String> action) { return on("onNavigate", v -> action.accept(pageText(v))); }
     public NavigationMenu onNavigate(Runnable action) { return on("onNavigate", v -> action.run()); }
 }

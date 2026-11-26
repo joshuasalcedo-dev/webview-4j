@@ -23,6 +23,35 @@ public abstract class Pane<C extends Pane<C>> extends Component<C> {
         return prop("alignment", alignment.key());
     }
 
+    /**
+     * Adds children at the end (Swing's {@code panel.add(button)}); a window showing it draws them.
+     * <pre>{@code
+     * VBox panel = new VBox(12);
+     * panel.add(new Text("Name"));
+     * panel.add(nameField, saveButton);
+     * }</pre>
+     */
+    @Override
+    public C add(Component<?>... children) {
+        return super.add(children);
+    }
+
+    /** Adds {@code child} at {@code index} (Swing's {@code add(component, index)}). */
+    public C add(Component<?> child, int index) {
+        return insert(index, child);
+    }
+
+    /** Takes {@code child} out; a window showing it draws again. */
+    @Override
+    public C remove(Component<?> child) {
+        return super.remove(child);
+    }
+
+    /** Takes every child out (Swing's {@code removeAll}). */
+    public C removeAll() {
+        return clear();
+    }
+
     /** Children added after the ones given at first (JavaFX's getChildren().addAll). */
     public C addAll(Component<?>... children) {
         for (Component<?> child : children) add(child);

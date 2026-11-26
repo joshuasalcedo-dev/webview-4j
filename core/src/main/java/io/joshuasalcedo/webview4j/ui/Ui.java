@@ -3,11 +3,13 @@ package io.joshuasalcedo.webview4j.ui;
 import io.joshuasalcedo.webview4j.App;
 import io.joshuasalcedo.webview4j.WindowOptions;
 import io.joshuasalcedo.webview4j.ui.components.*;
+import io.joshuasalcedo.webview4j.plugin.chat.MessageBubble;
+import io.joshuasalcedo.webview4j.plugin.chat.TypingIndicator;
 import io.joshuasalcedo.webview4j.ui.components.layout.Box;
 import io.joshuasalcedo.webview4j.ui.components.layout.Spacer;
 import io.joshuasalcedo.webview4j.ui.components.layout.Split;
-import io.joshuasalcedo.webview4j.ui.components.usecase.mdi.Mdi;
-import io.joshuasalcedo.webview4j.ui.components.usecase.mdi.MdiWindow;
+import io.joshuasalcedo.webview4j.plugin.mdi.Mdi;
+import io.joshuasalcedo.webview4j.plugin.mdi.MdiWindow;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -232,14 +234,14 @@ public final class Ui {
     /** Text flowing as one paragraph, code and links inside: {@code paragraph("Run ", inlineCode("ls"), " first.")}. */
     public static Paragraph paragraph(Object... parts) { return new Paragraph(parts); }
 
-    public static Box column(Component<?>... children) { return new Box("column", children); }
+    public static Box column(Component<?>... children) { return new Box(Box.Direction.COLUMN, children); }
 
-    public static Box column(List<? extends Component<?>> children) { return new Box("column").with(children); }
+    public static Box column(List<? extends Component<?>> children) { return new Box(Box.Direction.COLUMN).with(children); }
 
     /** Its children side by side. */
-    public static Box row(Component<?>... children) { return new Box("row", children); }
+    public static Box row(Component<?>... children) { return new Box(Box.Direction.ROW, children); }
 
-    public static Box row(List<? extends Component<?>> children) { return new Box("row").with(children); }
+    public static Box row(List<? extends Component<?>> children) { return new Box(Box.Direction.ROW).with(children); }
 
     /** A card of related controls under a heading. */
     public static Surface surface(String title, Component<?>... children) { return new Surface(title, children); }

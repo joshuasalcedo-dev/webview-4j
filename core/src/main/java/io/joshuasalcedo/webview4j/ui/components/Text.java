@@ -18,4 +18,10 @@ public final class Text extends Component<Text> {
     public Text mono() { return prop("mono", true); }
     /** Cut off after this many lines, with the whole text as a tooltip. */
     public Text lines(int lines) { return prop("lines", lines); }
+
+    // --- as Swing writes it ---
+
+    public String getText() { return get("text") instanceof String s ? s : ""; }
+    /** Says {@code text} now; a window showing it draws again. */
+    public Text setText(String text) { return text(text); }
 }

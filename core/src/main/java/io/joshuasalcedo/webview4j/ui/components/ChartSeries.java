@@ -3,6 +3,7 @@
 package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.JsonValue;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /** A measure in the rows: its field and what it is called. */
 public record ChartSeries(String key, String label) implements JsonValue {

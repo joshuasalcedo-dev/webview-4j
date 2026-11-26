@@ -1,5 +1,6 @@
 package io.joshuasalcedo.webview4j.ui;
 
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 import static io.joshuasalcedo.webview4j.ui.ComponentsTest.until;
 import static io.joshuasalcedo.webview4j.ui.Ui.*;
 import static org.junit.jupiter.api.Assertions.*;

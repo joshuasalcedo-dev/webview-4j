@@ -144,13 +144,21 @@ class StateTest {
     @Test
     void serverStateFetchesOnceWhileFreshAndAgainWhenInvalidated() throws Exception {
         AtomicInteger fetches = new AtomicInteger();
+        // the first fetch waits until the test has seen it loading: under load it could otherwise be done already
+        java.util.concurrent.CountDownLatch seenLoading = new java.util.concurrent.CountDownLatch(1);
         ServerState<List<String>> people = ServerState.of("people", Codec.listOf(String.class), () -> {
             fetches.incrementAndGet();
+            try {
+                seenLoading.await(10, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
             return List.of("ana", "ben");
         }).property(Property.of().fresh(Duration.ofMinutes(1)));
         Session s = session(StateStorage.memory());
 
         assertEquals(ServerState.Status.LOADING, in(s, () -> { people.data(); return people.status(); }));
+        seenLoading.countDown();
         until(() -> in(s, () -> people.data().isPresent()));
         assertEquals(List.of("ana", "ben"), in(s, () -> people.data(List.of())));
         for (int i = 0; i < 5; i++) in(s, () -> people.data());

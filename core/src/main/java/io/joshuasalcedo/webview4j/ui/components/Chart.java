@@ -3,6 +3,7 @@
 package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A chart as shadcn/ui's (Recharts): line, area, bar, pie, radar or radial bar, with the kit's colours in light

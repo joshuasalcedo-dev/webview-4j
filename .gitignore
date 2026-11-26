@@ -8,6 +8,9 @@ target/
 .gradle/
 build/
 .env
+krema/
+# graphify's knowledge graph and its cache: made on this machine
+graphify-out/
 
 # A release's private key never goes in the repository (update-public.key, the public one, does).
 *.key

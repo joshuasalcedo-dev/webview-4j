@@ -4,6 +4,7 @@ package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 import java.util.function.Consumer;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A choice from a long list, found by typing part of its name: ↑ ↓ to move, Enter to take, Esc to leave.
@@ -13,16 +14,26 @@ public final class Combobox extends Component<Combobox> {
     public Combobox(java.util.List<ComboboxOption> options) {
         super("combobox");
         prop("options", options);
+        keep("onChange", "value", Component::pageText);
     }
 
     public Combobox label(String label) { return prop("label", label); }
     public Combobox options(java.util.List<ComboboxOption> options) { return prop("options", options); }
     public Combobox value(String value) { return prop("value", value); }
-    public Combobox onChange(Consumer<String> action) { return on("onChange", v -> action.accept(Keys.text(v))); }
+    public Combobox onChange(Consumer<String> action) { return on("onChange", v -> action.accept(pageText(v))); }
     public Combobox onChange(Runnable action) { return on("onChange", v -> action.run()); }
     public Combobox placeholder(String placeholder) { return prop("placeholder", placeholder); }
     /** What the list says when nothing matches what is typed. */
     public Combobox emptyText(String emptyText) { return prop("emptyText", emptyText); }
     public Combobox disabled(boolean disabled) { return prop("disabled", disabled); }
     public Combobox disabled() { return disabled(true); }
+
+    // --- as Swing writes it ---
+
+    /** Its value now: as the user left it, or as set. */
+    public String getValue() { return get("value") instanceof String s ? s : null; }
+    public Combobox setValue(String value) { return value(value); }
+    /** Runs when the user changes its value; {@code e.getValue()} is the new one. */
+    public Combobox addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<String> listener) { return addChange("onChange", listener, Component::pageText); }
+    public Combobox removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<String> listener) { return unlisten("onChange", listener); }
 }

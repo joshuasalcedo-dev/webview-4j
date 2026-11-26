@@ -3,6 +3,7 @@
 package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * Keeps what it holds at one shape as its width changes: a picture, a video, a map.
@@ -17,4 +18,10 @@ public final class AspectRatio extends Component<AspectRatio> {
     public AspectRatio ratio(double ratio) { return prop("ratio", ratio); }
     /** What it holds. */
     public AspectRatio with(Component<?>... children) { return add(children); }
+    /** Adds children at the end (Swing's {@code add}); a window showing it draws them. */
+    @Override public AspectRatio add(Component<?>... children) { return super.add(children); }
+    /** Takes {@code child} out; a window showing it draws again. */
+    @Override public AspectRatio remove(Component<?> child) { return super.remove(child); }
+    /** Takes every child out (Swing's {@code removeAll}). */
+    public AspectRatio removeAll() { return clear(); }
 }

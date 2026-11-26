@@ -3,6 +3,7 @@
 package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A thin line between groups of things.

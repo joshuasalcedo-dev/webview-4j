@@ -27,18 +27,8 @@ public final class UiWindow {
     /** To the pages: server state matching {@code pattern} changed (PROTOCOL.md: webview4j.state.invalidate). */
     public static final String INVALIDATE = "webview4j.state.invalidate";
 
-    /** The renderer's page: the kit from core's jar, and its Java-screen renderer mounted. */
-    static final String PAGE = """
-            <!doctype html>
-            <meta charset="utf-8">
-            <link rel="stylesheet" href="%1$sui.css">
-            <style>html, body, #root { height: 100%%; margin: 0; }</style>
-            <div id="root"></div>
-            <script type="module">
-              import { mountJavaUi } from "%1$sui.js";
-              mountJavaUi(document.getElementById("root"));
-            </script>
-            """.formatted(App.UI_URL);
+    /** The renderer's page: a static file of core's jar (src/main/ui/pages/screen.html), beside the kit it loads. */
+    static final String PAGE = App.UI_URL + "screen.html";
 
     /** Each app's windows by view id: a future, as the page may ask before Java has its view. */
     private static final Map<App, Map<String, CompletableFuture<UiWindow>>> APPS = new ConcurrentHashMap<>();
@@ -99,7 +89,7 @@ public final class UiWindow {
     static CompletableFuture<UiWindow> open(App app, Screen screen, UnaryOperator<WindowOptions> options) {
         Objects.requireNonNull(screen, "screen");
         Map<String, CompletableFuture<UiWindow>> windows = windows(app);
-        WindowOptions page = Objects.requireNonNull(options, "options").apply(WindowOptions.html(PAGE));
+        WindowOptions page = Objects.requireNonNull(options, "options").apply(WindowOptions.url(PAGE));
         io.joshuasalcedo.webview4j.ui.state.Session session = session(app);
         return app.open(page).thenApply(view -> {
             UiWindow window = new UiWindow(view, screen, session);
@@ -239,6 +229,15 @@ public final class UiWindow {
             io.joshuasalcedo.webview4j.ui.state.ContextProperty.of("webview4j.window");
 
     /** The window the current screen is in (in its render and handlers): to close it, refresh it. */
+    /** Every window showing a screen now, in every app: for what changes all of them (the appearance). */
+    public static java.util.List<UiWindow> all() {
+        java.util.List<UiWindow> open = new java.util.ArrayList<>();
+        for (Map<String, CompletableFuture<UiWindow>> windows : APPS.values())
+            for (CompletableFuture<UiWindow> w : windows.values()) if (w.isDone() && !w.isCompletedExceptionally()) open.add(w.join());
+        open.removeIf(w -> w.closed);
+        return open;
+    }
+
     public static java.util.Optional<UiWindow> current() {
         return io.joshuasalcedo.webview4j.ui.state.Context.find(CURRENT);
     }
@@ -378,7 +377,11 @@ public final class UiWindow {
             tree = scope.call(() -> io.joshuasalcedo.webview4j.ui.state.Tracking.reading(next, () -> {
                 Component<?> root = Objects.requireNonNull(screen.render(), "render() returned null");
                 if (!(root instanceof io.joshuasalcedo.webview4j.ui.components.Frame)) root = Ui.frame(root);
-                return root.toTree(registry);
+                Map<String, Object> drawn = root.toTree(registry);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> rootProps = (Map<String, Object>) drawn.get("p");
+                io.joshuasalcedo.webview4j.plugin.theme.Appearance.current().decorate(rootProps);
+                return drawn;
             }));
         }
         synchronized (this) {

@@ -18,4 +18,15 @@ public final class Button extends Component<Button> {
     public Button subtle() { return prop("variant", "subtle"); }
     public Button disabled(boolean disabled) { return prop("disabled", disabled); }
     public Button onClick(Runnable action) { return on("onClick", v -> action.run()); }
+    /** One of Lucide's icons before its label. */
+    public Button icon(io.joshuasalcedo.webview4j.ui.icons.Icon icon) { return prop("icon", icon == null ? null : icon.key()); }
+
+    // --- as Swing writes it ---
+
+    public String getText() { return get("label") instanceof String s ? s : ""; }
+    /** Says {@code text} now; a window showing it draws again. */
+    public Button setText(String text) { return label(text); }
+    /** Runs when it is pressed; as many as are added, in order. */
+    public Button addActionListener(io.joshuasalcedo.webview4j.ui.event.ActionListener listener) { return addAction("onClick", listener); }
+    public Button removeActionListener(io.joshuasalcedo.webview4j.ui.event.ActionListener listener) { return unlisten("onClick", listener); }
 }

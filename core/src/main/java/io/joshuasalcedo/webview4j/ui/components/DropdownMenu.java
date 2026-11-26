@@ -29,6 +29,8 @@ public final class DropdownMenu extends Component<DropdownMenu> {
 
     /** An icon by name before the label. */
     public DropdownMenu icon(String icon) { return prop("icon", icon); }
+    /** One of Lucide's icons on it. */
+    public DropdownMenu icon(io.joshuasalcedo.webview4j.ui.icons.Icon icon) { return prop("icon", icon == null ? null : icon.key()); }
     /** No fill until hovered: toolbars. */
     public DropdownMenu subtle() { return prop("variant", "subtle"); }
     /** The window's main action. */

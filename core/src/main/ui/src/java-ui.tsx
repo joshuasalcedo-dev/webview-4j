@@ -3,7 +3,8 @@ import { createRoot } from "react-dom/client"
 
 import { Avatar } from "./components/avatar"
 import { Breadcrumb } from "./components/breadcrumb"
-import { MessageBubble, TypingIndicator } from "./components/chat/message-bubble"
+import { MessageBubble, TypingIndicator } from "./components/plugin/chat/message-bubble"
+import { EguiCanvas } from "./components/egui-canvas"
 import { CodeEditor } from "./components/code-editor"
 import { Composer } from "./components/composer"
 import { Dialog } from "./components/dialog"
@@ -34,25 +35,25 @@ import {
   PhoneField,
   UrlField,
 } from "./components/value-fields"
-import { DataTable, type DataColumn, type DataRow } from "./components/usecase/collection/data-table"
-import type { CollectionQuery, Paging } from "./components/usecase/collection/query"
-import { ErrorState, LoadingBar } from "./components/usecase/collection/states"
+import { DataTable, type DataColumn, type DataRow } from "./components/plugin/collection/data-table"
+import type { CollectionQuery, Paging } from "./components/plugin/collection/query"
+import { ErrorState, LoadingBar } from "./components/plugin/collection/states"
 import { Markdown } from "./components/markdown"
-import { Changelog } from "./components/usecase/autoupdate/changelog"
-import { AccountMenu } from "./components/usecase/authentication/account-menu"
-import { CodeField } from "./components/usecase/authentication/code-field"
-import { PasswordStrength } from "./components/usecase/authentication/password-strength"
-import { SessionExpired } from "./components/usecase/authentication/session-expired"
-import { SignInForm } from "./components/usecase/authentication/sign-in-form"
-import { UpdatePrompt, type UpdateStatus } from "./components/usecase/autoupdate/update-prompt"
+import { Changelog } from "./components/plugin/autoupdate/changelog"
+import { AccountMenu } from "./components/plugin/authentication/account-menu"
+import { CodeField } from "./components/plugin/authentication/code-field"
+import { PasswordStrength } from "./components/plugin/authentication/password-strength"
+import { SessionExpired } from "./components/plugin/authentication/session-expired"
+import { SignInForm } from "./components/plugin/authentication/sign-in-form"
+import { UpdatePrompt, type UpdateStatus } from "./components/plugin/autoupdate/update-prompt"
 import { Anchored, type Anchors, AnchorPane, Card, CardPane, FlowPane, ScrollPane, TilePane } from "./components/layout/more-layout"
 import { Carousel } from "./components/carousel"
 import { Accordion, TitledPane } from "./components/titled-pane"
 import { BorderPane, GridCell, GridPane, HBox, type HPos, type Insets, type Pos, SplitPane, StackItem, StackPane, type TrackSize, VBox, type VPos } from "./components/layout/layout"
-import { DataGrid } from "./components/usecase/collection/data-grid"
-import { DataList } from "./components/usecase/collection/data-list"
-import { DataMap } from "./components/usecase/collection/data-map"
-import { DataTree } from "./components/usecase/collection/data-tree"
+import { DataGrid } from "./components/plugin/collection/data-grid"
+import { DataList } from "./components/plugin/collection/data-list"
+import { DataMap } from "./components/plugin/collection/data-map"
+import { DataTree } from "./components/plugin/collection/data-tree"
 import { Button } from "./components/button"
 import { Checkbox } from "./components/checkbox"
 import { CodeBlock } from "./components/code-editor"
@@ -93,9 +94,9 @@ import { CommandPalette } from "./components/overlays"
 import { Menubar } from "./components/structure"
 import { renderGenerated } from "./java-ui.generated"
 import { GrammarTextArea } from "./components/grammar-text-area"
-import { JavaCsvViewer, JavaXlsxEditor, JavaXlsxViewer } from "./components/usecase/xlsx/java"
-import { JavaBoundingBoxCitations, JavaDocumentSplits, JavaFileThumbnail, JavaPdfViewer } from "./components/usecase/pdf/java"
-import { JavaDocumentViewerSidebar, JavaDocxAnnotationCard, JavaDocxEditor, JavaDocxLayoutBlocks, JavaDocxViewer } from "./components/usecase/docx/java"
+import { JavaCsvViewer, JavaXlsxEditor, JavaXlsxViewer } from "./components/plugin/document/xlsx/java"
+import { JavaBoundingBoxCitations, JavaDocumentSplits, JavaFileThumbnail, JavaPdfViewer } from "./components/plugin/document/pdf/java"
+import { JavaDocumentViewerSidebar, JavaDocxAnnotationCard, JavaDocxEditor, JavaDocxLayoutBlocks, JavaDocxViewer } from "./components/plugin/document/docx/java"
 import { StatusBar, StatusBarSpacer, StatusDot, StatusItem } from "./components/status-bar"
 import { Surface } from "./components/surface"
 import { Switch } from "./components/switch"
@@ -368,6 +369,24 @@ function withFieldWidth(node: JavaNode): JavaNode {
   return { ...node, p: { ...p, maxWidth: line ? 360 : 560 } }
 }
 
+/**
+ * A design spec's colours (Java's DesignSpec): the kit's variables, one set for light and one for dark, over the
+ * platform's own. Names and values are Java's, checked again here: only the kit's variables, only colours.
+ */
+function designCss(tokens: unknown): string | undefined {
+  if (!tokens || typeof tokens !== "object") return undefined
+  const rules: string[] = []
+  for (const mode of ["light", "dark"] as const) {
+    const set = (tokens as Record<string, unknown>)[mode]
+    if (!set || typeof set !== "object") continue
+    const decls = Object.entries(set as Record<string, unknown>)
+      .filter(([k, v]) => /^--nt-[a-z0-9-]+$/.test(k) && typeof v === "string" && /^(#[0-9a-f]{6}|rgba\(\d{1,3},\d{1,3},\d{1,3},(0|1|0?\.\d+)\))$/.test(v))
+      .map(([k, v]) => `${k}:${v} !important`)
+    if (decls.length) rules.push(`.nt-root[data-theme="${mode}"]{${decls.join(";")}}`)
+  }
+  return rules.length ? rules.join("\n") : undefined
+}
+
 /** HTML's shape on any component (Component's id, className, attributes, style), as Java sends it. */
 type HtmlSettings = {
   id?: string
@@ -376,6 +395,8 @@ type HtmlSettings = {
   style?: Record<string, string>
   /** hoverStyle, focusStyle, pressedStyle: CSS declarations by state. */
   states?: Record<string, Record<string, string>>
+  /** style(part, ...): CSS declarations by the kit's class of the part (StylePart). */
+  parts?: Record<string, Record<string, string>>
 }
 
 const STATE_SELECTOR: Record<string, string> = { hover: ":hover", focus: ":focus-within", pressed: ":active" }
@@ -385,16 +406,24 @@ const STATE_SELECTOR: Record<string, string> = { hover: ":hover", focus: ":focus
  * one): over the kit's own hover look and the component's inline style, so with !important. Values are Java's,
  * already checked (Style.set).
  */
-function stateRules(states: HtmlSettings["states"]): { className: string; css: string } | undefined {
-  if (!states || !Object.keys(states).length) return undefined
-  const text = JSON.stringify(states)
+function stateRules(states: HtmlSettings["states"], parts?: HtmlSettings["parts"]): { className: string; css: string } | undefined {
+  const hasStates = !!states && Object.keys(states).length > 0
+  const hasParts = !!parts && Object.keys(parts).length > 0
+  if (!hasStates && !hasParts) return undefined
+  const text = JSON.stringify([states ?? {}, parts ?? {}])
   let hash = 5381
   for (let i = 0; i < text.length; i++) hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0
   const className = `nt-s-${(hash >>> 0).toString(36)}`
-  const css = Object.entries(states)
-    .filter(([state]) => STATE_SELECTOR[state])
-    .map(([state, decl]) => `.${className}${STATE_SELECTOR[state]}{${Object.entries(decl).map(([k, v]) => `${k}:${v} !important`).join(";")}}`)
-    .join("\n")
+  const block = (decl: Record<string, string>) => `{${Object.entries(decl).map(([k, v]) => `${k}:${v} !important`).join(";")}}`
+  const css = [
+    ...Object.entries(states ?? {})
+      .filter(([state]) => STATE_SELECTOR[state])
+      .map(([state, decl]) => `.${className}${STATE_SELECTOR[state]}${block(decl)}`),
+    // a part is the component's own element or one inside it; its class is the kit's, from Java's StylePart
+    ...Object.entries(parts ?? {})
+      .filter(([part]) => /^nt-[a-z0-9-]+$/.test(part))
+      .map(([part, decl]) => `.${className}.${part},.${className} .${part}${block(decl)}`),
+  ].join("\n")
   return { className, css }
 }
 
@@ -406,7 +435,7 @@ function stateRules(states: HtmlSettings["states"]): { className: string; css: s
 function WithHtml({ html, onHover, children }: { html: HtmlSettings; onHover?: (hovering: boolean) => void; children: React.ReactNode }) {
   const box = React.useRef<HTMLSpanElement>(null)
   const focused = React.useRef<Element | null>(null)
-  const states = stateRules(html.states)
+  const states = stateRules(html.states, html.parts)
   // the newest onHover: the listeners stay, the handler changes with each draw
   const hover = React.useRef(onHover)
   hover.current = onHover
@@ -558,7 +587,7 @@ function HtmlNode({ node }: { node: JavaNode }) {
   const global: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(html.attrs ?? {})) if (!/^on/i.test(k)) global[k] = v
   if ("hidden" in global) style.display = "none"
-  const states = stateRules(html.states)
+  const states = stateRules(html.states, html.parts)
   // the kit's look by default: its own classes on what it has them for (html-controls.css for the rest)
   const kit: string[] = []
   const look: Record<string, string> = {}
@@ -627,6 +656,7 @@ function RenderNode({ node: given }: { node: JavaNode }): React.ReactNode {
       const sidebar = slot(node, "sidebar")
       const platform = (str(p.platform) ?? "auto") as "auto" | "windows" | "mac"
       const theme = (str(p.theme) ?? "system") as "system" | "light" | "dark"
+      const design = designCss(p.tokens)
       const main = (
         <>
           {toolbar && <Render node={toolbar} />}
@@ -636,6 +666,7 @@ function RenderNode({ node: given }: { node: JavaNode }): React.ReactNode {
       )
       return (
         <NativeProvider platform={platform} theme={theme} accent={str(p.accent)} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+          {design && <style>{design}</style>}
           <Notice notice={p.notice as NoticeData | undefined} />
           {titleBar && <Render node={titleBar} />}
           {sidebar ? (
@@ -846,7 +877,14 @@ function RenderNode({ node: given }: { node: JavaNode }): React.ReactNode {
     case "button":
       return (
         <Button variant={(str(p.variant) as "accent" | "subtle") ?? "default"} disabled={bool(p.disabled)} onClick={() => send(p.onClick)} style={style}>
-          {str(p.label)}
+          {str(p.icon) ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <NamedIcon name={str(p.icon)!} />
+              {str(p.label)}
+            </span>
+          ) : (
+            str(p.label)
+          )}
         </Button>
       )
     case "textField":
@@ -880,6 +918,34 @@ function RenderNode({ node: given }: { node: JavaNode }): React.ReactNode {
         />
       )
     }
+    case "icon": {
+      // Java's IconView: an icon by name (Icon's "lucide:..."), its size, and a colour of the kit's (a token)
+      const color = str(p.color)
+      const label = str(p.label)
+      return (
+        <span
+          role={label ? "img" : undefined}
+          aria-label={label}
+          aria-hidden={label ? undefined : true}
+          style={{ display: "inline-flex", color: color && /^var\(--nt-[a-z-]+\)$/.test(color) ? color : undefined, ...style }}
+        >
+          <NamedIcon name={str(p.name) ?? ""} size={num(p.size) ?? 16} />
+        </span>
+      )
+    }
+    case "egui":
+      // an egui-4j component (Rust, as WebAssembly) on a canvas in the page: Java's EguiView, LineChart, LiveCsv
+      return (
+        <EguiCanvas
+          component={str(p.component) ?? ""}
+          props={(p.props as object | undefined) ?? {}}
+          aria-label={str(p.label) ?? str(p.component) ?? "egui"}
+          height={typeof p.height === "number" ? p.height : undefined}
+          onEvent={typeof p.onEvent === "string" ? (e) => send(p.onEvent, e) : undefined}
+          onError={typeof p.onError === "string" ? (m) => send(p.onError, m) : undefined}
+          style={style}
+        />
+      )
     case "progress":
       return <ProgressBar aria-label={str(p.label) ?? "Progress"} value={num(p.value)} style={style} />
     case "contextMenu":

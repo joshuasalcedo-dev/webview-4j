@@ -4,6 +4,7 @@ package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 import java.util.function.Consumer;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * One of a few choices, all in sight: the system's radio buttons. ↑ ↓ (or ← →) move between them.
@@ -23,16 +24,26 @@ public final class RadioGroup extends Component<RadioGroup> {
     public RadioGroup(java.util.List<RadioOption> options) {
         super("radioGroup");
         prop("options", options);
+        keep("onChange", "value", Component::pageText);
     }
 
     /** What is chosen, said above the choices. */
     public RadioGroup label(String label) { return prop("label", label); }
     public RadioGroup options(java.util.List<RadioOption> options) { return prop("options", options); }
     public RadioGroup value(String value) { return prop("value", value); }
-    public RadioGroup onChange(Consumer<String> action) { return on("onChange", v -> action.accept(Keys.text(v))); }
+    public RadioGroup onChange(Consumer<String> action) { return on("onChange", v -> action.accept(pageText(v))); }
     public RadioGroup onChange(Runnable action) { return on("onChange", v -> action.run()); }
     /** One under the other (the default), or side by side. */
     public RadioGroup orientation(Orientation orientation) { return prop("orientation", orientation == null ? null : orientation.key); }
     public RadioGroup disabled(boolean disabled) { return prop("disabled", disabled); }
     public RadioGroup disabled() { return disabled(true); }
+
+    // --- as Swing writes it ---
+
+    /** Its value now: as the user left it, or as set. */
+    public String getValue() { return get("value") instanceof String s ? s : null; }
+    public RadioGroup setValue(String value) { return value(value); }
+    /** Runs when the user changes its value; {@code e.getValue()} is the new one. */
+    public RadioGroup addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<String> listener) { return addChange("onChange", listener, Component::pageText); }
+    public RadioGroup removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<String> listener) { return unlisten("onChange", listener); }
 }

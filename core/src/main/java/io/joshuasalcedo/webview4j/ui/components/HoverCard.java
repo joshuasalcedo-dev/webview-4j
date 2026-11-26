@@ -3,6 +3,7 @@
 package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A card with more about something, shown while the pointer rests on it (or the keyboard's focus is there).
@@ -35,4 +36,10 @@ public final class HoverCard extends Component<HoverCard> {
     public HoverCard delay(double delay) { return prop("delay", delay); }
     /** What it holds. */
     public HoverCard with(Component<?>... children) { return add(children); }
+    /** Adds children at the end (Swing's {@code add}); a window showing it draws them. */
+    @Override public HoverCard add(Component<?>... children) { return super.add(children); }
+    /** Takes {@code child} out; a window showing it draws again. */
+    @Override public HoverCard remove(Component<?> child) { return super.remove(child); }
+    /** Takes every child out (Swing's {@code removeAll}). */
+    public HoverCard removeAll() { return clear(); }
 }

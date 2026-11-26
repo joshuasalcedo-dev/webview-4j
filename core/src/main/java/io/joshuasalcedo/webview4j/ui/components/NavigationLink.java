@@ -3,6 +3,7 @@
 package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.JsonValue;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 public record NavigationLink(String id, String label, String description) implements JsonValue {
 

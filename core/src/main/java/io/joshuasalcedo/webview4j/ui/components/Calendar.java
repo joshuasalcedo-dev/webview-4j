@@ -4,6 +4,7 @@ package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 import java.util.function.Consumer;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A month to pick a day on: ← → ↑ ↓ move by days and weeks, PageUp PageDown by months, Enter takes it.
@@ -22,11 +23,12 @@ public final class Calendar extends Component<Calendar> {
 
     public Calendar() {
         super("calendar");
+        keep("onChange", "value", Component::pageText);
     }
 
     /** The chosen day, "2026-11-25" (ISO), or none. */
     public Calendar value(String value) { return prop("value", value); }
-    public Calendar onChange(Consumer<String> action) { return on("onChange", v -> action.accept(Keys.text(v))); }
+    public Calendar onChange(Consumer<String> action) { return on("onChange", v -> action.accept(pageText(v))); }
     public Calendar onChange(Runnable action) { return on("onChange", v -> action.run()); }
     /** The first and last days that can be chosen, ISO. */
     public Calendar min(String min) { return prop("min", min); }
@@ -35,4 +37,13 @@ public final class Calendar extends Component<Calendar> {
     public Calendar month(String month) { return prop("month", month); }
     /** The weeks start on Monday (the default) or Sunday. */
     public Calendar weekStart(WeekStart weekStart) { return prop("weekStart", weekStart == null ? null : weekStart.key); }
+
+    // --- as Swing writes it ---
+
+    /** Its value now: as the user left it, or as set. */
+    public String getValue() { return get("value") instanceof String s ? s : null; }
+    public Calendar setValue(String value) { return value(value); }
+    /** Runs when the user changes its value; {@code e.getValue()} is the new one. */
+    public Calendar addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<String> listener) { return addChange("onChange", listener, Component::pageText); }
+    public Calendar removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<String> listener) { return unlisten("onChange", listener); }
 }

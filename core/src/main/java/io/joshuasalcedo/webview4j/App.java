@@ -142,8 +142,27 @@ public final class App implements AutoCloseable {
 
     // ---- actions ----
 
+    /** Where the next windows with a title open: a live reload's, so they open where the ones before them were. */
+    private final Map<String, java.util.Deque<Geometry>> placements = new ConcurrentHashMap<>();
+
+    /** The next window titled {@code title} opens at {@code where} (its place, size and maximized). */
+    void placeNext(String title, Geometry where) {
+        placements.computeIfAbsent(title, t -> new java.util.concurrent.ConcurrentLinkedDeque<>()).add(where);
+    }
+
+    /** Forgets the places no window took. */
+    void clearPlacements() {
+        placements.clear();
+    }
+
     /** Opens a window; the future completes once it exists. */
     public CompletableFuture<View> open(WindowOptions options) {
+        java.util.Deque<Geometry> places = placements.get(options.currentTitle());
+        Geometry where = places == null ? null : places.poll();
+        if (where != null) {
+            options.position(where.x(), where.y()).size(where.width(), where.height());
+            if (where.maximized()) options.maximized(true);
+        }
         if (options.remembered() == null) return open(options, options.toPayload());
         return io.joshuasalcedo.webview4j.ui.WindowMemory.open(this, options.toPayload(), options.remembered(), payload -> open(options, payload));
     }

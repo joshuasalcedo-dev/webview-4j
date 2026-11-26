@@ -4,6 +4,7 @@ package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 import java.util.function.Consumer;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A value picked by dragging along a track, as the system's slider; ← → and Home End move it too.
@@ -14,12 +15,13 @@ public final class Slider extends Component<Slider> {
         super("slider");
         prop("aria-label", ariaLabel);
         prop("value", value);
+        keep("onChange", "value", Component::pageNumber);
     }
 
     /** What it sets, for screen readers ("Volume"). */
     public Slider ariaLabel(String ariaLabel) { return prop("aria-label", ariaLabel); }
     public Slider value(double value) { return prop("value", value); }
-    public Slider onChange(Consumer<Double> action) { return on("onChange", v -> action.accept(Keys.number(v))); }
+    public Slider onChange(Consumer<Double> action) { return on("onChange", v -> action.accept(pageNumber(v))); }
     public Slider onChange(Runnable action) { return on("onChange", v -> action.run()); }
     public Slider min(double min) { return prop("min", min); }
     public Slider max(double max) { return prop("max", max); }
@@ -29,4 +31,13 @@ public final class Slider extends Component<Slider> {
     /** Shows the value beside it. */
     public Slider showValue(boolean showValue) { return prop("showValue", showValue); }
     public Slider showValue() { return showValue(true); }
+
+    // --- as Swing writes it ---
+
+    /** Its value now: as the user left it, or as set. */
+    public Double getValue() { return get("value") instanceof Number n ? n.doubleValue() : null; }
+    public Slider setValue(double value) { return value(value); }
+    /** Runs when the user changes its value; {@code e.getValue()} is the new one. */
+    public Slider addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Double> listener) { return addChange("onChange", listener, Component::pageNumber); }
+    public Slider removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Double> listener) { return unlisten("onChange", listener); }
 }

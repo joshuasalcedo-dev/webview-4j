@@ -2,16 +2,16 @@
 // Components drawn for Java screens that java-ui.tsx has no case of its own for: it asks here last.
 import * as React from "react"
 
-import { ChatComposer } from "./components/chat/chat-composer"
-import { ChatHeader } from "./components/chat/chat-header"
-import { ConversationList } from "./components/chat/conversation-list"
-import { VoiceNote } from "./components/chat/message-bubble"
-import { MessageList } from "./components/chat/message-list"
 import { RadioGroup, Separator, Slider, Toggle, Tooltip } from "./components/controls"
 import { HoverCard, Popover, Sheet } from "./components/overlays"
 import { Calendar, Combobox } from "./components/pickers"
+import { ChatComposer } from "./components/plugin/chat/chat-composer"
+import { ChatHeader } from "./components/plugin/chat/chat-header"
+import { ConversationList } from "./components/plugin/chat/conversation-list"
+import { VoiceNote } from "./components/plugin/chat/message-bubble"
+import { MessageList } from "./components/plugin/chat/message-list"
+import { EmptyState, Pages, SkeletonRows } from "./components/plugin/collection/states"
 import { AspectRatio, ButtonGroup, InputGroup, NavigationMenu } from "./components/structure"
-import { EmptyState, Pages, SkeletonRows } from "./components/usecase/collection/states"
 /** Chart loads the first time a screen shows one (java-gen.json: lazy). */
 const Chart = React.lazy(() => import("./components/chart").then((m) => ({ default: m.Chart })))
 

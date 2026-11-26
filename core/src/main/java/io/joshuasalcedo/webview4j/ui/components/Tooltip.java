@@ -3,6 +3,7 @@
 package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A short explanation that shows when the pointer rests on something, or the keyboard's focus reaches it.
@@ -38,4 +39,10 @@ public final class Tooltip extends Component<Tooltip> {
     public Tooltip delay(double delay) { return prop("delay", delay); }
     /** What it holds. */
     public Tooltip with(Component<?>... children) { return add(children); }
+    /** Adds children at the end (Swing's {@code add}); a window showing it draws them. */
+    @Override public Tooltip add(Component<?>... children) { return super.add(children); }
+    /** Takes {@code child} out; a window showing it draws again. */
+    @Override public Tooltip remove(Component<?> child) { return super.remove(child); }
+    /** Takes every child out (Swing's {@code removeAll}). */
+    public Tooltip removeAll() { return clear(); }
 }

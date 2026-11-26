@@ -4,6 +4,7 @@ package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 import java.util.function.Consumer;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A button that stays pressed until pressed again: Bold in an editor, a filter that is on.
@@ -14,17 +15,29 @@ public final class ToggleButton extends Component<ToggleButton> {
         super("toggleButton");
         prop("label", label);
         prop("pressed", pressed);
+        keep("onPressedChange", "pressed", Component::pageFlag);
     }
 
     public ToggleButton label(String label) { return prop("label", label); }
     /** An icon by name before the label, or instead of it with iconOnly. */
     public ToggleButton icon(String icon) { return prop("icon", icon); }
+    /** One of Lucide's icons. */
+    public ToggleButton icon(io.joshuasalcedo.webview4j.ui.icons.Icon icon) { return prop("icon", icon == null ? null : icon.key()); }
     /** Only the icon shows; the label is for screen readers and its tooltip. */
     public ToggleButton iconOnly(boolean iconOnly) { return prop("iconOnly", iconOnly); }
     public ToggleButton iconOnly() { return iconOnly(true); }
     public ToggleButton pressed(boolean pressed) { return prop("pressed", pressed); }
-    public ToggleButton onPressedChange(Consumer<Boolean> action) { return on("onPressedChange", v -> action.accept(Keys.flag(v))); }
+    public ToggleButton onPressedChange(Consumer<Boolean> action) { return on("onPressedChange", v -> action.accept(pageFlag(v))); }
     public ToggleButton onPressedChange(Runnable action) { return on("onPressedChange", v -> action.run()); }
     public ToggleButton disabled(boolean disabled) { return prop("disabled", disabled); }
     public ToggleButton disabled() { return disabled(true); }
+
+    // --- as Swing writes it ---
+
+    /** Whether it is pressed now: as the user left it, or as set. */
+    public boolean isPressed() { return Boolean.TRUE.equals(get("pressed")); }
+    public ToggleButton setPressed(boolean pressed) { return pressed(pressed); }
+    /** Runs when the user changes whether it is pressed; {@code e.getValue()} is the new one. */
+    public ToggleButton addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Boolean> listener) { return addChange("onPressedChange", listener, Component::pageFlag); }
+    public ToggleButton removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Boolean> listener) { return unlisten("onPressedChange", listener); }
 }

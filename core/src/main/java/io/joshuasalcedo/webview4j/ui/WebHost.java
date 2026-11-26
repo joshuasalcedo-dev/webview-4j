@@ -577,11 +577,11 @@ public final class WebHost implements AutoCloseable {
 
         @Override
         public Component<?> render() {
-            var form = new io.joshuasalcedo.webview4j.ui.components.usecase.authentication.SignInForm(title)
+            var form = new io.joshuasalcedo.webview4j.plugin.authentication.SignInForm(title)
                     .subtitle("Sign in to go on.").username()
                     .onSubmit((name, password) -> signIn.attempt(name, password));
             if (signIn.error() != null) form.error(signIn.error());
-            return Ui.column(form).align("center").padding(48);
+            return Ui.column(form).align(io.joshuasalcedo.webview4j.ui.components.layout.Box.Align.CENTER).padding(48);
         }
     }
 
@@ -592,7 +592,7 @@ public final class WebHost implements AutoCloseable {
             var box = Ui.column(Ui.text(title).variant(io.joshuasalcedo.webview4j.ui.components.TextVariant.TITLE),
                     Ui.text(text).tone(io.joshuasalcedo.webview4j.ui.components.Tone.SECONDARY)).gap(12).padding(32).width(420);
             if (signOut != null) box.with(Ui.button("Sign out").onClick(signOut));
-            return Ui.column(box).align("center").padding(48);
+            return Ui.column(box).align(io.joshuasalcedo.webview4j.ui.components.layout.Box.Align.CENTER).padding(48);
         }
     }
 

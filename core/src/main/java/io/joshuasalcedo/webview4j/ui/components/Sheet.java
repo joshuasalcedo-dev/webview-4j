@@ -4,6 +4,7 @@ package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 import java.util.function.Consumer;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A panel that slides in over the window from an edge, the rest dimmed: details, filters, a form (shadcn's Sheet;
@@ -25,10 +26,11 @@ public final class Sheet extends Component<Sheet> {
     public Sheet(boolean open) {
         super("sheet");
         prop("open", open);
+        keep("onOpenChange", "open", Component::pageFlag);
     }
 
     public Sheet open(boolean open) { return prop("open", open); }
-    public Sheet onOpenChange(Consumer<Boolean> action) { return on("onOpenChange", v -> action.accept(Keys.flag(v))); }
+    public Sheet onOpenChange(Consumer<Boolean> action) { return on("onOpenChange", v -> action.accept(pageFlag(v))); }
     public Sheet onOpenChange(Runnable action) { return on("onOpenChange", v -> action.run()); }
     /** Which edge it slides in from: right (the default), left, or bottom (a drawer). */
     public Sheet side(Side side) { return prop("side", side == null ? null : side.key); }
@@ -38,4 +40,19 @@ public final class Sheet extends Component<Sheet> {
     public Sheet size(double size) { return prop("size", size); }
     /** What it holds. */
     public Sheet with(Component<?>... children) { return add(children); }
+    /** Adds children at the end (Swing's {@code add}); a window showing it draws them. */
+    @Override public Sheet add(Component<?>... children) { return super.add(children); }
+    /** Takes {@code child} out; a window showing it draws again. */
+    @Override public Sheet remove(Component<?> child) { return super.remove(child); }
+    /** Takes every child out (Swing's {@code removeAll}). */
+    public Sheet removeAll() { return clear(); }
+
+    // --- as Swing writes it ---
+
+    /** Whether it is open now: as the user left it, or as set. */
+    public boolean isOpen() { return Boolean.TRUE.equals(get("open")); }
+    public Sheet setOpen(boolean open) { return open(open); }
+    /** Runs when the user changes whether it is open; {@code e.getValue()} is the new one. */
+    public Sheet addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Boolean> listener) { return addChange("onOpenChange", listener, Component::pageFlag); }
+    public Sheet removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Boolean> listener) { return unlisten("onOpenChange", listener); }
 }

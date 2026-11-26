@@ -46,7 +46,11 @@ public final class Style {
 
         Token(String variable) { this.variable = variable; }
 
-        String css() { return "var(" + variable + ")"; }
+        /** Its CSS variable's name: {@code --nt-accent}. */
+        public String variable() { return variable; }
+
+        /** The token as CSS: {@code var(--nt-accent)}. */
+        public String css() { return "var(" + variable + ")"; }
     }
 
     private static final Pattern PROPERTY = Pattern.compile("--[a-zA-Z0-9-]+|[a-z]+(-[a-z]+)*");

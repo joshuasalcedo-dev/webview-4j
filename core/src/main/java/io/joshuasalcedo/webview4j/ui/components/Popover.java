@@ -4,6 +4,7 @@ package io.joshuasalcedo.webview4j.ui.components;
 
 import io.joshuasalcedo.webview4j.ui.Component;
 import java.util.function.Consumer;
+import io.joshuasalcedo.webview4j.plugin.chat.*;
 
 /**
  * A panel that a click opens beside something and Esc, or a click elsewhere, closes: settings, a small form.
@@ -25,6 +26,7 @@ public final class Popover extends Component<Popover> {
     public Popover(String trigger) {
         super("popover");
         prop("trigger", trigger);
+        keep("onOpenChange", "open", Component::pageFlag);
     }
 
     /** What opens it when clicked: a button, an icon. */
@@ -37,8 +39,23 @@ public final class Popover extends Component<Popover> {
     /** Open or closed, when the app decides; left out, it keeps its own. */
     public Popover open(boolean open) { return prop("open", open); }
     public Popover open() { return open(true); }
-    public Popover onOpenChange(Consumer<Boolean> action) { return on("onOpenChange", v -> action.accept(Keys.flag(v))); }
+    public Popover onOpenChange(Consumer<Boolean> action) { return on("onOpenChange", v -> action.accept(pageFlag(v))); }
     public Popover onOpenChange(Runnable action) { return on("onOpenChange", v -> action.run()); }
     /** What it holds. */
     public Popover with(Component<?>... children) { return add(children); }
+    /** Adds children at the end (Swing's {@code add}); a window showing it draws them. */
+    @Override public Popover add(Component<?>... children) { return super.add(children); }
+    /** Takes {@code child} out; a window showing it draws again. */
+    @Override public Popover remove(Component<?> child) { return super.remove(child); }
+    /** Takes every child out (Swing's {@code removeAll}). */
+    public Popover removeAll() { return clear(); }
+
+    // --- as Swing writes it ---
+
+    /** Whether it is open now: as the user left it, or as set. */
+    public boolean isOpen() { return Boolean.TRUE.equals(get("open")); }
+    public Popover setOpen(boolean open) { return open(open); }
+    /** Runs when the user changes whether it is open; {@code e.getValue()} is the new one. */
+    public Popover addChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Boolean> listener) { return addChange("onOpenChange", listener, Component::pageFlag); }
+    public Popover removeChangeListener(io.joshuasalcedo.webview4j.ui.event.ChangeListener<Boolean> listener) { return unlisten("onOpenChange", listener); }
 }

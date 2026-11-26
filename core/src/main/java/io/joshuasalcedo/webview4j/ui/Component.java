@@ -20,6 +20,13 @@ public abstract class Component<C extends Component<C>> {
     final Map<String, Object> props = new LinkedHashMap<>();
     final List<Component<?>> children = new ArrayList<>();
     final Map<String, Consumer<Object>> handlers = new LinkedHashMap<>();
+    /** Swing's listeners ({@code addActionListener}...), per event, in the order added: each runs after the handler. */
+    private final Map<String, List<Listener>> listeners = new LinkedHashMap<>();
+    /** What an event of the page says about the component's own value: kept in it before any handler runs. */
+    private final Map<String, Consumer<Object>> keeps = new LinkedHashMap<>();
+
+    /** A listener as given (to remove it by), and the code that runs. */
+    private record Listener(Object given, Consumer<Object> run) {}
     private String key;
     /** The windows that drew it: changing it draws them again (as Swing and JavaFX controls do). */
     private final io.joshuasalcedo.webview4j.ui.state.Tracking.Watched watched = new io.joshuasalcedo.webview4j.ui.state.Tracking.Watched();
@@ -288,6 +295,21 @@ public abstract class Component<C extends Component<C>> {
         return self();
     }
 
+    /**
+     * How one of its parts looks ({@link StylePart}: its own enum, made from the kit's CSS), over the kit's look:
+     * {@code dialog.style(DialogPart.TITLE, Style.of().color(Style.Token.ACCENT))}. Inside this component only.
+     */
+    public C style(StylePart<C> part, Style style) {
+        Objects.requireNonNull(part, "part");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parts = (Map<String, Object>) html().computeIfAbsent("parts", k -> new LinkedHashMap<String, Object>());
+        @SuppressWarnings("unchecked")
+        Map<String, String> declarations = (Map<String, String>) parts.computeIfAbsent(part.className(), k -> new LinkedHashMap<String, String>());
+        declarations.putAll(Objects.requireNonNull(style, "style").declarations());
+        watched.changed();
+        return self();
+    }
+
     /** One CSS property: {@code css("letter-spacing", "0.02em")}; checked as {@link Style#set} checks it. */
     public C css(String property, String value) {
         return style(Style.of().set(property, value));
@@ -324,6 +346,153 @@ public abstract class Component<C extends Component<C>> {
         return on("onHover", v -> hovering.accept(Boolean.TRUE.equals(v)));
     }
 
+    // --- what every Swing component has ---------------------------------------------------------------------
+
+    /** Whether the user can use it (Swing's {@code setEnabled}); a window showing it draws again. */
+    public C setEnabled(boolean enabled) {
+        return prop("disabled", !enabled);
+    }
+
+    public boolean isEnabled() {
+        return !Boolean.TRUE.equals(get("disabled"));
+    }
+
+    /** Shown, or not shown and not read by screen readers (Swing's {@code setVisible}). */
+    public C setVisible(boolean visible) {
+        hidden(!visible);
+        watched.changed();
+        return self();
+    }
+
+    public boolean isVisible() {
+        return !(html().get("attrs") instanceof Map<?, ?> attrs && attrs.containsKey("hidden"));
+    }
+
+    /** What shows when the pointer rests on it (Swing's {@code setToolTipText}); null takes it away. */
+    public C setToolTipText(String text) {
+        global("title", text);
+        watched.changed();
+        return self();
+    }
+
+    public String getToolTipText() {
+        return html().get("attrs") instanceof Map<?, ?> attrs && attrs.get("title") instanceof String t ? t : null;
+    }
+
+    /** Its size, CSS pixels (Swing's {@code setPreferredSize}). */
+    public C setPreferredSize(double width, double height) {
+        prop("width", width);
+        return prop("height", height);
+    }
+
+    /** What it holds, in order (Swing's {@code getComponents}): a copy. */
+    public List<Component<?>> getComponents() {
+        synchronized (this) {
+            return List.copyOf(children);
+        }
+    }
+
+    public int getComponentCount() {
+        synchronized (this) {
+            return children.size();
+        }
+    }
+
+    /**
+     * Keeps what the page says {@code event} changed in prop {@code name}, before the handler and listeners run: so
+     * {@code field.getText()} is what the user typed, as in Swing. Nothing is drawn again for it (the page shows it).
+     */
+    protected C keep(String event, String name, java.util.function.Function<Object, Object> convert) {
+        Objects.requireNonNull(convert, "convert");
+        keeps.put(event, v -> {
+            Object value = convert.apply(v);
+            synchronized (this) {
+                if (value == null) props.remove(name);
+                else props.put(name, value);
+            }
+        });
+        return self();
+    }
+
+    /** Adds {@code listener} (the object given, to remove it by) for {@code event}: it runs after those added before. */
+    protected C listen(String event, Object listener, Consumer<Object> run) {
+        Objects.requireNonNull(listener, "listener");
+        Consumer<Object> bound = io.joshuasalcedo.webview4j.ui.state.Context.bind(Objects.requireNonNull(run, "run"));
+        synchronized (this) {
+            listeners.computeIfAbsent(event, k -> new ArrayList<>()).add(new Listener(listener, bound));
+        }
+        return self();
+    }
+
+    /** Takes out {@code listener}, added with {@link #listen}. */
+    protected C unlisten(String event, Object listener) {
+        synchronized (this) {
+            List<Listener> list = listeners.get(event);
+            if (list != null) list.removeIf(l -> l.given() == listener);
+        }
+        return self();
+    }
+
+    /** Swing's {@code ActionListener}s on {@code event}: each gets an {@link io.joshuasalcedo.webview4j.ui.event.ActionEvent} from this. */
+    protected C addAction(String event, io.joshuasalcedo.webview4j.ui.event.ActionListener listener) {
+        Objects.requireNonNull(listener, "listener");
+        return listen(event, listener, v -> listener.actionPerformed(new io.joshuasalcedo.webview4j.ui.event.ActionEvent(this)));
+    }
+
+    /** Swing's {@code ChangeListener}s on {@code event}: each gets the new value, as {@code convert} reads it. */
+    protected <V> C addChange(String event, io.joshuasalcedo.webview4j.ui.event.ChangeListener<V> listener,
+                              java.util.function.Function<Object, V> convert) {
+        Objects.requireNonNull(listener, "listener");
+        Objects.requireNonNull(convert, "convert");
+        return listen(event, listener, v -> listener.stateChanged(new io.joshuasalcedo.webview4j.ui.event.ChangeEvent<>(this, convert.apply(v))));
+    }
+
+    /** What runs for {@code event}: what it keeps, its handler, then its listeners; null when nothing does. */
+    private Consumer<Object> runs(String event) {
+        Consumer<Object> keep = keeps.get(event);
+        Consumer<Object> handler = handlers.get(event);
+        List<Listener> added;
+        synchronized (this) {
+            List<Listener> list = listeners.get(event);
+            added = list == null ? List.of() : List.copyOf(list);
+        }
+        if (keep == null && handler == null && added.isEmpty()) return null;
+        return v -> {
+            if (keep != null) keep.accept(v);
+            if (handler != null) handler.accept(v);
+            for (Listener l : added) l.run().accept(v);
+        };
+    }
+
+    // --- what the page sends, as Java values: for components in any package (generated ones, plugins') ---
+
+    /** Text the page sent; "" for none. */
+    protected static String pageText(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    /** A yes or no the page sent; false for none. */
+    protected static Boolean pageFlag(Object value) {
+        return Boolean.TRUE.equals(value);
+    }
+
+    /** A number the page sent; null for none. */
+    protected static Double pageNumber(Object value) {
+        return value instanceof Number n ? n.doubleValue() : null;
+    }
+
+    /** A whole number the page sent; null for none. */
+    protected static Long pageWhole(Object value) {
+        return value instanceof Number n ? n.longValue() : null;
+    }
+
+    /** Texts the page sent as a list. */
+    protected static List<String> pageTexts(Object value) {
+        List<String> list = new ArrayList<>();
+        if (value instanceof List<?> items) for (Object item : items) list.add(String.valueOf(item));
+        return List.copyOf(list);
+    }
+
     /** Sets a property the page's renderer reads; null removes it. */
     protected C prop(String name, Object value) {
         synchronized (this) {
@@ -347,6 +516,16 @@ public abstract class Component<C extends Component<C>> {
     protected C add(List<? extends Component<?>> components) {
         synchronized (this) {
             for (Component<?> c : components) if (c != null) children.add(c);
+        }
+        watched.changed();
+        return self();
+    }
+
+    /** Puts {@code child} at {@code index} among the children (0 is first); a window showing it draws again. */
+    protected C insert(int index, Component<?> child) {
+        Objects.requireNonNull(child, "child");
+        synchronized (this) {
+            children.add(index, child);
         }
         watched.changed();
         return self();
@@ -416,11 +595,18 @@ public abstract class Component<C extends Component<C>> {
         Map<String, Object> node = new LinkedHashMap<>();
         node.put("t", type);
         Map<String, Object> p = new LinkedHashMap<>(props);
-        for (Map.Entry<String, Consumer<Object>> handler : handlers.entrySet()) {
-            String id = path + ":" + handler.getKey();
-            for (int n = 2; registry.containsKey(id); n++) id = path + ":" + handler.getKey() + "#" + n;
-            registry.put(id, handler.getValue());
-            p.put(handler.getKey(), id);
+        java.util.Set<String> events = new java.util.LinkedHashSet<>(handlers.keySet());
+        events.addAll(keeps.keySet());
+        synchronized (this) {
+            events.addAll(listeners.keySet());
+        }
+        for (String event : events) {
+            Consumer<Object> run = runs(event);
+            if (run == null) continue;
+            String id = path + ":" + event;
+            for (int n = 2; registry.containsKey(id); n++) id = path + ":" + event + "#" + n;
+            registry.put(id, run);
+            p.put(event, id);
         }
         node.put("p", p);
         if (!children.isEmpty()) {

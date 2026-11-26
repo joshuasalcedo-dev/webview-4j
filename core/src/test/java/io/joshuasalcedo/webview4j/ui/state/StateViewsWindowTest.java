@@ -9,7 +9,7 @@ import io.joshuasalcedo.webview4j.ui.Component;
 import io.joshuasalcedo.webview4j.ui.Screen;
 import io.joshuasalcedo.webview4j.ui.Ui;
 import io.joshuasalcedo.webview4j.ui.UiWindow;
-import io.joshuasalcedo.webview4j.ui.components.usecase.collection.DataTable;
+import io.joshuasalcedo.webview4j.plugin.collection.DataTable;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;

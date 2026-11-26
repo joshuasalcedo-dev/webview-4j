@@ -21,8 +21,8 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:6.0.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    // The tests' own @WebViewController classes are compiled with the processor, as an app's would be.
-    testAnnotationProcessor(project(":processor"))
+    // The tests' own @WebViewController classes are compiled with core's processor, as an app's would be.
+    testAnnotationProcessor(sourceSets.main.get().output)
 }
 
 tasks.compileTestJava {
@@ -153,6 +153,7 @@ val uiBundle = tasks.register<Exec>("uiBundle") {
     val target = uiOut.get().dir("webview4j-ui").asFile
     environment("WEBVIEW4J_UI_OUT", target.absolutePath)
     inputs.dir(uiDir.dir("src"))
+    inputs.dir(uiDir.dir("pages"))
     inputs.files(uiDir.file("vite.bundle.ts"), uiDir.file("vite.lib.ts"), uiDir.file("package.json"), uiDir.file("bun.lock"))
     outputs.dir(uiOut)
 }
@@ -189,7 +190,36 @@ val uiHtmlGenCheck = tasks.register<Exec>("uiHtmlGenCheck") {
 }
 tasks.named("check") { dependsOn(uiJavaGenCheck, uiHtmlGenCheck) }
 
+// The components' parts, typed (StylePart enums: ButtonPart, DialogPart...), made from the kit's CSS and
+// src/main/ui/style-gen.json into build/generated: never into src, never into a CSS file.
+val styleOut = layout.buildDirectory.dir("generated/sources/style/java")
+val uiStyleGen = tasks.register<Exec>("uiStyleGen") {
+    description = "Makes the components' typed style parts (io.joshuasalcedo.webview4j.ui.style) from the kit's CSS."
+    group = "build"
+    workingDir = uiDir.asFile
+    commandLine("bun", "scripts/style-gen.ts")
+    environment("STYLE_GEN_OUT", styleOut.get().asFile.absolutePath)
+    inputs.files(fileTree(uiDir.dir("src")) { include("**/*.css"); exclude("egui4j/**", "grammar/**") })
+    inputs.files(uiDir.file("style-gen.json"), uiDir.file("scripts/style-gen.ts"))
+    outputs.dir(styleOut)
+}
+
+// Lucide's icons, typed (the Icon enum), from lucide-react's list into build/generated: never into src.
+val iconOut = layout.buildDirectory.dir("generated/sources/icons/java")
+val uiIconGen = tasks.register<Exec>("uiIconGen") {
+    description = "Makes the Icon enum (io.joshuasalcedo.webview4j.ui.icons) from Lucide's icons."
+    group = "build"
+    dependsOn(uiInstall)
+    workingDir = uiDir.asFile
+    commandLine("bun", "scripts/icon-gen.ts")
+    environment("ICON_GEN_OUT", iconOut.get().asFile.absolutePath)
+    inputs.files(uiDir.file("scripts/icon-gen.ts"), uiDir.file("bun.lock"))
+    outputs.dir(iconOut)
+}
+
 sourceSets.main {
+    java.srcDir(files(styleOut).builtBy(uiStyleGen))
+    java.srcDir(files(iconOut).builtBy(uiIconGen))
     resources.srcDir(natives)
     resources.srcDir(files(uiOut).builtBy(uiBundle))
 }
@@ -202,6 +232,13 @@ tasks.test {
     environment("WEBVIEW4J_BROWSER", "off")
     // -Pbenchmark runs Benchmark too: ./gradlew :core:test --tests '*Benchmark' -Pbenchmark
     systemProperty("benchmark", providers.gradleProperty("benchmark").isPresent)
+    // The dev tools' window models are tested without a screen.
+    systemProperty("java.awt.headless", "true")
+    // a test's design spec or light/dark is never saved for the next run (Appearance.remember)
+    systemProperty("webview4j.appearance.remember", "false")
+    // The processor's generated TypeScript is type-checked against @webview4j/api when its node_modules are installed.
+    systemProperty("webview4j.api", layout.projectDirectory.dir("src/main/typescript").asFile.absolutePath)
+    providers.gradleProperty("demo.out").orNull?.let { systemProperty("demo.out", it) }
     inputs.property("benchmark", providers.gradleProperty("benchmark").isPresent)
     // The protocol's conformance fixtures, shared with the Rust tests.
     val fixtures = rootProject.file("protocol/fixtures")
