@@ -1,22 +1,21 @@
-# webview-4j: shortcuts. `just` lists them.
+# swaswa: shortcuts. `just` lists them.
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
 default:
     @just --list
 
-# How fast each path is, in a real hidden window (Windows only): rebuilds, runs Benchmark, prints its numbers
-bench:
-    ./gradlew :core:test --tests '*Benchmark' -Pbenchmark --rerun --console=plain
-    Select-String -Path core/build/test-results/test/TEST-*Benchmark.xml -Pattern 'BENCH ' | ForEach-Object { $_.Line -replace '^.*?BENCH ', '' }
+# Every swaswa-ffi feature in one window: windows, title bars, taskbar, the page, dialogs, the system, and its events
+ffi-showcase:
+    mvn -q -B -pl swaswa-ffi test-compile exec:exec@showcase
 
-# Checks English text with Harper (crates/grammar): just grammar "This is an test."  (dialect: en-US, en-GB, en-AU, en-CA, en-IN)
-grammar text dialect="en-US":
-    cargo run -q --release -p grammar --example check -- --dialect {{dialect}} "{{text}}"
+# Build and test everything (the native library from swaswa-ffi/native/lib, no Rust needed)
+verify:
+    mvn -B verify
 
-# The component explorer (shadcn-style gallery, live examples): just explorer   (just explorer fast: skip making the docs again)
-explorer mode="":
-    ./gradlew :explorer:run {{ if mode == "fast" { "'-Pexplorer.skipDocs'" } else { "" } }} --console=plain
+# Rebuild the native library with cargo (release) into swaswa-ffi/native/lib/<os>-<arch>/: commit it after
+native:
+    mvn -B -pl swaswa-ffi -Dnative.build -DskipTests process-resources
 
-# The React kit's stories (Storybook on http://localhost:6006)
-storybook:
-    cd core/src/main/ui; bun install; bun run storybook
+# The native library unoptimised, built faster, for trying a Rust change (into native/lib too: rebuild with `just native` before committing)
+native-dev:
+    mvn -B -pl swaswa-ffi -Dnative.build "-Dcargo.profile=dev" -DskipTests process-resources

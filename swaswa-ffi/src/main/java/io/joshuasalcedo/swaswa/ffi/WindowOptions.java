@@ -1,0 +1,528 @@
+package io.joshuasalcedo.swaswa.ffi;
+
+import java.nio.file.Path;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+/**
+ * How {@link App#open} makes a window: what it shows first and how it looks.
+ * <pre>{@code
+ * app.open(WindowOptions.url("https://example.com").title("Example").size(1280, 800))
+ * app.open(WindowOptions.html("<h1>Hi</h1>").capture(Capture.CLICKS, Capture.CONSOLE))
+ * }</pre>
+ */
+public final class WindowOptions {
+
+    private String url;
+    private String html;
+    private String title = "WebView";
+    private double width = 1024;
+    private double height = 768;
+    private boolean resizable = true;
+    private boolean decorations = true;
+    /** {@link #devtools(boolean)}; null: {@code -Dswaswa.devtools}. */
+    private Boolean devtools;
+    private boolean headless;
+    private String initializationScript;
+    private Path dataDirectory;
+    private Set<Capture> capture;
+    private List<String> origins;
+    /** {@link #navigation}: more sites that open in the window. */
+    private List<String> navigation;
+    /** {@link #browse()}: any website opens in the window itself. */
+    private boolean browse;
+    /** {@link #offscreen()}: drawn for Java, not for the person. */
+    private boolean offscreen;
+    private String assets;
+    private ClassLoader assetLoader;
+    private byte[] icon;
+    private long ownerWindow;
+    /** {@link #owner(View)}: the owning view's id. */
+    private String owner;
+    private double minWidth;
+    private double minHeight;
+    private boolean maximized;
+    private Double x;
+    private Double y;
+    private String remember;
+    private boolean fullscreen;
+    private boolean alwaysOnTop;
+    private double maxWidth;
+    private double maxHeight;
+    private boolean minimizable = true;
+    private boolean maximizable = true;
+    private boolean closable = true;
+    private boolean skipTaskbar;
+    private boolean allWorkspaces;
+    private boolean contentProtection;
+    private boolean focusable = true;
+    private boolean transparent;
+    private int[] backgroundColor;
+    private TitleBar titleBar = TitleBar.DEFAULT;
+    private double[] trafficLights;
+    private boolean shadow = true;
+    private Backdrop backdrop;
+    private String userAgent;
+    private NewWindows newWindows = NewWindows.BROWSER;
+    private boolean downloads = true;
+    private List<String> shortcuts = List.of();
+    private boolean escapeExitsFullscreen = true;
+    private boolean confirmClose;
+    private boolean fileDrop;
+    private Theme theme = Theme.SYSTEM;
+
+    private WindowOptions() {}
+
+    public static WindowOptions url(String url) {
+        WindowOptions options = new WindowOptions();
+        options.url = Objects.requireNonNull(url, "url");
+        return options;
+    }
+
+    public static WindowOptions html(String html) {
+        WindowOptions options = new WindowOptions();
+        options.html = Objects.requireNonNull(html, "html");
+        return options;
+    }
+
+    public static WindowOptions blank() {
+        return new WindowOptions();
+    }
+
+    /**
+     * The app's own page: the window opens {@code <directory>/index.html} from the class path,
+     * served with everything it links to (scripts, styles, fonts, images) over webview-4j's custom
+     * protocol at {@code <base>app/}. No port is opened and nothing is fetched from the network. The
+     * page may use the bridge and the controllers; by default no other origin may.
+     *
+     * <p>Files are read with the thread's context class loader; {@link #app(String, ClassLoader)}
+     * names another. Only files under {@code directory} are served, by paths of letters, digits and
+     * {@code ._-~@+} (no {@code ..}, no hidden files, nothing percent-encoded).
+     *
+     * @param directory a class path directory, such as {@code "app"} for {@code src/main/resources/app}
+     */
+    public static WindowOptions app(String directory) {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        return app(directory, loader != null ? loader : WindowOptions.class.getClassLoader());
+    }
+
+    /** {@link #app(String)}, reading the files with {@code loader}. */
+    public static WindowOptions app(String directory, ClassLoader loader) {
+        WindowOptions options = new WindowOptions();
+        options.assets = Assets.root(directory);
+        options.assetLoader = Objects.requireNonNull(loader, "loader");
+        options.url = Assets.baseUrl() + "app/index.html";
+        return options;
+    }
+
+    /**
+     * Another page of the {@link #app app's own files} than {@code index.html}, such as {@code "settings.html"} of
+     * a Vite app with several pages: {@code WindowOptions.app("web").page("settings.html")}.
+     *
+     * @throws IllegalStateException unless the options were made with {@link #app}
+     * @throws IllegalArgumentException if {@code page} is not a path inside the app's files
+     */
+    public WindowOptions page(String page) {
+        if (assets == null) throw new IllegalStateException("page() is for the app's own files: WindowOptions.app(...)");
+        if (page == null || !Assets.safe(page)) throw new IllegalArgumentException("not a page of the app's files: " + page);
+        this.url = Assets.baseUrl() + "app/" + page;
+        return this;
+    }
+
+    public WindowOptions title(String title)        { this.title = Objects.requireNonNull(title, "title"); return this; }
+
+    /** The title set now (App's live-reload placements go by it). */
+    String currentTitle() { return title; }
+
+    /**
+     * The window's icon, a PNG (a square of 256 pixels reads well everywhere): in its title bar,
+     * the taskbar and the window switcher, instead of the Java program's. A picture that is not a
+     * PNG leaves the program's icon, with a warning in the log.
+     *
+     * @throws IllegalArgumentException if it is empty or over a megabyte
+     */
+    public WindowOptions icon(byte[] png) {
+        Objects.requireNonNull(png, "png");
+        if (png.length == 0 || png.length > 1024 * 1024) {
+            throw new IllegalArgumentException("an icon is a PNG of 1 byte to 1 MB, not " + png.length + " bytes");
+        }
+        this.icon = png.clone();
+        return this;
+    }
+
+    public WindowOptions resizable(boolean value)   { this.resizable = value; return this; }
+    /**
+     * Windows only: the native handle (HWND) of a window that owns this one, such as a Swing frame's.
+     * An owned window stays above its owner, is minimized with it and has no taskbar button of its own.
+     * Ignored on other systems.
+     *
+     * @throws IllegalArgumentException if {@code hwnd} is 0
+     */
+    public WindowOptions ownerWindow(long hwnd) {
+        if (hwnd == 0) throw new IllegalArgumentException("ownerWindow needs a window handle, not 0");
+        if (owner != null) throw new IllegalStateException("owner or ownerWindow, not both");
+        this.ownerWindow = hwnd;
+        return this;
+    }
+
+    /**
+     * Another of the app's windows owns this one: a tool window, an inspector, a dialog of its own. It stays above
+     * its owner, is minimized with it, has no taskbar button of its own, and closes (with its {@link Closed}) just
+     * before its owner does. Windows: an owned window; macOS: a child window, which also moves with its owner;
+     * Linux: a transient window. An embedded view's owner is the window it sits in.
+     *
+     * @throws IllegalStateException if {@link #ownerWindow(long)} was set too
+     */
+    public WindowOptions owner(View owner) {
+        if (ownerWindow != 0) throw new IllegalStateException("owner or ownerWindow, not both");
+        this.owner = java.util.Objects.requireNonNull(owner, "owner").id();
+        return this;
+    }
+
+    /** False removes the title bar and borders. */
+    public WindowOptions decorations(boolean value) { this.decorations = value; return this; }
+    /**
+     * The browser's developer tools: right-click → Inspect, F12, Ctrl+Shift+I, {@link View#openDevTools()}. Off
+     * unless set here or by {@code -Dswaswa.devtools=true} (for every window that does not say: development runs).
+     */
+    public WindowOptions devtools(boolean value)    { this.devtools = value; return this; }
+    /** True keeps the window hidden: for automation and tests. */
+    public WindowOptions headless(boolean value)    { this.headless = value; return this; }
+
+    /** The inner size, in logical pixels. */
+    public WindowOptions size(double width, double height) {
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("size must be positive");
+        this.width = width;
+        this.height = height;
+        return this;
+    }
+
+    /**
+     * The smallest inner size the user can resize it to, in logical pixels.
+     *
+     * @throws IllegalArgumentException unless both are positive
+     */
+    public WindowOptions minSize(double width, double height) {
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("a minimum size is positive");
+        this.minWidth = width;
+        this.minHeight = height;
+        return this;
+    }
+
+    /** Opens maximized. */
+    public WindowOptions maximized(boolean value)   { this.maximized = value; return this; }
+
+    /** Where the window opens: its top left, logical pixels on the desktop (the system's place unless set). */
+    public WindowOptions position(double x, double y) {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+
+    /**
+     * Opens where it was left and as it was (its place, size, maximized), kept under {@code name} in the app's state on
+     * disk; on a monitor that is no longer there, back on the main one. Each window of the app its own name.
+     */
+    public WindowOptions remember(String name) {
+        this.remember = java.util.Objects.requireNonNull(name, "name");
+        return this;
+    }
+
+    String remembered() {
+        return remember;
+    }
+    /** Opens fullscreen, without borders, on the main display. */
+    public WindowOptions fullscreen(boolean value)  { this.fullscreen = value; return this; }
+    /** Stays above every other window. */
+    public WindowOptions alwaysOnTop(boolean value) { this.alwaysOnTop = value; return this; }
+
+    // ---- the window: its frame, its buttons, its place among the others ----
+
+    /** How a window's title bar looks. */
+    public enum TitleBar {
+        /** The system's own. */
+        DEFAULT,
+        /**
+         * macOS: see-through, the title hidden, the page under it and beside the traffic lights (the app draws its own
+         * title bar there; {@link #trafficLights} moves them). Elsewhere: the system's own.
+         */
+        TRANSPARENT
+    }
+
+    /** Windows 11's materials behind a window, seen where the page is transparent. */
+    public enum Backdrop { NONE, MICA, ACRYLIC, TABBED }
+
+    /** What a link that opens a new window ({@code target=_blank}, {@code window.open}) does. */
+    public enum NewWindows {
+        /** Opens in the system's browser (the default). */
+        BROWSER,
+        /** Nothing. */
+        DENY,
+        /** Nothing, and a {@link NewWindowRequested} event, for Java to decide. */
+        JAVA
+    }
+
+    /** The largest inner size the user can resize the window to, in logical pixels. */
+    public WindowOptions maxSize(double width, double height) {
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("a size is above 0: " + width + "x" + height);
+        this.maxWidth = width;
+        this.maxHeight = height;
+        return this;
+    }
+
+    /** Whether the frame's minimize button works (true by default). */
+    public WindowOptions minimizable(boolean value) { this.minimizable = value; return this; }
+
+    /** Whether the frame's maximize button works (true by default). */
+    public WindowOptions maximizable(boolean value) { this.maximizable = value; return this; }
+
+    /** Whether the frame's close button works (true by default). */
+    public WindowOptions closable(boolean value) { this.closable = value; return this; }
+
+    /** No taskbar entry of its own (Windows, Linux). */
+    public WindowOptions skipTaskbar(boolean value) { this.skipTaskbar = value; return this; }
+
+    /** On every virtual desktop (macOS, Linux). */
+    public WindowOptions allWorkspaces(boolean value) { this.allWorkspaces = value; return this; }
+
+    /** Left out of screenshots and screen sharing (Windows, macOS). */
+    public WindowOptions contentProtection(boolean value) { this.contentProtection = value; return this; }
+
+    /** Whether it takes the keyboard's focus when clicked (true by default): false for a palette over another window. */
+    public WindowOptions focusable(boolean value) { this.focusable = value; return this; }
+
+    /** See-through where the page is (its background transparent): a window of any shape. */
+    public WindowOptions transparent(boolean value) { this.transparent = value; return this; }
+
+    /** What shows before the page draws, and where it is transparent: red, green, blue, alpha, each 0 to 255. */
+    public WindowOptions backgroundColor(int red, int green, int blue, int alpha) {
+        this.backgroundColor = rgba(red, green, blue, alpha);
+        return this;
+    }
+
+    /** How the title bar looks: {@link TitleBar#TRANSPARENT} for the app's own title bar on macOS. */
+    public WindowOptions titleBar(TitleBar value) { this.titleBar = Objects.requireNonNull(value, "titleBar"); return this; }
+
+    /** macOS, with {@link TitleBar#TRANSPARENT}: where the traffic lights are, logical pixels from the top left. */
+    public WindowOptions trafficLights(double x, double y) { this.trafficLights = new double[] {x, y}; return this; }
+
+    /** A window without the system's frame ({@code decorations(false)}) keeps the frame's shadow (Windows; true by default). */
+    public WindowOptions shadow(boolean value) { this.shadow = value; return this; }
+
+    /** Windows 11 (22H2 and later): the system's material behind the window; the page shows it where it is transparent. */
+    public WindowOptions backdrop(Backdrop value) { this.backdrop = Objects.requireNonNull(value, "backdrop"); return this; }
+
+    /** The page's user agent, in place of the browser's. */
+    public WindowOptions userAgent(String value) { this.userAgent = Objects.requireNonNull(value, "userAgent"); return this; }
+
+    /** What a link that opens a new window does: the system's browser (the default), nothing, or Java decides. */
+    public WindowOptions newWindows(NewWindows value) { this.newWindows = Objects.requireNonNull(value, "newWindows"); return this; }
+
+    /** Whether the page may download files (true by default; each a {@link Download} event). */
+    public WindowOptions downloads(boolean value) { this.downloads = value; return this; }
+
+    /**
+     * Keys the window answers itself, pressed anywhere in its page: {@code "Mod+S"}, {@code "Mod+Shift+P"},
+     * {@code "F5"}, {@code "Escape"}. The page does nothing with them; each is a {@link Shortcut} event. {@code Mod} is
+     * Ctrl, or Cmd on macOS; then {@code Ctrl} (macOS), {@code Meta}, {@code Alt}, {@code Shift}, in that order, and
+     * the key: a letter or digit as it is on the key ({@code S}, {@code 1}), else its name ({@code F5},
+     * {@code ArrowUp}, {@code Enter}).
+     */
+    public WindowOptions shortcuts(String... shortcuts) {
+        this.shortcuts = View.shortcutsOf(shortcuts);
+        return this;
+    }
+
+    /**
+     * Whether Escape takes the window out of fullscreen when the page does not use the key itself (true by default, as
+     * in a browser). False keeps it fullscreen: a kiosk.
+     */
+    public WindowOptions escapeExitsFullscreen(boolean value) { this.escapeExitsFullscreen = value; return this; }
+
+    static int[] rgba(int red, int green, int blue, int alpha) {
+        for (int c : new int[] {red, green, blue, alpha}) {
+            if (c < 0 || c > 255) throw new IllegalArgumentException("a colour's parts are 0 to 255: " + c);
+        }
+        return new int[] {red, green, blue, alpha};
+    }
+
+    /**
+     * True: when the user asks to close the window (its close button, Alt+F4, the dock), it stays
+     * open and a {@link CloseRequested} event goes to the app, which closes it with
+     * {@link View#close()} when it wants to, such as after asking about unsaved work. False (the
+     * default): it closes at once, and a {@link Closed} event follows.
+     */
+    public WindowOptions confirmClose(boolean value) { this.confirmClose = value; return this; }
+
+    /**
+     * True: files dragged onto the window are reported as {@link FileDrop} events, with their
+     * paths, and the page does not open them itself. False (the default): the page handles drops as
+     * a browser would, and the app hears nothing.
+     */
+    public WindowOptions fileDrop(boolean value)    { this.fileDrop = value; return this; }
+
+    /**
+     * Light or dark for the window's frame and its page's {@code prefers-color-scheme}, which
+     * {@code @webview4j/ui} follows. {@link Theme#SYSTEM} (the default) follows the system's setting.
+     */
+    public WindowOptions theme(Theme theme) {
+        this.theme = Objects.requireNonNull(theme, "theme");
+        return this;
+    }
+
+    /** A script that runs in every page before the page's own, on every navigation. */
+    public WindowOptions initializationScript(String script) {
+        this.initializationScript = script;
+        return this;
+    }
+
+    /** A persistent browser profile (cookies, storage): one directory per account. Must be absolute. */
+    public WindowOptions dataDirectory(Path directory) {
+        if (directory != null && !directory.isAbsolute()) throw new IllegalArgumentException("dataDirectory must be absolute");
+        this.dataDirectory = directory;
+        return this;
+    }
+
+    /** Exactly these reports on from the start; the rest off. */
+    public WindowOptions capture(Capture... on) {
+        this.capture = on.length == 0 ? EnumSet.noneOf(Capture.class) : EnumSet.of(on[0], on);
+        return this;
+    }
+
+    /**
+     * The only origins whose pages may call {@link App#handle commands} and receive
+     * {@link View#emit emits}, e.g. {@code "https://app.example"} or {@code "http://localhost:5173"}.
+     * Unless given: the origin of the {@link #url url}, or {@code "null"} for {@link #html html}.
+     * Any other page the window navigates to gets {@code 403}.
+     */
+    /**
+     * More sites whose pages open in this window when a link or a redirect goes there, e.g. the sign-in page a
+     * server sends the window to ({@code "https://sso.example.com"}). The window's own pages always stay; a link to
+     * any other site opens in the system's browser (and {@code mailto:} in the mail app), never in place of the app.
+     */
+    public WindowOptions navigation(String... origins) {
+        for (String origin : origins) {
+            if (!origin.matches("https?://[^/?#\\s]+")) throw new IllegalArgumentException("not an origin (scheme://host[:port]): " + origin);
+        }
+        this.navigation = List.of(origins);
+        return this;
+    }
+
+    /**
+     * A browser: links and redirects to any http(s) website open in this window itself, not in the system's
+     * browser. The bridge still answers only {@link #origins(String...) its origins}, so a site it browses to cannot
+     * call the app. {@code mailto:} still opens the mail app; other schemes are refused.
+     */
+    public WindowOptions browse() {
+        this.browse = true;
+        return this;
+    }
+
+    /**
+     * Windows only: a window drawn for Java, not for the person: all but invisible, and the mouse goes through it to
+     * the window below. Java shows its page itself, from the DevTools screencast (as a toolkit's own node can).
+     * It stays on the screen so the engine keeps drawing, and its pop-ups (a select's list) open where they should.
+     */
+    public WindowOptions offscreen() {
+        this.offscreen = true;
+        return this;
+    }
+
+    public WindowOptions origins(String... origins) {
+        for (String origin : origins) {
+            if (!origin.equals("null") && !origin.matches("https?://[^/?#\\s]+")) {
+                throw new IllegalArgumentException("not an origin (scheme://host[:port], or null): " + origin);
+            }
+        }
+        this.origins = List.of(origins);
+        return this;
+    }
+
+    /** The JSON payload of {@code app.open} (PROTOCOL.md §5.1). */
+    Map<String, Object> toPayload() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (url != null) payload.put("url", url);
+        if (html != null) payload.put("html", html);
+        payload.put("title", title);
+        payload.put("width", width);
+        payload.put("height", height);
+        payload.put("resizable", resizable);
+        payload.put("decorations", decorations);
+        payload.put("devtools", devtools != null ? devtools : Boolean.getBoolean("swaswa.devtools"));
+        payload.put("headless", headless);
+        if (initializationScript != null) payload.put("initializationScript", initializationScript);
+        if (dataDirectory != null) payload.put("dataDirectory", dataDirectory.toString());
+        if (capture != null) payload.put("capture", switches(capture));
+        if (origins != null) payload.put("origins", origins);
+        if (browse) {
+            List<String> anywhere = new java.util.ArrayList<>(navigation == null ? List.of() : navigation);
+            anywhere.add("*");
+            payload.put("navigation", anywhere);
+        } else if (navigation != null) {
+            payload.put("navigation", navigation);
+        }
+        if (assets != null) payload.put("assets", assets);
+        if (icon != null) payload.put("icon", java.util.Base64.getEncoder().encodeToString(icon));
+        if (ownerWindow != 0) payload.put("ownerWindow", ownerWindow);
+        if (owner != null) payload.put("owner", owner);
+        if (minWidth > 0) {
+            payload.put("minWidth", minWidth);
+            payload.put("minHeight", minHeight);
+        }
+        if (maximized) payload.put("maximized", true);
+        if (x != null && y != null) {
+            payload.put("positioned", true);
+            payload.put("x", x);
+            payload.put("y", y);
+        }
+        if (fullscreen) payload.put("fullscreen", true);
+        if (offscreen) payload.put("offscreen", true);
+        if (alwaysOnTop) payload.put("alwaysOnTop", true);
+        if (maxWidth > 0) {
+            payload.put("maxWidth", maxWidth);
+            payload.put("maxHeight", maxHeight);
+        }
+        if (!minimizable) payload.put("minimizable", false);
+        if (!maximizable) payload.put("maximizable", false);
+        if (!closable) payload.put("closable", false);
+        if (skipTaskbar) payload.put("skipTaskbar", true);
+        if (allWorkspaces) payload.put("allWorkspaces", true);
+        if (contentProtection) payload.put("contentProtection", true);
+        if (!focusable) payload.put("focusable", false);
+        if (transparent) payload.put("transparent", true);
+        if (backgroundColor != null) payload.put("backgroundColor", List.of(backgroundColor[0], backgroundColor[1], backgroundColor[2], backgroundColor[3]));
+        if (titleBar != TitleBar.DEFAULT) payload.put("titleBar", "transparent");
+        if (trafficLights != null) payload.put("trafficLights", List.of(trafficLights[0], trafficLights[1]));
+        if (!shadow) payload.put("shadow", false);
+        if (backdrop != null) payload.put("backdrop", backdrop.name().toLowerCase(java.util.Locale.ROOT));
+        if (userAgent != null) payload.put("userAgent", userAgent);
+        if (newWindows != NewWindows.BROWSER) payload.put("newWindows", newWindows.name().toLowerCase(java.util.Locale.ROOT));
+        if (!downloads) payload.put("downloads", false);
+        if (!shortcuts.isEmpty()) payload.put("shortcuts", shortcuts);
+        if (!escapeExitsFullscreen) payload.put("escapeExitsFullscreen", false);
+        if (confirmClose) payload.put("confirmClose", true);
+        if (fileDrop) payload.put("fileDrop", true);
+        if (theme != Theme.SYSTEM) payload.put("theme", theme.key());
+        return payload;
+    }
+
+    /** The app's files, as a class path directory; null when the window serves none. */
+    String assets() {
+        return assets;
+    }
+
+    ClassLoader assetLoader() {
+        return assetLoader;
+    }
+
+    /** Every report on or off, as the capture payload. */
+    static Map<String, Object> switches(Set<Capture> on) {
+        Map<String, Object> switches = new LinkedHashMap<>();
+        for (Capture kind : Capture.values()) switches.put(kind.key(), on.contains(kind));
+        return switches;
+    }
+}

@@ -1,7 +1,0 @@
-node_modules/
-dist/
-storybook-static/
-# egui-4j built for the page (bun run egui)
-src/egui4j/
-# crates/grammar built for the page (bun run grammar)
-src/grammar/

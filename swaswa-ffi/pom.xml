@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  swaswa-ffi: the bridge. Java <-> the native library through FFM: the event loop, windows and their pages
+  (App, View, WindowOptions), events, what the page does (capture), storage and secrets, dialogs, page <-> Java calls
+  (commands, routes, HTTP), spelling, serving files to pages, and where windows were. It knows nothing of components.
+
+  native/ is the native library's Rust workspace (crates/webview, inspector, grammar), the protocol it speaks with
+  Java (PROTOCOL.md, protocol/fixtures), and the library itself, built, in native/lib/<os>-<arch>/ (in the
+  repository, with Git LFS): a build copies it into the jar (natives/<os>-<arch>/), with no Rust needed.
+
+    mvn verify                          the library in native/lib/, as it is
+    mvn verify -Dnative.build           cargo builds it first (release), and native/lib/ gets the new one: commit it
+    mvn verify -Dnative.build -Dcargo.profile=dev   an unoptimised one, built faster, for trying a change
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.joshuasalcedo.swaswa</groupId>
+        <artifactId>swaswa-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>swaswa-ffi</artifactId>
+    <name>swaswa-ffi</name>
+    <description>swaswa's bridge: native webview windows driven from Java over FFM.</description>
+
+    <properties>
+        <native.dir>${project.basedir}/native</native.dir>
+        <cargo.profile>release</cargo.profile>
+        <!-- where cargo puts a profile's build: release -> release, dev -> debug -->
+        <cargo.out>release</cargo.out>
+        <!-- the built library, by platform, in the repository -->
+        <native.lib>${native.dir}/lib</native.lib>
+        <!-- this machine, as the jar names it: set by the profiles below -->
+        <native.platform>unknown</native.platform>
+        <native.file>unknown</native.file>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- mvn -pl swaswa-ffi test-compile exec:exec@showcase: every feature in one window (FfiShowcase, a test source) -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>showcase</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <classpathScope>test</classpathScope>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.ffi.FfiShowcase</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- the jar carries the library from native/lib/ at natives/<os>-<arch>/, where NativeLibrary finds it -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>native-library</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/natives/${native.platform}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${native.lib}/${native.platform}</directory>
+                                    <includes>
+                                        <include>${native.file}</include>
+                                    </includes>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <proc>none</proc>
+                        </configuration>
+                    </execution>
+
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- whitebox: the tests are in the same packages, on the class path -->
+                    <useModulePath>false</useModulePath>
+                    <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                    <systemPropertyVariables>
+                        <!-- the protocol's conformance fixtures, shared with the Rust tests -->
+                        <swaswa.fixtures>${native.dir}/protocol/fixtures</swaswa.fixtures>
+                        <java.awt.headless>true</java.awt.headless>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- -Dnative.build: cargo builds the library, then native/lib/<os>-<arch>/ gets it (before the jar takes it) -->
+        <profile>
+            <id>native-build</id>
+            <activation>
+                <property>
+                    <name>native.build</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- cargo builds the library (it does nothing when the Rust code did not change) -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>cargo-build</id>
+                                <!-- before native/lib/ takes what it built (generate-resources) -->
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>cargo</executable>
+                                    <workingDirectory>${native.dir}</workingDirectory>
+                                    <arguments>
+                                        <argument>build</argument>
+                                        <argument>-p</argument>
+                                        <argument>webview</argument>
+                                        <argument>--lib</argument>
+                                        <argument>--profile</argument>
+                                        <argument>${cargo.profile}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>native-lib-refresh</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${native.lib}/${native.platform}</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${native.dir}/target/${cargo.out}</directory>
+                                            <includes>
+                                                <include>${native.file}</include>
+                                            </includes>
+                                            <filtering>false</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>cargo-dev</id>
+            <activation>
+                <property>
+                    <name>cargo.profile</name>
+                    <value>dev</value>
+                </property>
+            </activation>
+            <properties>
+                <cargo.out>debug</cargo.out>
+            </properties>
+        </profile>
+        <profile>
+            <id>windows-x64</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <native.platform>windows-x64</native.platform>
+                <native.file>webview4j.dll</native.file>
+            </properties>
+        </profile>
+        <profile>
+            <id>windows-aarch64</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <native.platform>windows-aarch64</native.platform>
+                <native.file>webview4j.dll</native.file>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-x64</id>
+            <activation>
+                <os>
+                    <name>linux</name>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <native.platform>linux-x64</native.platform>
+                <native.file>libwebview4j.so</native.file>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-aarch64</id>
+            <activation>
+                <os>
+                    <name>linux</name>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <native.platform>linux-aarch64</native.platform>
+                <native.file>libwebview4j.so</native.file>
+            </properties>
+        </profile>
+        <profile>
+            <id>macos-x64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>x86_64</arch>
+                </os>
+            </activation>
+            <properties>
+                <native.platform>macos-x64</native.platform>
+                <native.file>libwebview4j.dylib</native.file>
+            </properties>
+        </profile>
+        <profile>
+            <id>macos-aarch64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <native.platform>macos-aarch64</native.platform>
+                <native.file>libwebview4j.dylib</native.file>
+            </properties>
+        </profile>
+    </profiles>
+</project>

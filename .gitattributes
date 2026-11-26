@@ -1,5 +1,2 @@
-* text=auto
-gradlew text eol=lf
-*.sh text eol=lf
-*.bat text eol=crlf
-*.jar binary
+# the native library, built, by platform: large files, kept by Git LFS
+swaswa-ffi/native/lib/** filter=lfs diff=lfs merge=lfs -text

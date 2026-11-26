@@ -1,17 +1,14 @@
+# build output: Maven's and cargo's
 target/
-**/node_modules/
 *.class
+# IDEs
 .idea/
 *.iml
 .vscode/
 .DS_Store
-.gradle/
-build/
+# secrets never go in the repository
 .env
-krema/
-# graphify's knowledge graph and its cache: made on this machine
-graphify-out/
-
-# A release's private key never goes in the repository (update-public.key, the public one, does).
+.env.*
 *.key
-!update-public.key
+# the built native libraries are kept (Git LFS), so they need not be rebuilt
+!swaswa-ffi/native/lib/**

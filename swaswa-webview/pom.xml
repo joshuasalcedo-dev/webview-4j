@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  swaswa-webview: the webview feature. An app that brings its own web page (React, Vue, plain HTML) which calls Java
+  the way a page calls a server: WebViewApplication, @WebViewController and its routes, the same routes over plain
+  HTTP (HttpApi). On swaswa-ffi alone; for a UI made in Java, use swaswa-core.
+
+  Hidden in it (internal.processor, not exported, no META-INF/services): the annotation processor that writes a
+  controller's route table and the page's TypeScript client. An app with controllers names it:
+    <annotationProcessorPaths><path>io.joshuasalcedo.swaswa:swaswa-webview</path></annotationProcessorPaths>
+    <annotationProcessors>io.joshuasalcedo.swaswa.webview.internal.processor.WebViewProcessor</annotationProcessors>
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.joshuasalcedo.swaswa</groupId>
+        <artifactId>swaswa-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>swaswa-webview</artifactId>
+    <name>swaswa-webview</name>
+    <description>swaswa's webview feature: an app that brings its own web page, which calls Java as a server.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-ffi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <!-- it is the processor: it does not run itself while compiling -->
+                            <proc>none</proc>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-testCompile</id>
+                        <configuration>
+                            <!-- the tests' @WebViewController classes, compiled with the processor (this module's own
+                                 classes) as an app's would be -->
+                            <proc>full</proc>
+                            <annotationProcessors>
+                                <annotationProcessor>io.joshuasalcedo.swaswa.webview.internal.processor.WebViewProcessor</annotationProcessor>
+                            </annotationProcessors>
+                            <compilerArgs>
+                                <arg>-processorpath</arg>
+                                <arg>${project.build.outputDirectory}</arg>
+                                <arg>-Aswaswa.typescript=${project.build.directory}/generated-test-sources/swaswa/api.ts</arg>
+                            </compilerArgs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- whitebox: the tests are in the same packages, on the class path -->
+                    <useModulePath>false</useModulePath>
+                    <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                    <systemPropertyVariables>
+                        <java.awt.headless>true</java.awt.headless>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
