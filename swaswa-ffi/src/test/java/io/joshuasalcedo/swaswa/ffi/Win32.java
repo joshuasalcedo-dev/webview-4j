@@ -144,6 +144,18 @@ final class Win32 {
         }
     }
 
+    /** The colour on the screen at a point (physical pixels; COLORREF 0x00BBGGRR). */
+    static long pixelOnScreen(int x, int y) {
+        try {
+            MemorySegment screen = (MemorySegment) GET_DC.invokeExact(MemorySegment.NULL);
+            int pixel = (int) GET_PIXEL.invokeExact(screen, x, y);
+            int released = (int) RELEASE_DC.invokeExact(MemorySegment.NULL, screen);
+            return Integer.toUnsignedLong(pixel);
+        } catch (Throwable t) {
+            throw new IllegalStateException(t);
+        }
+    }
+
     /** Whether two COLORREFs are the same colour, give or take a little in each channel. */
     static boolean near(long a, long b) {
         for (int shift = 0; shift <= 16; shift += 8) {
@@ -206,6 +218,16 @@ final class Win32 {
             int moved = (int) SET_WINDOW_POS.invokeExact(hwnd, MemorySegment.NULL, x, y, 0, 0, 0x0001 | 0x0004 | 0x0010);
             long ended = (long) SEND_MESSAGE_PLAIN.invokeExact(hwnd, 0x0232, 0L, 0L);   // WM_EXITSIZEMOVE
             if (moved == 0) throw new AssertionError("SetWindowPos failed");
+        } catch (Throwable t) {
+            throw new IllegalStateException(t);
+        }
+    }
+
+    /** The window's close button, as a person would click it (WM_CLOSE). */
+    static void close(MemorySegment hwnd) {
+        try {
+            int ok = (int) POST_MESSAGE.invokeExact(hwnd, 0x0010, 0L, 0L);
+            if (ok == 0) throw new AssertionError("WM_CLOSE not posted");
         } catch (Throwable t) {
             throw new IllegalStateException(t);
         }
@@ -383,7 +405,11 @@ final class Win32 {
                 if (child.address() == 0) break;
                 String cls = className(child);
                 int id = (int) GET_DLG_CTRL_ID.invokeExact(child);
-                out.append("  ".repeat(depth)).append(cls).append(" 0x").append(Integer.toHexString(id)).append(visible(child) ? "" : " (hidden)").append(System.lineSeparator());
+                MemorySegment r = arena.allocate(16);
+                int got = (int) GET_WINDOW_RECT.invokeExact(child, r);
+                out.append("  ".repeat(depth)).append(cls).append(" 0x").append(Integer.toHexString(id)).append(visible(child) ? "" : " (hidden)")
+                        .append(" [").append(r.get(JAVA_INT, 0)).append(",").append(r.get(JAVA_INT, 4)).append(" ").append(r.get(JAVA_INT, 8) - r.get(JAVA_INT, 0))
+                        .append("x").append(r.get(JAVA_INT, 12) - r.get(JAVA_INT, 4)).append("]").append(System.lineSeparator());
                 out.append(tree(child, depth + 1));
             }
         }

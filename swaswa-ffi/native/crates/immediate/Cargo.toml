@@ -1,0 +1,17 @@
+[package]
+name = "immediate"
+version.workspace = true
+edition.workspace = true
+description = "Immediate-mode UI for swaswa: egui drawn with OpenGL into a Tao window, input from Tao's events, a frame run by whoever drives it (Java, over the FFI)."
+
+[lib]
+name = "immediate"
+
+[dependencies]
+tao = "0.36.0"
+egui = { version = "0.37", features = ["default_fonts"] }
+egui_glow = "0.37"
+glow = "0.17"
+glutin = { version = "0.32", default-features = false, features = ["wgl", "egl"] }
+raw-window-handle = "0.6"
+log = "0.4"

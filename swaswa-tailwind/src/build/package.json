@@ -1,0 +1,8 @@
+{
+  "name": "swaswa-tailwind-data",
+  "private": true,
+  "description": "Makes src/main/resources/io/joshuasalcedo/swaswa/tailwind/tailwind.json.gz from Tailwind itself: bun install && bun tailwind-data.ts",
+  "dependencies": {
+    "tailwindcss": "4.3.5"
+  }
+}

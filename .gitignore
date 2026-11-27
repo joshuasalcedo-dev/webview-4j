@@ -12,3 +12,6 @@ target/
 *.key
 # the built native libraries are kept (Git LFS), so they need not be rebuilt
 !swaswa-ffi/native/lib/**
+
+# bun/npm dependencies (swaswa-tailwind/src/build: Tailwind itself, to make the data)
+node_modules/

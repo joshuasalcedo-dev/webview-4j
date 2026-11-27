@@ -76,11 +76,15 @@ public final class NativeStore implements AutoCloseable {
         return open(directory(app).resolve("state.redb"));
     }
 
-    /** The system's place for {@code app}'s data. */
+    /**
+     * Where {@code app}'s data goes: in development ({@link AppMode#DEV}) its build folder's
+     * {@code swaswa-dev/<app>}; in production the system's place for an app's data.
+     */
     public static Path directory(String app) {
+        String safe = app.replaceAll("[^A-Za-z0-9._ -]", "_");
+        if (AppMode.isDev()) return AppMode.devDirectory(safe);
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         String home = System.getProperty("user.home");
-        String safe = app.replaceAll("[^A-Za-z0-9._ -]", "_");
         if (os.contains("win")) {
             String local = System.getenv("LOCALAPPDATA");
             return Path.of(local != null ? local : home + "\\AppData\\Local", safe);

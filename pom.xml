@@ -47,6 +47,9 @@
     <modules>
         <module>swaswa-ffi</module>
         <module>swaswa-webview</module>
+        <module>swaswa-tailwind</module>
+        <module>swaswa-dom</module>
+        <module>swaswa-demo</module>
     </modules>
 
     <properties>

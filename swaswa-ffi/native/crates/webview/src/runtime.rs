@@ -183,6 +183,8 @@ struct State {
     /// The browser profile it starts on: the windows' own (`app.warm`'s `dataDirectory`), or it would start an
     /// engine no window uses.
     warm_profile: Option<std::path::PathBuf>,
+    /// Immediate-mode windows (egui), each frame drawn by Java.
+    egui: crate::egui_windows::EguiWindows,
 }
 
 /// Starts the browser engine in a hidden 1×1 view that is then taken out of the views: not listed, nothing sent
@@ -258,7 +260,14 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
                     }
                 }
             }
-            Event::WindowEvent { window_id, event, .. } => on_window(window_id, event, &mut state),
+            Event::WindowEvent { window_id, event, .. } => {
+                if !state.egui.on_window(window_id, &event) {
+                    on_window(window_id, event, &mut state);
+                }
+            }
+            Event::RedrawRequested(window_id) => {
+                state.egui.redraw(window_id);
+            }
             // This round's messages are handled: the pushes they made go out, one script per page,
             // and each window's last size and position.
             Event::MainEventsCleared => {
@@ -269,6 +278,14 @@ pub fn run(on_message: Option<MessageCallback>) -> Result<i32, String> {
                 }
             }
             _ => {}
+        }
+        // egui windows whose next frame is due (an animation, a blinking cursor): drawn; the loop wakes for the next
+        if let Some(at) = state.egui.due() {
+            match *control_flow {
+                ControlFlow::Wait => *control_flow = ControlFlow::WaitUntil(at),
+                ControlFlow::WaitUntil(t) if at < t => *control_flow = ControlFlow::WaitUntil(at),
+                _ => {}
+            }
         }
         // app.warm: once the app has asked for no window for a moment, the engine starts (an app that opens one at
         // once starts it with that window, not twice).
@@ -347,6 +364,10 @@ fn on_window(window_id: WindowId, event: WindowEvent, state: &mut State) {
             let window = &instance.window;
             let shown = (window.is_minimized(), window.is_maximized(), window.fullscreen().is_some());
             if shown != instance.shown {
+                if shown.0 != instance.shown.0 {
+                    // minimized: the page not seen (its visibilitychange), and the engine not drawing it; back again
+                    let _ = instance.webview.set_visible(!shown.0);
+                }
                 instance.shown = shown;
                 let (minimized, maximized, fullscreen) = shown;
                 emit(&Message::new(format!("view.{id}.window-state"))
@@ -430,7 +451,7 @@ fn page_window_action(view: &str, action: &str, state: &mut State) {
 /// drag_resize_window posts the cursor's position as a pointer to a value on its stack instead of the position itself,
 /// so the sizing starts from a wrong point and the left and top edges do not move; this posts the position.
 #[cfg(target_os = "windows")]
-fn start_resize(window: &Window, direction: ResizeDirection) {
+pub(crate) fn start_resize(window: &Window, direction: ResizeDirection) {
     use tao::platform::windows::WindowExtWindows;
     use windows_sys::Win32::Foundation::POINT;
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::ReleaseCapture;
@@ -461,13 +482,13 @@ fn start_resize(window: &Window, direction: ResizeDirection) {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn start_resize(window: &Window, direction: ResizeDirection) {
+pub(crate) fn start_resize(window: &Window, direction: ResizeDirection) {
     if let Err(error) = window.drag_resize_window(direction) {
         log::debug!("the window could not be resized: {error}");
     }
 }
 
-fn resize_direction(edge: &str) -> Option<ResizeDirection> {
+pub(crate) fn resize_direction(edge: &str) -> Option<ResizeDirection> {
     Some(match edge {
         "n" => ResizeDirection::North,
         "s" => ResizeDirection::South,
@@ -553,7 +574,38 @@ fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut 
             Err(error) => error,
         },
         ["app", "list"] => Outcome::json(&list(state)),
+        ["app", "egui", "open"] => {
+            // in a view's window (an egui panel there): that window's handle, the child's parent
+            #[derive(serde::Deserialize)]
+            struct In {
+                parent: Option<String>,
+            }
+            let parent = payload::json::<In>(&message.payload).ok().and_then(|i| i.parent);
+            match parent {
+                Some(view) => match state.views.get(&view) {
+                    Some(host) => state.egui.open(target, &message.payload, Some(window_handle(&host.window))),
+                    None => Outcome::error(404, format!("no view {view} to put egui in")),
+                },
+                None => state.egui.open(target, &message.payload, None),
+            }
+        }
+        ["egui", id, rest @ ..] => state.egui.on_message(id, rest, &message.payload),
         // where the pointer is: physical pixels, and the scale of the monitor it is on (its logical place too)
+        // the system's clipboard: text
+        ["app", "clipboard", "read"] => match arboard::Clipboard::new().and_then(|mut c| c.get_text()) {
+            Ok(text) => Outcome::json(&json!({"text": text})),
+            Err(arboard::Error::ContentNotAvailable) => Outcome::json(&json!({"text": null})),
+            Err(e) => Outcome::error(500, format!("the clipboard could not be read: {e}"))
+                .hint("Another app may hold it for a moment: try again."),
+        },
+        ["app", "clipboard", "write"] => match payload::text(&message.payload) {
+            Ok(text) => match arboard::Clipboard::new().and_then(|mut c| c.set_text(text.to_string())) {
+                Ok(()) => Outcome::ok(),
+                Err(e) => Outcome::error(500, format!("the clipboard could not be written: {e}"))
+                    .hint("Another app may hold it for a moment: try again."),
+            },
+            Err(error) => error,
+        },
         ["app", "cursor"] => match target.cursor_position() {
             Ok(at) => {
                 let scale = target
@@ -651,6 +703,7 @@ fn handle(message: Message, target: &EventLoopWindowTarget<ToLoop>, state: &mut 
                 }
                 state.views.retain(|id, v| v.owner.is_none() || owners.contains(id));
             }
+            state.egui.clear();
             state.ids_by_window.clear();
             state.views.clear();
             *control_flow = ControlFlow::Exit;
@@ -730,6 +783,11 @@ fn raise(state: &mut State, view: &str) -> Outcome {
     Outcome::ok()
 }
 
+/// A message to Java, from anywhere in the library (the egui windows' `closed`).
+pub fn emit_message(message: &Message) {
+    emit(message);
+}
+
 /// The native window a view moves and stacks by: its container if docked, else its webview's own.
 #[cfg(windows)]
 fn frame_window(instance: &Instance) -> isize {
@@ -787,6 +845,9 @@ fn adopt(state: &mut State, host: &str, body: AdoptBody) -> Outcome {
             size: tao::dpi::LogicalSize::new(body.width, body.height).into(),
         });
     }
+    // above the host's own webview (a sibling made before it), and shown: else it is in the window, out of sight
+    crate::dock::to_front(dock);
+    let _ = child.webview.set_visible(true);
     let moved = body.view.clone();
     crate::pointer::watch_moves(
         dock,
@@ -1842,7 +1903,7 @@ fn open_in_browser(url: &str) {
     let url = url.trim().to_string();
     log::info!("opening {url} in the system's browser");
     // Tests: the decision is made and logged, no browser starts.
-    if std::env::var("WEBVIEW4J_BROWSER").is_ok_and(|v| v == "off") {
+    if ["SWASWA_BROWSER", "WEBVIEW4J_BROWSER"].iter().any(|name| std::env::var(name).is_ok_and(|v| v == "off")) {
         return;
     }
     let _ = std::thread::Builder::new().name("webview4j-browser".into()).spawn(move || {

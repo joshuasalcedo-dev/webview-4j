@@ -53,6 +53,24 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <executions>
+                    <!-- HTML's elements as typed classes (src/build/HtmlJava.java, a single source file) -->
+                    <execution>
+                        <id>html-java</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <!-- it reads a small file: a small heap, not the default quarter of the machine -->
+                                <argument>-Xmx64m</argument>
+                                <argument>${project.basedir}/src/build/HtmlJava.java</argument>
+                                <argument>${project.basedir}/src/build/html/elements.json</argument>
+                                <argument>${project.build.directory}/generated-sources/html</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>showcase</id>
                         <goals>
@@ -69,6 +87,25 @@
                                 <classpath/>
                                 <argument>io.joshuasalcedo.swaswa.ffi.FfiShowcase</argument>
                             </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>html-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/html</source>
+                            </sources>
                         </configuration>
                     </execution>
                 </executions>
@@ -142,6 +179,10 @@
                     <!-- whitebox: the tests are in the same packages, on the class path -->
                     <useModulePath>false</useModulePath>
                     <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                    <environmentVariables>
+                        <!-- a link the app sends to the system's browser is logged, not opened: tests open no browser tab -->
+                        <SWASWA_BROWSER>off</SWASWA_BROWSER>
+                    </environmentVariables>
                     <systemPropertyVariables>
                         <!-- the tests' browser profile: their own, new each run (cleaned above), not the user's -->
                         <swaswa.webview.data>${project.build.directory}/webview-profile/tests</swaswa.webview.data>

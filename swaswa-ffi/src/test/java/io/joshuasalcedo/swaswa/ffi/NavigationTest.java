@@ -12,7 +12,7 @@ import org.junit.jupiter.api.condition.OS;
 
 /**
  * A link out of the app opens in the system's browser, never in place of the app's page. The test task sets
- * WEBVIEW4J_BROWSER=off: the decision is logged, no real browser starts.
+ * SWASWA_BROWSER=off (set for the tests in the pom): the decision is logged, no real browser starts.
  */
 @EnabledOnOs(OS.WINDOWS)
 class NavigationTest {

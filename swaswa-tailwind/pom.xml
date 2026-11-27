@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  swaswa-tailwind: Tailwind's classes, typed, for swaswa's components: Tw.P.P_4, Tw.hover(Tw.Bg.BG_BLUE_500). A page gets
+  the CSS of the classes its components use, and only those, written in Java from Tailwind's own data (the default
+  theme): no Node and no Tailwind build for an app.
+
+  The data (src/main/resources/.../tailwind.json.gz) is committed; to update Tailwind: cd src/build && bun install &&
+  bun tailwind-data.ts. The typed classes (src/main/java/.../Tw.java, committed, so an IDE has them with no build) are made from it by
+  src/build/TailwindJava.java, which the build runs: it writes Tw.java again only when the data changes.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.joshuasalcedo.swaswa</groupId>
+        <artifactId>swaswa-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>swaswa-tailwind</artifactId>
+    <name>swaswa-tailwind</name>
+    <description>Tailwind's classes, typed, for swaswa's components: only the CSS a page uses, written in Java.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-ffi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Tw: every class typed, from the data (src/build/TailwindJava.java): into the sources, only when the data changed -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>tailwind-java</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>-Xmx128m</argument>
+                                <argument>${project.basedir}/src/build/TailwindJava.java</argument>
+                                <argument>${project.basedir}/src/main/resources/io/joshuasalcedo/swaswa/tailwind/tailwind.json.gz</argument>
+                                <argument>${project.basedir}/src/main/java</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                    <environmentVariables>
+                        <SWASWA_BROWSER>off</SWASWA_BROWSER>
+                    </environmentVariables>
+                    <systemPropertyVariables>
+                        <swaswa.webview.data>${project.build.directory}/webview-profile/tests</swaswa.webview.data>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

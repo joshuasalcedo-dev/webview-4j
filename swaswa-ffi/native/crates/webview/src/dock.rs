@@ -55,6 +55,30 @@ mod windows {
         unsafe { SetWindowPos(hwnd as HWND, std::ptr::null_mut(), x, y, width.max(1), height.max(1), SWP_NOZORDER | SWP_NOACTIVATE) };
     }
 
+    /// A native panel over a page (egui): it and its siblings each paint only where they are not covered, so the
+    /// page's webview does not paint over it (child windows that overlap need WS_CLIPSIBLINGS for that).
+    pub fn clip_siblings(hwnd: isize) {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{GW_CHILD, GW_HWNDNEXT, GWL_STYLE, GetParent, GetWindow, GetWindowLongPtrW, SetWindowLongPtrW};
+        unsafe {
+            let parent = GetParent(hwnd as HWND);
+            if parent.is_null() {
+                return;
+            }
+            let mut child = GetWindow(parent, GW_CHILD);
+            while !child.is_null() {
+                let style = GetWindowLongPtrW(child, GWL_STYLE);
+                if style & WS_CLIPSIBLINGS as isize == 0 {
+                    SetWindowLongPtrW(child, GWL_STYLE, style | WS_CLIPSIBLINGS as isize);
+                }
+                child = GetWindow(child, GW_HWNDNEXT);
+            }
+            let style = GetWindowLongPtrW(parent, GWL_STYLE);
+            if style & WS_CLIPCHILDREN as isize == 0 {
+                SetWindowLongPtrW(parent, GWL_STYLE, style | WS_CLIPCHILDREN as isize);
+            }
+        }
+    }
+
     /// Above its siblings in its window.
     pub fn to_front(hwnd: isize) {
         unsafe { SetWindowPos(hwnd as HWND, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE) };

@@ -8,6 +8,31 @@ default:
 ffi-showcase:
     mvn -q -B -pl swaswa-ffi test-compile exec:exec@showcase
 
+# swaswa-webview: an app's own page (plain HTML here) whose requests a Java @WebViewController answers: notes
+webview-showcase:
+    mvn -q -B -pl swaswa-ffi install -DskipTests
+    mvn -q -B -pl swaswa-webview test-compile exec:exec@showcase
+
+# swaswa-tailwind: a page styled the Tailwind way (typed classes, a CSS file of its own), showing its own code
+tailwind-demo:
+    mvn -q -B -pl swaswa-ffi,swaswa-tailwind,swaswa-dom install -DskipTests
+    mvn -q -B -pl swaswa-demo compile exec:exec@tailwind-demo
+
+# every Tailwind class, as Tailwind's docs show them: its Java name, its CSS, a preview
+tailwind-docs:
+    mvn -q -B -pl swaswa-ffi,swaswa-tailwind,swaswa-dom install -DskipTests
+    mvn -q -B -pl swaswa-demo compile exec:exec@tailwind-docs
+
+# The docs as web pages, no window: one HTML file per family in swaswa-demo/target/docs-pages
+tailwind-pages:
+    mvn -q -B -pl swaswa-ffi,swaswa-tailwind,swaswa-dom install -DskipTests
+    mvn -q -B -pl swaswa-demo compile exec:exec@tailwind-pages
+
+# swaswa-dom: the page from Java, typed: live values, scripts, the page's functions, the clipboard
+dom-showcase:
+    mvn -q -B -pl swaswa-ffi install -DskipTests
+    mvn -q -B -pl swaswa-dom test-compile exec:exec@showcase
+
 # Build and test everything (the native library from swaswa-ffi/native/lib, no Rust needed)
 verify:
     mvn -B verify

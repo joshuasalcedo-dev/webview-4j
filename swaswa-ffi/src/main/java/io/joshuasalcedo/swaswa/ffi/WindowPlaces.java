@@ -1,5 +1,6 @@
 package io.joshuasalcedo.swaswa.ffi;
 
+import io.joshuasalcedo.swaswa.internal.Json;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;

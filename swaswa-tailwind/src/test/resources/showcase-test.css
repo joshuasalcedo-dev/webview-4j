@@ -1,0 +1,8 @@
+/* a CSS file of an app's, Tailwind's way: the basics, a token of its own, a class of its own */
+@import "tailwind/basics.css";
+
+@theme {
+  --color-brand: #4f46e5;
+}
+
+.hero { @apply bg-brand text-white p-4 rounded-xl; }

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  swaswa-dom: a view's page from Java, typed. What its scripts give back as the app's own types (records), the page's
+  functions behind a Java interface (bind), the browser's APIs (clipboard, size, scroll, location, selection, an
+  element's box), and values Java follows as properties (media queries, online, visible).
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.joshuasalcedo.swaswa</groupId>
+        <artifactId>swaswa-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>swaswa-dom</artifactId>
+    <name>swaswa-dom</name>
+    <description>A view's page from Java, typed: scripts' values, the page's functions, the browser's APIs.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-ffi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- mvn -pl swaswa-dom test-compile exec:exec@showcase: the page from Java, typed: live values, scripts, functions, clipboard (a test source) -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>showcase</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <classpathScope>test</classpathScope>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <!-- the showcase's own browser profile, kept between runs (mvn clean empties it) -->
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/showcase</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.dom.DomShowcase</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                    <environmentVariables>
+                        <SWASWA_BROWSER>off</SWASWA_BROWSER>
+                    </environmentVariables>
+                    <systemPropertyVariables>
+                        <swaswa.webview.data>${project.build.directory}/webview-profile/tests</swaswa.webview.data>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

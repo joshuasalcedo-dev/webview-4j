@@ -88,7 +88,34 @@ final class NativeLibrary {
             throw new NativeLibraryException(os.reason(), os.hint() + " Or set -Djava.io.tmpdir to a writable folder, or "
                     + "-Dswaswa.library to the library file.", e);
         }
+        Thread.ofVirtual().name("swaswa-native-cleanup").start(() -> removeOthers(dir));
         return file;
+    }
+
+    /**
+     * Other versions' copies, left by earlier builds or releases: each is tens of megabytes, and a developer's every
+     * build makes one. Those untouched for a while go; one in use (loaded by a running app) cannot be deleted on
+     * Windows and stays, as does any just written by another process starting now.
+     */
+    static void removeOthers(Path kept) {
+        Path root = kept.getParent();
+        long before = System.currentTimeMillis() - java.util.concurrent.TimeUnit.MINUTES.toMillis(10);
+        try (java.util.stream.Stream<Path> versions = Files.list(root)) {
+            for (Path version : versions.toList()) {
+                if (version.equals(kept) || !Files.isDirectory(version)) continue;
+                try {
+                    if (Files.getLastModifiedTime(version).toMillis() > before) continue;
+                    try (java.util.stream.Stream<Path> files = Files.list(version)) {
+                        for (Path f : files.toList()) Files.deleteIfExists(f);
+                    }
+                    Files.deleteIfExists(version);
+                } catch (IOException inUse) {
+                    // loaded by a running app, or being written: left for a later start
+                }
+            }
+        } catch (IOException ignored) {
+            // nothing to tidy
+        }
     }
 
     private static String hash(byte[] bytes) {

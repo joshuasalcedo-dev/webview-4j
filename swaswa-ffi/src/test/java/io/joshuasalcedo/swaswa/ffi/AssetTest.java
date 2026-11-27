@@ -1,5 +1,6 @@
 package io.joshuasalcedo.swaswa.ffi;
 
+import io.joshuasalcedo.swaswa.internal.Json;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.jupiter.api.Assertions.*;
 

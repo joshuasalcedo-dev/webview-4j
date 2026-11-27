@@ -1,5 +1,6 @@
-package io.joshuasalcedo.swaswa.ffi;
+package io.joshuasalcedo.swaswa.internal;
 
+import io.joshuasalcedo.swaswa.ffi.JsonValue;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.Map;
  * arrays as {@code List<Object>}, numbers as {@code Long} or {@code Double}, plus {@code String},
  * {@code Boolean} and null.
  */
+/** swaswa's own JSON, inside the module: not the API (its package is not exported). */
 public final class Json {
 
     private Json() {}

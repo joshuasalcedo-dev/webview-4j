@@ -1,5 +1,6 @@
 package io.joshuasalcedo.swaswa.ffi;
 
+import io.joshuasalcedo.swaswa.internal.Json;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.charset.StandardCharsets;
@@ -96,17 +97,30 @@ class PartsTest {
                     "tags", List.of("a", "b")));
             args.put("nothing", null);
             Invocation call = new Invocation(view, "save", args);
-            assertEquals(args, call.fields());
+            assertEquals("Ada", call.text("name"));
             assertEquals(1.7, call.decimal("height"));
             assertEquals(36.0, call.decimal("age"), "a whole number is a number too");
             assertTrue(call.flag("admin"));
-            assertEquals(List.of("a", "b"), call.list("tags"));
+            assertEquals(List.of("a", "b"), call.texts("tags"));
             assertTrue(call.has("nothing"), "passed, as null");
             assertFalse(call.has("missing"));
+            assertEquals("none", call.text("missing", "none"));
             assertThrows(IllegalArgumentException.class, () -> call.flag("name"));
-            assertThrows(IllegalArgumentException.class, () -> call.list("name"));
+            assertThrows(IllegalArgumentException.class, () -> call.texts("name"));
             assertThrows(IllegalArgumentException.class, () -> call.decimal("name"));
-            assertEquals(Map.of(), new Invocation(view, "none", "not an object").fields());
+            assertFalse(new Invocation(view, "none", "not an object").has("name"));
+
+            // all at once, as a record of the app's own
+            enum Role { ADMIN, USER }
+            record Person(String name, long age, double height, boolean admin, List<String> tags, String nothing) {}
+            assertEquals(new Person("Ada", 36, 1.7, true, List.of("a", "b"), null), call.as(Person.class));
+            record Team(String name, List<Person> people, Role role) {}
+            Invocation team = new Invocation(view, "team", Map.of("name", "core", "role", "ADMIN", "people",
+                    List.of(Map.of("name", "Grace", "age", 85L, "height", 1.6, "admin", false, "tags", List.of()))));
+            assertEquals(Role.ADMIN, team.as(Team.class).role());
+            assertEquals("Grace", team.as(Team.class).people().getFirst().name());
+            record Strict(long age) {}
+            assertThrows(IllegalArgumentException.class, () -> new Invocation(view, "x", Map.of("age", "old")).as(Strict.class));
         }
     }
 

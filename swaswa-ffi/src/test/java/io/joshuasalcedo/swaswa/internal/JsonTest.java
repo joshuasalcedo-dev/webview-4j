@@ -1,4 +1,4 @@
-package io.joshuasalcedo.swaswa.ffi;
+package io.joshuasalcedo.swaswa.internal;
 
 import static org.junit.jupiter.api.Assertions.*;
 

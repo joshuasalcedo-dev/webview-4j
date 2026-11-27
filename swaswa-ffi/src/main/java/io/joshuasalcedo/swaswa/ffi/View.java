@@ -242,6 +242,58 @@ public final class View {
         return done(message("front"));
     }
 
+    /**
+     * Whether other windows can be dragged into this one: see {@link WindowOptions#dropTarget}. Off by default.
+     */
+    public void setDropTarget(boolean on) {
+        app.dropTarget(id, on);
+    }
+
+    /** Whether this window takes others dragged onto it. */
+    public boolean isDropTarget() {
+        return app.isDropTarget(id);
+    }
+
+    /**
+     * Whether this can be dragged into a drop target: see {@link WindowOptions#draggable}. A window: dragged onto a host, it
+     * goes in. An embedded view: an MDI child (moved about inside its window), or placed by Java only again.
+     */
+    public CompletableFuture<Void> setDraggable(boolean on) {
+        return geometry().handle((g, failed) -> failed != null).thenCompose(embedded -> app.draggable(this, on, embedded));
+    }
+
+    /** Whether this can be dragged into a drop target. */
+    public boolean isDraggable() {
+        return app.isDraggable(id);
+    }
+
+    /**
+     * Lays out this window's MDI children ({@code children}, embedded in it) at once over its whole page: cascaded, in
+     * a grid, in rows or in columns. In order; cascaded, the last is on top.
+     */
+    public CompletableFuture<Void> arrange(MdiLayout layout, java.util.List<View> children) {
+        return client().thenCompose(c -> {
+            Map<?, ?> client = (Map<?, ?>) c;
+            double scale = ((Number) client.get("scale")).doubleValue();
+            return arrange(layout, children, 0, 0, ((Number) client.get("width")).doubleValue() / scale,
+                    ((Number) client.get("height")).doubleValue() / scale);
+        });
+    }
+
+    /** As {@link #arrange(MdiLayout, java.util.List)}, in an area of the page (logical pixels): not over its toolbars. */
+    public CompletableFuture<Void> arrange(MdiLayout layout, java.util.List<View> children, double x, double y, double width, double height) {
+        Objects.requireNonNull(layout, "layout");
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("an area's size is positive");
+        java.util.List<double[]> places = layout.places(children.size(), x, y, width, height);
+        CompletableFuture<Void> all = CompletableFuture.completedFuture(null);
+        for (int i = 0; i < children.size(); i++) {
+            View child = children.get(i);
+            double[] b = places.get(i);
+            all = all.thenCompose(ok -> child.place(b[0], b[1], b[2], b[3])).thenCompose(ok -> child.toFront());
+        }
+        return all;
+    }
+
     private volatile Subscription floatingAgain;
 
     /**
@@ -659,11 +711,45 @@ public final class View {
     }
 
     /**
-     * Sends {@code data} to the page's listeners of {@code topic}: {@code listen(topic, handler)}
-     * with {@code @webview4j/api}. A topic is dot-separated words of letters, digits, {@code -} and
-     * {@code _}; {@code data} is anything JSON can carry, records included.
+     * Sends {@code data} to the page's listeners of {@code topic}: {@code listen(topic, handler)} with
+     * {@code @webview4j/api}. A topic is dot-separated words of letters, digits, {@code -} and {@code _}; {@code data}
+     * is a record of the app's own (written as a JSON object of its components).
      */
-    public CompletableFuture<Void> emit(String topic, Object data) {
+    public CompletableFuture<Void> emit(String topic, Record data) {
+        return emitAny(topic, Objects.requireNonNull(data, "data"));
+    }
+
+    /** {@link #emit(String, Record)} with a list of records (a JSON array of objects). */
+    public CompletableFuture<Void> emit(String topic, List<? extends Record> data) {
+        return emitAny(topic, List.copyOf(data));
+    }
+
+    /** {@link #emit(String, Record)} with a value that writes itself as JSON. */
+    public CompletableFuture<Void> emit(String topic, JsonValue data) {
+        return emitAny(topic, Objects.requireNonNull(data, "data"));
+    }
+
+    /** {@link #emit(String, Record)} with a text. */
+    public CompletableFuture<Void> emit(String topic, String text) {
+        return emitAny(topic, Objects.requireNonNull(text, "text"));
+    }
+
+    /** {@link #emit(String, Record)} with a number. */
+    public CompletableFuture<Void> emit(String topic, Number number) {
+        return emitAny(topic, Objects.requireNonNull(number, "number"));
+    }
+
+    /** {@link #emit(String, Record)} with true or false. */
+    public CompletableFuture<Void> emit(String topic, boolean flag) {
+        return emitAny(topic, flag);
+    }
+
+    /** {@link #emit(String, Record)} with nothing: the listeners get null. */
+    public CompletableFuture<Void> emit(String topic) {
+        return emitAny(topic, null);
+    }
+
+    private CompletableFuture<Void> emitAny(String topic, Object data) {
         Objects.requireNonNull(topic, "topic");
         if (!Message.validSubject(topic)) {
             throw new IllegalArgumentException("'" + topic + "' is not a topic: dot-separated words of letters, digits, - and _");
@@ -687,14 +773,29 @@ public final class View {
     // ---- the DevTools Protocol (Windows) ----
 
     /**
-     * Calls a method of the page's Chrome DevTools Protocol, e.g. {@code devTools("Page.captureScreenshot", Map.of())}
-     * or {@code Input.dispatchMouseEvent}; its result comes back as JSON values. Windows only, for now.
+     * Calls a method of the page's Chrome DevTools Protocol with its parameters as a record of the app's own, e.g.
+     * {@code devTools("Input.dispatchMouseEvent", new MouseEvent("mousePressed", 10, 20))}; its result comes back as
+     * JSON values. Windows only, for now.
      */
-    public CompletableFuture<Object> devTools(String method, Map<String, ?> params) {
+    public CompletableFuture<Object> devTools(String method, Record params) {
+        return devToolsCall(method, Objects.requireNonNull(params, "params"));
+    }
+
+    /** {@link #devTools(String, Record)} with no parameters: {@code devTools("Page.captureScreenshot")}. */
+    public CompletableFuture<Object> devTools(String method) {
+        return devToolsCall(method, Map.of());
+    }
+
+    /** {@link #devTools(String, Record)} with parameters that write themselves as JSON. */
+    public CompletableFuture<Object> devTools(String method, JsonValue params) {
+        return devToolsCall(method, Objects.requireNonNull(params, "params"));
+    }
+
+    CompletableFuture<Object> devToolsCall(String method, Object params) {
         Objects.requireNonNull(method, "method");
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("method", method);
-        body.put("params", params == null ? Map.of() : params);
+        body.put("params", params);
         return app.request(message("cdp.call").withJson(body)).thenApply(Message::json);
     }
 

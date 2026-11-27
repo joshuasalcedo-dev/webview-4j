@@ -188,12 +188,12 @@ class ViewMethodsTest {
             View view = app.open(WindowOptions.html("<p>cdp</p>").headless(true).devtools(true)).join();
 
             @SuppressWarnings("unchecked")
-            Map<String, Object> answer = (Map<String, Object>) view.devTools("Runtime.evaluate",
-                    Map.of("expression", "6 * 7", "returnByValue", true)).join();
+            record Evaluate(String expression, boolean returnByValue) {}
+            Map<String, Object> answer = (Map<String, Object>) view.devTools("Runtime.evaluate", new Evaluate("6 * 7", true)).join();
             assertEquals(42, ((Number) ((Map<?, ?>) answer.get("result")).get("value")).intValue(), "a method's result");
 
             view.listenDevTools("Runtime.consoleAPICalled").join();
-            view.devTools("Runtime.enable", Map.of()).join();
+            view.devTools("Runtime.enable").join();
             eval(view, "console.log('heard by the protocol')");
             DevToolsEvent heard = null;
             for (int i = 0; i < 20 && heard == null; i++) {

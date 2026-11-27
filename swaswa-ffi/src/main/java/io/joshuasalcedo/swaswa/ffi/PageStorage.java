@@ -1,5 +1,6 @@
 package io.joshuasalcedo.swaswa.ffi;
 
+import io.joshuasalcedo.swaswa.internal.Json;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;

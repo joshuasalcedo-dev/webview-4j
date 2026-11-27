@@ -82,8 +82,9 @@ class BridgeTest {
             // a large push (custom protocol) then a small one (script) arrive in the order sent
             view.eval("window.__webview4j.listen('feed', f => console.info('feed ' + f.n + ' ' + f.text.length))").join();
             Thread.sleep(300);   // the page's poll, for large pushes, reaches Rust
-            view.emit("feed", Map.of("n", 1, "text", "z".repeat(100_000))).join();
-            view.emit("feed", Map.of("n", 2, "text", "small")).join();
+            record Feed(int n, String text) {}
+            view.emit("feed", new Feed(1, "z".repeat(100_000))).join();
+            view.emit("feed", new Feed(2, "small")).join();
             assertEquals("feed 1 100000", console.poll(15, SECONDS));
             assertEquals("feed 2 5", console.poll(15, SECONDS));
 

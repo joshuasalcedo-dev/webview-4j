@@ -1,5 +1,6 @@
 package io.joshuasalcedo.swaswa.ffi;
 
+import io.joshuasalcedo.swaswa.internal.Json;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;

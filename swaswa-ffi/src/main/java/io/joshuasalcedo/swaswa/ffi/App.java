@@ -1,5 +1,6 @@
 package io.joshuasalcedo.swaswa.ffi;
 
+import io.joshuasalcedo.swaswa.internal.Json;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -217,8 +218,59 @@ public final class App implements AutoCloseable {
     CompletableFuture<View> open(WindowOptions options, Map<String, Object> payload) {
         // Before the window exists: its page asks for its files as soon as it loads.
         if (options.assets() != null) assets.serve(options.assets(), options.assetLoader());
-        return request(Message.of("app.open").withJson(payload))
+        CompletableFuture<View> opened = request(Message.of("app.open").withJson(payload))
                 .thenApply(reply -> new View(this, Events.text(object(reply), "view")));
+        if (!options.isDropTarget() && !options.isDraggable()) return opened;
+        boolean embedded = payload.containsKey("parent");
+        return opened.thenCompose(view -> {
+            if (options.isDropTarget()) dropTarget(view.id(), true);
+            if (!options.isDraggable()) return CompletableFuture.completedFuture(view);
+            return draggable(view, true, embedded).thenApply(done -> view);
+        });
+    }
+
+    // ---- docking by flags: windows that take others in (drop targets), and what can be dragged (draggables) ----
+
+    private final java.util.Set<String> dropTargets = ConcurrentHashMap.newKeySet();
+    private final java.util.Set<String> draggables = ConcurrentHashMap.newKeySet();
+    private Docking docking;
+
+    /**
+     * The app's own docking: windows opened {@link WindowOptions#dropTarget} take in windows opened
+     * {@link WindowOptions#draggable}, dragged onto them. Started the first time either is asked for; its style, zones,
+     * key and feedback can be set on what this returns (which views it takes, it keeps to the flags).
+     */
+    public synchronized Docking docking() {
+        if (docking == null) {
+            docking = Docking.on(this).hosts(v -> dropTargets.contains(v.id())).dockable(v -> draggables.contains(v.id())).start();
+            subscribe(Closed.class, closed -> {
+                dropTargets.remove(closed.view());
+                draggables.remove(closed.view());
+            });
+        }
+        return docking;
+    }
+
+    void dropTarget(String view, boolean on) {
+        if (on) {
+            dropTargets.add(view);
+            docking();
+        } else {
+            dropTargets.remove(view);
+        }
+    }
+
+    boolean isDropTarget(String view) { return dropTargets.contains(view); }
+
+    boolean isDraggable(String view) { return draggables.contains(view); }
+
+    /** A view made draggable or not: a window, by the app's docking; an embedded view, an MDI child or not. */
+    CompletableFuture<Void> draggable(View view, boolean on, boolean embedded) {
+        if (on) draggables.add(view.id());
+        else draggables.remove(view.id());
+        if (embedded) return view.setFloating(on);
+        if (on) docking();
+        return CompletableFuture.completedFuture(null);
     }
 
     /**
@@ -250,6 +302,13 @@ public final class App implements AutoCloseable {
         String said = value instanceof Boolean b ? b.toString() : Json.write(String.valueOf(value));
         view(view).eval("window.__webview4j && window.__webview4j.state(" + Json.write(name) + ", " + said + ")")
                 .exceptionally(closed -> null);
+    }
+
+    /** What to do when an egui window closes ({@link Egui}). */
+    private final Map<String, Runnable> eguiClosed = new ConcurrentHashMap<>();
+
+    void onEguiClosed(String id, Runnable then) {
+        eguiClosed.put(id, then);
     }
 
     // ---- the pointer ----
@@ -675,6 +734,22 @@ public final class App implements AutoCloseable {
         return (Map<String, Object>) reply.json();
     }
 
+    // ---- the system's clipboard ----
+
+    /** The text on the system's clipboard; empty if it holds none (a picture, files, nothing). */
+    public CompletableFuture<java.util.Optional<String>> readClipboard() {
+        return request(Message.of("app.clipboard.read")).thenApply(reply -> {
+            Object text = object(reply).get("text");
+            return java.util.Optional.ofNullable(text == null ? null : String.valueOf(text));
+        });
+    }
+
+    /** Puts {@code text} on the system's clipboard, as a copy does. */
+    public CompletableFuture<Void> writeClipboard(String text) {
+        Objects.requireNonNull(text, "text");
+        return request(Message.of("app.clipboard.write").withText(text, "text/plain")).thenApply(reply -> null);
+    }
+
     /** Closes every window and stops the event loop; {@link #whenStopped()} completes after. False if it is not running. */
     public boolean quit() {
         return send(Message.of("app.quit").encode()) == Native.SENT;
@@ -949,6 +1024,9 @@ public final class App implements AutoCloseable {
             }
             ready.complete(this);
             publish(new Ready());
+        } else if (tokens.length == 3 && tokens[0].equals("egui") && tokens[2].equals("closed")) {
+            Runnable then = eguiClosed.remove(tokens[1]);
+            if (then != null) then.run();
         } else if (subject.equals("app.log")) {
             publish(Events.nativeLog(object(message)));
         } else if (tokens.length >= 3 && tokens[0].equals("view")) {

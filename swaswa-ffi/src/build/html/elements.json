@@ -1,0 +1,3264 @@
+{
+ "elements": [
+  {
+   "tag": "a",
+   "dom": "HTMLAnchorElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "href",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "hrefLang",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "media",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "ping",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "referrerPolicy",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "no-referrer",
+      "no-referrer-when-downgrade",
+      "origin",
+      "origin-when-cross-origin",
+      "same-origin",
+      "strict-origin",
+      "strict-origin-when-cross-origin",
+      "unsafe-url"
+     ]
+    },
+    {
+     "name": "target",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "_self",
+      "_blank",
+      "_parent",
+      "_top"
+     ]
+    },
+    {
+     "name": "type",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "abbr",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "address",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "area",
+   "dom": "HTMLAreaElement",
+   "void": true,
+   "attributes": [
+    {
+     "name": "alt",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "coords",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "href",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "hrefLang",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "media",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "referrerPolicy",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "no-referrer",
+      "no-referrer-when-downgrade",
+      "origin",
+      "origin-when-cross-origin",
+      "same-origin",
+      "strict-origin",
+      "strict-origin-when-cross-origin",
+      "unsafe-url"
+     ]
+    },
+    {
+     "name": "shape",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "target",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "article",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "aside",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "audio",
+   "dom": "HTMLAudioElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "autoPlay",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "controls",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "controlsList",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "crossOrigin",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "anonymous",
+      "use-credentials"
+     ]
+    },
+    {
+     "name": "loop",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "mediaGroup",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "muted",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "playsInline",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "preload",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "src",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "b",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "bdi",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "bdo",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "blockquote",
+   "dom": "HTMLQuoteElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "cite",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "br",
+   "dom": "HTMLBRElement",
+   "void": true,
+   "attributes": []
+  },
+  {
+   "tag": "button",
+   "dom": "HTMLButtonElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "disabled",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "form",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "formAction",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "formEncType",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "formMethod",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "formNoValidate",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "formTarget",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "type",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "submit",
+      "reset",
+      "button"
+     ]
+    },
+    {
+     "name": "value",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": true,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "canvas",
+   "dom": "HTMLCanvasElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "height",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "width",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "caption",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "cite",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "code",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "col",
+   "dom": "HTMLTableColElement",
+   "void": true,
+   "attributes": [
+    {
+     "name": "span",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "width",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "colgroup",
+   "dom": "HTMLTableColElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "span",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "data",
+   "dom": "HTMLDataElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "value",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": true,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "datalist",
+   "dom": "HTMLDataListElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "dd",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "del",
+   "dom": "HTMLModElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "cite",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "dateTime",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "details",
+   "dom": "HTMLDetailsElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "open",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "dfn",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "dialog",
+   "dom": "HTMLDialogElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "closedby",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "any",
+      "closerequest",
+      "none"
+     ]
+    },
+    {
+     "name": "open",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "dom": "HTMLDivElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "dl",
+   "dom": "HTMLDListElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "dt",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "em",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "fieldset",
+   "dom": "HTMLFieldSetElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "disabled",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "form",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "figcaption",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "figure",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "footer",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "form",
+   "dom": "HTMLFormElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "acceptCharset",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "action",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "autoComplete",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "encType",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "method",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "noValidate",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "target",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "h1",
+   "dom": "HTMLHeadingElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "h2",
+   "dom": "HTMLHeadingElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "h3",
+   "dom": "HTMLHeadingElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "h4",
+   "dom": "HTMLHeadingElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "h5",
+   "dom": "HTMLHeadingElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "h6",
+   "dom": "HTMLHeadingElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "header",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "hgroup",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "hr",
+   "dom": "HTMLHRElement",
+   "void": true,
+   "attributes": []
+  },
+  {
+   "tag": "i",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "img",
+   "dom": "HTMLImageElement",
+   "void": true,
+   "attributes": [
+    {
+     "name": "alt",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "crossOrigin",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "anonymous",
+      "use-credentials"
+     ]
+    },
+    {
+     "name": "decoding",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "async",
+      "auto",
+      "sync"
+     ]
+    },
+    {
+     "name": "fetchPriority",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "auto",
+      "high",
+      "low"
+     ]
+    },
+    {
+     "name": "height",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "loading",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "eager",
+      "lazy"
+     ]
+    },
+    {
+     "name": "referrerPolicy",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "no-referrer",
+      "no-referrer-when-downgrade",
+      "origin",
+      "origin-when-cross-origin",
+      "same-origin",
+      "strict-origin",
+      "strict-origin-when-cross-origin",
+      "unsafe-url"
+     ]
+    },
+    {
+     "name": "sizes",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "src",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "srcSet",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "useMap",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "width",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "input",
+   "dom": "HTMLInputElement",
+   "void": true,
+   "attributes": [
+    {
+     "name": "accept",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "alt",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "autoComplete",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "off",
+      "on",
+      "additional-name",
+      "address-level1",
+      "address-level2",
+      "address-level3",
+      "address-level4",
+      "address-line1",
+      "address-line2",
+      "address-line3",
+      "bday-day",
+      "bday-month",
+      "bday-year",
+      "cc-csc",
+      "cc-exp",
+      "cc-exp-month",
+      "cc-exp-year",
+      "cc-family-name",
+      "cc-given-name",
+      "cc-name",
+      "cc-number",
+      "cc-type",
+      "country",
+      "country-name",
+      "current-password",
+      "family-name",
+      "given-name",
+      "honorific-prefix",
+      "honorific-suffix",
+      "name",
+      "new-password",
+      "one-time-code",
+      "organization",
+      "postal-code",
+      "street-address",
+      "transaction-amount",
+      "transaction-currency",
+      "username",
+      "email",
+      "tel",
+      "tel-area-code",
+      "tel-country-code",
+      "tel-extension",
+      "tel-local",
+      "tel-local-prefix",
+      "tel-local-suffix",
+      "tel-national",
+      "home email",
+      "home tel",
+      "home tel-area-code",
+      "home tel-country-code",
+      "home tel-extension",
+      "home tel-local",
+      "home tel-local-prefix",
+      "home tel-local-suffix",
+      "home tel-national",
+      "mobile email",
+      "mobile tel",
+      "mobile tel-area-code",
+      "mobile tel-country-code",
+      "mobile tel-extension",
+      "mobile tel-local",
+      "mobile tel-local-prefix",
+      "mobile tel-local-suffix",
+      "mobile tel-national",
+      "work email",
+      "work tel",
+      "work tel-area-code",
+      "work tel-country-code",
+      "work tel-extension",
+      "work tel-local",
+      "work tel-local-prefix",
+      "work tel-local-suffix",
+      "work tel-national",
+      "additional-name webauthn",
+      "address-level1 webauthn",
+      "address-level2 webauthn",
+      "address-level3 webauthn",
+      "address-level4 webauthn",
+      "address-line1 webauthn",
+      "address-line2 webauthn",
+      "address-line3 webauthn",
+      "bday-day webauthn",
+      "bday-month webauthn",
+      "bday-year webauthn",
+      "cc-csc webauthn",
+      "cc-exp webauthn",
+      "cc-exp-month webauthn",
+      "cc-exp-year webauthn",
+      "cc-family-name webauthn",
+      "cc-given-name webauthn",
+      "cc-name webauthn",
+      "cc-number webauthn",
+      "cc-type webauthn",
+      "country webauthn",
+      "country-name webauthn",
+      "current-password webauthn",
+      "family-name webauthn",
+      "given-name webauthn",
+      "honorific-prefix webauthn",
+      "honorific-suffix webauthn",
+      "name webauthn",
+      "new-password webauthn",
+      "one-time-code webauthn",
+      "organization webauthn",
+      "postal-code webauthn",
+      "street-address webauthn",
+      "transaction-amount webauthn",
+      "transaction-currency webauthn",
+      "username webauthn",
+      "email webauthn",
+      "tel webauthn",
+      "tel-area-code webauthn",
+      "tel-country-code webauthn",
+      "tel-extension webauthn",
+      "tel-local webauthn",
+      "tel-local-prefix webauthn",
+      "tel-local-suffix webauthn",
+      "tel-national webauthn",
+      "home email webauthn",
+      "home tel webauthn",
+      "home tel-area-code webauthn",
+      "home tel-country-code webauthn",
+      "home tel-extension webauthn",
+      "home tel-local webauthn",
+      "home tel-local-prefix webauthn",
+      "home tel-local-suffix webauthn",
+      "home tel-national webauthn",
+      "mobile email webauthn",
+      "mobile tel webauthn",
+      "mobile tel-area-code webauthn",
+      "mobile tel-country-code webauthn",
+      "mobile tel-extension webauthn",
+      "mobile tel-local webauthn",
+      "mobile tel-local-prefix webauthn",
+      "mobile tel-local-suffix webauthn",
+      "mobile tel-national webauthn",
+      "work email webauthn",
+      "work tel webauthn",
+      "work tel-area-code webauthn",
+      "work tel-country-code webauthn",
+      "work tel-extension webauthn",
+      "work tel-local webauthn",
+      "work tel-local-prefix webauthn",
+      "work tel-local-suffix webauthn",
+      "work tel-national webauthn",
+      "billing additional-name",
+      "billing additional-name webauthn",
+      "billing address-level1",
+      "billing address-level1 webauthn",
+      "billing address-level2",
+      "billing address-level2 webauthn",
+      "billing address-level3",
+      "billing address-level3 webauthn",
+      "billing address-level4",
+      "billing address-level4 webauthn",
+      "billing address-line1",
+      "billing address-line1 webauthn",
+      "billing address-line2",
+      "billing address-line2 webauthn",
+      "billing address-line3",
+      "billing address-line3 webauthn",
+      "billing bday-day",
+      "billing bday-day webauthn",
+      "billing bday-month",
+      "billing bday-month webauthn",
+      "billing bday-year",
+      "billing bday-year webauthn",
+      "billing cc-csc",
+      "billing cc-csc webauthn",
+      "billing cc-exp",
+      "billing cc-exp webauthn",
+      "billing cc-exp-month",
+      "billing cc-exp-month webauthn",
+      "billing cc-exp-year",
+      "billing cc-exp-year webauthn",
+      "billing cc-family-name",
+      "billing cc-family-name webauthn",
+      "billing cc-given-name",
+      "billing cc-given-name webauthn",
+      "billing cc-name",
+      "billing cc-name webauthn",
+      "billing cc-number",
+      "billing cc-number webauthn",
+      "billing cc-type",
+      "billing cc-type webauthn",
+      "billing country",
+      "billing country webauthn",
+      "billing country-name",
+      "billing country-name webauthn",
+      "billing current-password",
+      "billing current-password webauthn",
+      "billing family-name",
+      "billing family-name webauthn",
+      "billing given-name",
+      "billing given-name webauthn",
+      "billing honorific-prefix",
+      "billing honorific-prefix webauthn",
+      "billing honorific-suffix",
+      "billing honorific-suffix webauthn",
+      "billing name",
+      "billing name webauthn",
+      "billing new-password",
+      "billing new-password webauthn",
+      "billing one-time-code",
+      "billing one-time-code webauthn",
+      "billing organization",
+      "billing organization webauthn",
+      "billing postal-code",
+      "billing postal-code webauthn",
+      "billing street-address",
+      "billing street-address webauthn",
+      "billing transaction-amount",
+      "billing transaction-amount webauthn",
+      "billing transaction-currency",
+      "billing transaction-currency webauthn",
+      "billing username",
+      "billing username webauthn",
+      "billing email",
+      "billing email webauthn",
+      "billing tel",
+      "billing tel webauthn",
+      "billing tel-area-code",
+      "billing tel-area-code webauthn",
+      "billing tel-country-code",
+      "billing tel-country-code webauthn",
+      "billing tel-extension",
+      "billing tel-extension webauthn",
+      "billing tel-local",
+      "billing tel-local webauthn",
+      "billing tel-local-prefix",
+      "billing tel-local-prefix webauthn",
+      "billing tel-local-suffix",
+      "billing tel-local-suffix webauthn",
+      "billing tel-national",
+      "billing tel-national webauthn",
+      "billing home email",
+      "billing home email webauthn",
+      "billing home tel",
+      "billing home tel webauthn",
+      "billing home tel-area-code",
+      "billing home tel-area-code webauthn",
+      "billing home tel-country-code",
+      "billing home tel-country-code webauthn",
+      "billing home tel-extension",
+      "billing home tel-extension webauthn",
+      "billing home tel-local",
+      "billing home tel-local webauthn",
+      "billing home tel-local-prefix",
+      "billing home tel-local-prefix webauthn",
+      "billing home tel-local-suffix",
+      "billing home tel-local-suffix webauthn",
+      "billing home tel-national",
+      "billing home tel-national webauthn",
+      "billing mobile email",
+      "billing mobile email webauthn",
+      "billing mobile tel",
+      "billing mobile tel webauthn",
+      "billing mobile tel-area-code",
+      "billing mobile tel-area-code webauthn",
+      "billing mobile tel-country-code",
+      "billing mobile tel-country-code webauthn",
+      "billing mobile tel-extension",
+      "billing mobile tel-extension webauthn",
+      "billing mobile tel-local",
+      "billing mobile tel-local webauthn",
+      "billing mobile tel-local-prefix",
+      "billing mobile tel-local-prefix webauthn",
+      "billing mobile tel-local-suffix",
+      "billing mobile tel-local-suffix webauthn",
+      "billing mobile tel-national",
+      "billing mobile tel-national webauthn",
+      "billing work email",
+      "billing work email webauthn",
+      "billing work tel",
+      "billing work tel webauthn",
+      "billing work tel-area-code",
+      "billing work tel-area-code webauthn",
+      "billing work tel-country-code",
+      "billing work tel-country-code webauthn",
+      "billing work tel-extension",
+      "billing work tel-extension webauthn",
+      "billing work tel-local",
+      "billing work tel-local webauthn",
+      "billing work tel-local-prefix",
+      "billing work tel-local-prefix webauthn",
+      "billing work tel-local-suffix",
+      "billing work tel-local-suffix webauthn",
+      "billing work tel-national",
+      "billing work tel-national webauthn",
+      "shipping additional-name",
+      "shipping additional-name webauthn",
+      "shipping address-level1",
+      "shipping address-level1 webauthn",
+      "shipping address-level2",
+      "shipping address-level2 webauthn",
+      "shipping address-level3",
+      "shipping address-level3 webauthn",
+      "shipping address-level4",
+      "shipping address-level4 webauthn",
+      "shipping address-line1",
+      "shipping address-line1 webauthn",
+      "shipping address-line2",
+      "shipping address-line2 webauthn",
+      "shipping address-line3",
+      "shipping address-line3 webauthn",
+      "shipping bday-day",
+      "shipping bday-day webauthn",
+      "shipping bday-month",
+      "shipping bday-month webauthn",
+      "shipping bday-year",
+      "shipping bday-year webauthn",
+      "shipping cc-csc",
+      "shipping cc-csc webauthn",
+      "shipping cc-exp",
+      "shipping cc-exp webauthn",
+      "shipping cc-exp-month",
+      "shipping cc-exp-month webauthn",
+      "shipping cc-exp-year",
+      "shipping cc-exp-year webauthn",
+      "shipping cc-family-name",
+      "shipping cc-family-name webauthn",
+      "shipping cc-given-name",
+      "shipping cc-given-name webauthn",
+      "shipping cc-name",
+      "shipping cc-name webauthn",
+      "shipping cc-number",
+      "shipping cc-number webauthn",
+      "shipping cc-type",
+      "shipping cc-type webauthn",
+      "shipping country",
+      "shipping country webauthn",
+      "shipping country-name",
+      "shipping country-name webauthn",
+      "shipping current-password",
+      "shipping current-password webauthn",
+      "shipping family-name",
+      "shipping family-name webauthn",
+      "shipping given-name",
+      "shipping given-name webauthn",
+      "shipping honorific-prefix",
+      "shipping honorific-prefix webauthn",
+      "shipping honorific-suffix",
+      "shipping honorific-suffix webauthn",
+      "shipping name",
+      "shipping name webauthn",
+      "shipping new-password",
+      "shipping new-password webauthn",
+      "shipping one-time-code",
+      "shipping one-time-code webauthn",
+      "shipping organization",
+      "shipping organization webauthn",
+      "shipping postal-code",
+      "shipping postal-code webauthn",
+      "shipping street-address",
+      "shipping street-address webauthn",
+      "shipping transaction-amount",
+      "shipping transaction-amount webauthn",
+      "shipping transaction-currency",
+      "shipping transaction-currency webauthn",
+      "shipping username",
+      "shipping username webauthn",
+      "shipping email",
+      "shipping email webauthn",
+      "shipping tel",
+      "shipping tel webauthn",
+      "shipping tel-area-code",
+      "shipping tel-area-code webauthn",
+      "shipping tel-country-code",
+      "shipping tel-country-code webauthn",
+      "shipping tel-extension",
+      "shipping tel-extension webauthn",
+      "shipping tel-local",
+      "shipping tel-local webauthn",
+      "shipping tel-local-prefix",
+      "shipping tel-local-prefix webauthn",
+      "shipping tel-local-suffix",
+      "shipping tel-local-suffix webauthn",
+      "shipping tel-national",
+      "shipping tel-national webauthn",
+      "shipping home email",
+      "shipping home email webauthn",
+      "shipping home tel",
+      "shipping home tel webauthn",
+      "shipping home tel-area-code",
+      "shipping home tel-area-code webauthn",
+      "shipping home tel-country-code",
+      "shipping home tel-country-code webauthn",
+      "shipping home tel-extension",
+      "shipping home tel-extension webauthn",
+      "shipping home tel-local",
+      "shipping home tel-local webauthn",
+      "shipping home tel-local-prefix",
+      "shipping home tel-local-prefix webauthn",
+      "shipping home tel-local-suffix",
+      "shipping home tel-local-suffix webauthn",
+      "shipping home tel-national",
+      "shipping home tel-national webauthn",
+      "shipping mobile email",
+      "shipping mobile email webauthn",
+      "shipping mobile tel",
+      "shipping mobile tel webauthn",
+      "shipping mobile tel-area-code",
+      "shipping mobile tel-area-code webauthn",
+      "shipping mobile tel-country-code",
+      "shipping mobile tel-country-code webauthn",
+      "shipping mobile tel-extension",
+      "shipping mobile tel-extension webauthn",
+      "shipping mobile tel-local",
+      "shipping mobile tel-local webauthn",
+      "shipping mobile tel-local-prefix",
+      "shipping mobile tel-local-prefix webauthn",
+      "shipping mobile tel-local-suffix",
+      "shipping mobile tel-local-suffix webauthn",
+      "shipping mobile tel-national",
+      "shipping mobile tel-national webauthn",
+      "shipping work email",
+      "shipping work email webauthn",
+      "shipping work tel",
+      "shipping work tel webauthn",
+      "shipping work tel-area-code",
+      "shipping work tel-area-code webauthn",
+      "shipping work tel-country-code",
+      "shipping work tel-country-code webauthn",
+      "shipping work tel-extension",
+      "shipping work tel-extension webauthn",
+      "shipping work tel-local",
+      "shipping work tel-local webauthn",
+      "shipping work tel-local-prefix",
+      "shipping work tel-local-prefix webauthn",
+      "shipping work tel-local-suffix",
+      "shipping work tel-local-suffix webauthn",
+      "shipping work tel-national",
+      "shipping work tel-national webauthn"
+     ]
+    },
+    {
+     "name": "capture",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": [
+      "user",
+      "environment"
+     ]
+    },
+    {
+     "name": "checked",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "disabled",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "form",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "formAction",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "formEncType",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "formMethod",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "formNoValidate",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "formTarget",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "height",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "list",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "max",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "maxLength",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "min",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "minLength",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "multiple",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "pattern",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "placeholder",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "readOnly",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "required",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "size",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "src",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "step",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "type",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "number",
+      "submit",
+      "reset",
+      "button",
+      "email",
+      "tel",
+      "checkbox",
+      "color",
+      "date",
+      "datetime-local",
+      "file",
+      "hidden",
+      "image",
+      "month",
+      "password",
+      "radio",
+      "range",
+      "search",
+      "text",
+      "time",
+      "url",
+      "week"
+     ]
+    },
+    {
+     "name": "value",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": true,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "width",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "ins",
+   "dom": "HTMLModElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "cite",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "dateTime",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "kbd",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "label",
+   "dom": "HTMLLabelElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "form",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "htmlFor",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "legend",
+   "dom": "HTMLLegendElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "li",
+   "dom": "HTMLLIElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "value",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": true,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "main",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "map",
+   "dom": "HTMLMapElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "mark",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "menu",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "type",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "meter",
+   "dom": "HTMLMeterElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "form",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "high",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "low",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "max",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "min",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "optimum",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "value",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": true,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "nav",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "ol",
+   "dom": "HTMLOListElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "reversed",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "start",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "type",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "1",
+      "a",
+      "A",
+      "i",
+      "I"
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "optgroup",
+   "dom": "HTMLOptGroupElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "disabled",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "label",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "option",
+   "dom": "HTMLOptionElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "disabled",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "label",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "selected",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "value",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": true,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "output",
+   "dom": "HTMLOutputElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "form",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "htmlFor",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "p",
+   "dom": "HTMLParagraphElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "picture",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "pre",
+   "dom": "HTMLPreElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "progress",
+   "dom": "HTMLProgressElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "max",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "value",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": true,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "q",
+   "dom": "HTMLQuoteElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "cite",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "rp",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "rt",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "ruby",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "s",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "samp",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "search",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "section",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "select",
+   "dom": "HTMLSelectElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "autoComplete",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "disabled",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "form",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "multiple",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "required",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "size",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "value",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": true,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "slot",
+   "dom": "HTMLSlotElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "small",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "source",
+   "dom": "HTMLSourceElement",
+   "void": true,
+   "attributes": [
+    {
+     "name": "height",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "media",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "sizes",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "src",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "srcSet",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "type",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "width",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "span",
+   "dom": "HTMLSpanElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "strong",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "sub",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "summary",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "sup",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "table",
+   "dom": "HTMLTableElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "align",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "left",
+      "center",
+      "right"
+     ]
+    },
+    {
+     "name": "bgcolor",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "border",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "cellPadding",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "cellSpacing",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "frame",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "rules",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "none",
+      "groups",
+      "rows",
+      "columns",
+      "all"
+     ]
+    },
+    {
+     "name": "summary",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "width",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "tbody",
+   "dom": "HTMLTableSectionElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "td",
+   "dom": "HTMLTableDataCellElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "abbr",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "align",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "left",
+      "center",
+      "right",
+      "justify",
+      "char"
+     ]
+    },
+    {
+     "name": "colSpan",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "headers",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "height",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "rowSpan",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "scope",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "valign",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "top",
+      "middle",
+      "bottom",
+      "baseline"
+     ]
+    },
+    {
+     "name": "width",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "template",
+   "dom": "HTMLTemplateElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "textarea",
+   "dom": "HTMLTextAreaElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "autoComplete",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "cols",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "dirName",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "disabled",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "form",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "maxLength",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "minLength",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "name",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "placeholder",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "readOnly",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "required",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "rows",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "value",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": true,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "wrap",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "tfoot",
+   "dom": "HTMLTableSectionElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "th",
+   "dom": "HTMLTableHeaderCellElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "abbr",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "align",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "left",
+      "center",
+      "right",
+      "justify",
+      "char"
+     ]
+    },
+    {
+     "name": "colSpan",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "headers",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "rowSpan",
+     "doc": "",
+     "text": false,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "scope",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "thead",
+   "dom": "HTMLTableSectionElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "time",
+   "dom": "HTMLTimeElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "dateTime",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "tr",
+   "dom": "HTMLTableRowElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "track",
+   "dom": "HTMLTrackElement",
+   "void": true,
+   "attributes": [
+    {
+     "name": "default",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "kind",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "label",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "src",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "srcLang",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "u",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "ul",
+   "dom": "HTMLUListElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "var",
+   "dom": "HTMLElement",
+   "void": false,
+   "attributes": []
+  },
+  {
+   "tag": "video",
+   "dom": "HTMLVideoElement",
+   "void": false,
+   "attributes": [
+    {
+     "name": "autoPlay",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "controls",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "controlsList",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "crossOrigin",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": [
+      "anonymous",
+      "use-credentials"
+     ]
+    },
+    {
+     "name": "disablePictureInPicture",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "disableRemotePlayback",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "height",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "loop",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "mediaGroup",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "muted",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "playsInline",
+     "doc": "",
+     "text": false,
+     "number": false,
+     "bool": true,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "poster",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "preload",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    },
+    {
+     "name": "src",
+     "doc": "",
+     "text": true,
+     "number": false,
+     "bool": false,
+     "list": false,
+     "url": true,
+     "words": []
+    },
+    {
+     "name": "width",
+     "doc": "",
+     "text": true,
+     "number": true,
+     "bool": false,
+     "list": false,
+     "url": false,
+     "words": []
+    }
+   ]
+  },
+  {
+   "tag": "wbr",
+   "dom": "HTMLElement",
+   "void": true,
+   "attributes": []
+  }
+ ],
+ "left": [
+  "base: would move every link",
+  "body: the page's own",
+  "embed: loads a plugin or another site",
+  "head: the page's own",
+  "html: the page's own",
+  "iframe: loads another site",
+  "link: loads outside files",
+  "meta: the page's own",
+  "noscript: for pages without scripts",
+  "object: loads a plugin or another site",
+  "script: runs code",
+  "style: a style sheet",
+  "title: the window's title"
+ ],
+ "deprecated": [
+  "big",
+  "center",
+  "keygen",
+  "menuitem",
+  "noindex",
+  "param",
+  "webview"
+ ]
+}

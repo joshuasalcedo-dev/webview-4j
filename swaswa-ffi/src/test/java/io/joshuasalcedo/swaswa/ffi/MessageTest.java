@@ -1,5 +1,6 @@
 package io.joshuasalcedo.swaswa.ffi;
 
+import io.joshuasalcedo.swaswa.internal.Json;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;

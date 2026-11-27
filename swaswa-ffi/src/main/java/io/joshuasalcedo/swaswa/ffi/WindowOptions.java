@@ -74,6 +74,8 @@ public final class WindowOptions {
     private boolean confirmClose;
     private boolean fileDrop;
     private Theme theme = Theme.SYSTEM;
+    private boolean dropTarget;
+    private boolean draggable;
 
     private WindowOptions() {}
 
@@ -292,6 +294,25 @@ public final class WindowOptions {
     /** Left out of screenshots and screen sharing (Windows, macOS). */
     public WindowOptions contentProtection(boolean value) { this.contentProtection = value; return this; }
 
+    /**
+     * Whether other windows can be dragged into this one (false by default): a parent, as a workspace or an IDE's main
+     * window is. A window opened {@link #draggable} and let go on it goes in as a panel, where its place lights up (Ctrl
+     * held: it stays a window). The app's own {@link App#docking()} does it: its style and feedback are set there.
+     */
+    public WindowOptions dropTarget(boolean value) { this.dropTarget = value; return this; }
+
+    /**
+     * Whether this can be dragged into a {@link #dropTarget} (false by default). A window: dragged by its title bar onto
+     * a host, it goes in; out again with {@link View#detach}. An embedded view ({@link View#embed}): an MDI child, which
+     * a person moves about inside its window by its own title bar, sizes from its edges, and raises with a click
+     * ({@link View#setFloating}).
+     */
+    public WindowOptions draggable(boolean value) { this.draggable = value; return this; }
+
+    boolean isDropTarget() { return dropTarget; }
+
+    boolean isDraggable() { return draggable; }
+
     /** Whether it takes the keyboard's focus when clicked (true by default): false for a palette over another window. */
     public WindowOptions focusable(boolean value) { this.focusable = value; return this; }
 
@@ -392,8 +413,9 @@ public final class WindowOptions {
 
     /**
      * The app's own browser profile, for a window given no {@link #dataDirectory(Path)}: {@code -Dswaswa.webview.data}
-     * (tests and tools point it at a folder of their own), else {@code webview} in the app's data folder
-     * ({@code %LOCALAPPDATA%\<app>\webview}, beside its stores). Never the engine's default (on Windows a folder
+     * (tests and tools point it at a folder of their own), else {@code webview} in the app's data folder, beside its
+     * stores: in development the build folder's ({@code target/swaswa-dev/<app>/webview}, see {@link AppMode}), in
+     * production the system's ({@code %LOCALAPPDATA%\<app>\webview}). Never the engine's default (on Windows a folder
      * beside {@code java.exe}, which every Java app would share).
      */
     public static Path defaultDataDirectory() {

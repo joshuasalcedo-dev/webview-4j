@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>swaswa-webview: notes</title>
+  <!--
+    The app's own page: plain HTML here (React, Vue... the same). It calls Java as it would a server:
+    __webview4j.request(method, path, query, body) reaches NotesController's routes. With the annotation processor,
+    a typed TypeScript client for those routes is written too (api.ts).
+  -->
+  <style>
+    :root { color-scheme: light dark; font: 15px system-ui; }
+    body { margin: 0; padding: 28px; background: light-dark(#f6f7f9, #18191c); color: light-dark(#111, #eee); }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    p.lead { margin: 0 0 18px; opacity: .65; }
+    form, .bar { display: flex; gap: 8px; margin-bottom: 14px; }
+    input { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid light-dark(#cfd3da, #444); background: light-dark(#fff, #1f2024); color: inherit; font: inherit; }
+    button { padding: 8px 14px; border-radius: 8px; border: 0; background: #3157d5; color: white; font: inherit; cursor: pointer; }
+    button.plain { background: transparent; color: inherit; border: 1px solid light-dark(#cfd3da, #444); }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 6px; border-radius: 8px; background: light-dark(#fff, #222327); }
+    li.done span.text { text-decoration: line-through; opacity: .55; }
+    li span.text { flex: 1; } li small { opacity: .5; }
+    #status { font: 12px ui-monospace, monospace; opacity: .7; min-height: 1.4em; }
+  </style>
+</head>
+<body>
+  <h1>Notes</h1>
+  <p class="lead">This page is the app's own HTML; every list, add, tick and delete is a request Java answers.</p>
+  <form id="add"><input id="text" placeholder="A new note" autocomplete="off"><button>Add</button></form>
+  <div class="bar"><input id="search" placeholder="Search"><button class="plain" id="who" type="button">Who asked?</button></div>
+  <ul id="notes"></ul>
+  <div id="status"></div>
+  <script>
+    const api = (method, path, query, body) => __webview4j.request(method, path, query, body);
+    const $ = (id) => document.getElementById(id);
+    const status = (text) => $('status').textContent = text;
+
+    async function show() {
+      const t = performance.now();
+      const notes = await api('GET', '/notes', { search: $('search').value });
+      const list = $('notes');
+      list.textContent = '';
+      for (const n of notes) {
+        const li = document.createElement('li');
+        if (n.done) li.className = 'done';
+        const box = document.createElement('input');
+        box.type = 'checkbox'; box.checked = n.done; box.style.flex = '0';
+        box.onchange = async () => { await api('PUT', `/notes/${n.id}/done`); show(); };
+        const text = document.createElement('span'); text.className = 'text'; text.textContent = n.text;
+        const at = document.createElement('small'); at.textContent = n.at;
+        const del = document.createElement('button'); del.className = 'plain'; del.textContent = 'Delete';
+        del.onclick = async () => { await api('DELETE', `/notes/${n.id}`); show(); };
+        li.append(box, text, at, del);
+        list.append(li);
+      }
+      status(`GET /notes: ${notes.length} notes, answered by Java in ${Math.round(performance.now() - t)} ms`);
+    }
+
+    $('add').onsubmit = async (e) => {
+      e.preventDefault();
+      try {
+        await api('POST', '/notes', null, { text: $('text').value });
+        $('text').value = '';
+        show();
+      } catch (err) {
+        status(`Java answered ${err.status}: ${err.body ?? err.message}`);   // e.g. 400: a note needs some text
+      }
+    };
+    $('search').oninput = show;
+    $('who').onclick = async () => status(await api('GET', '/notes/who'));
+    show();
+  </script>
+</body>
+</html>

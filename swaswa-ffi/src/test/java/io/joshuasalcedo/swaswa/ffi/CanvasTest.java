@@ -129,11 +129,12 @@ class CanvasTest {
             byte[] rgba = new byte[width * height * 4];
             java.util.Arrays.fill(rgba, (byte) 255);
             // Java: the points the page sends, drawn as black squares; the picture sent back before the call answers
+            record Point(double x, double y) {}
+            record Stroke(java.util.List<Point> points) {}
             app.handle("pen", call -> {
                 View from = call.view();
-                for (Object o : call.list("points")) {
-                    Map<?, ?> p = (Map<?, ?>) o;
-                    int x = ((Number) p.get("x")).intValue(), y = ((Number) p.get("y")).intValue();
+                for (Point p : call.as(Stroke.class).points()) {
+                    int x = (int) p.x(), y = (int) p.y();
                     for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
                         int i = ((y + dy) * width + (x + dx)) * 4;
                         rgba[i] = rgba[i + 1] = rgba[i + 2] = 0;
