@@ -6,6 +6,29 @@ if (!window.__swaswaDom) {
     let seq = 0;   // the events' order: Java delivers them in it
     const sheets = new Map();
     const get = (key) => (key === 0 ? document.body : nodes.get(key));
+    // where an element's children go: an element of a kind keeps them in its slot (its script places the slot)
+    const inside = (el) => el?.__swaswaSlot ?? el;
+
+    // kinds: elements a script of their own runs (swaswa-react's "react"), registered by that script
+    const kinds = {};
+    const waitingKind = new Map();   // kind -> elements made before its script came
+    const scripts = new Set();
+    const mountKind = (el) => {
+      const k = kinds[el.__swaswaKind];
+      if (!k || el.__swaswaMounted) return;
+      el.__swaswaMounted = true;
+      const key = el.__swaswaKey;
+      k.mount(el, el.__swaswaData, el.__swaswaSlot, (name, payload) => post({ key, type: 'kind', name, payload }));
+    };
+    const kind = (name, impl) => {
+      kinds[name] = impl;
+      for (const el of waitingKind.get(name) || []) mountKind(el);
+      waitingKind.delete(name);
+    };
+    const unmountKind = (el) => {
+      if (el.__swaswaMounted) kinds[el.__swaswaKind]?.unmount?.(el);
+      el.__swaswaMounted = false;
+    };
 
     const prop = (el, name, value) => {
       if (name === 'checked' || name === 'open') el[name] = value != null && value !== 'false';
@@ -88,15 +111,30 @@ if (!window.__swaswaDom) {
       nodes.set(t.key, el);
       for (const [k, v] of Object.entries(t.attrs || {})) el.setAttribute(k, v);
       for (const type of t.events || []) listen(el, t.key, type);
-      for (const c of t.children || []) el.append(build(c));
+      if (t.kind) {
+        el.__swaswaKind = t.kind;
+        el.__swaswaData = t.data;
+        el.__swaswaSlot = document.createElement('swaswa-slot');
+        el.__swaswaSlot.style.display = 'contents';
+        el.__swaswaSlot.__swaswaOwner = el;   // whose children these are, wherever its script places them
+      }
+      for (const c of t.children || []) inside(el).append(build(c));
       for (const [k, v] of Object.entries(t.props || {})) prop(el, k, v);
       if (t.track) track(el, t.key);
+      if (t.kind) {
+        if (kinds[t.kind]) mountKind(el);
+        else waitingKind.set(t.kind, [...(waitingKind.get(t.kind) || []), el]);
+      }
       return el;
     };
 
     const forget = (n) => {
       if (!n) return;
       if (n.__swaswaKey !== undefined) nodes.delete(n.__swaswaKey);
+      if (n.__swaswaKind) {
+        unmountKind(n);
+        for (const c of n.__swaswaSlot.childNodes) forget(c);
+      }
       for (const c of n.childNodes || []) forget(c);
     };
 
@@ -105,6 +143,7 @@ if (!window.__swaswaDom) {
         switch (o[0]) {
           case 'seq': seq = o[1]; break;
           case 'reset':
+            for (const n of nodes.values()) if (n.__swaswaKind) unmountKind(n);
             for (const n of nodes.values()) if (n.parentNode === document.body) n.remove();
             nodes.clear();
             tracked.clear();
@@ -112,8 +151,8 @@ if (!window.__swaswaDom) {
             sheets.clear();
             for (const type of Object.keys(document.body?.__swaswaOn || {})) unlisten(document.body, type);
             break;
-          case 'append': get(o[1])?.append(build(o[2])); break;
-          case 'insert': { const p = get(o[1]); p?.insertBefore(build(o[2]), get(o[3]) ?? null); break; }
+          case 'append': inside(get(o[1]))?.append(build(o[2])); break;
+          case 'insert': { const p = inside(get(o[1])); p?.insertBefore(build(o[2]), get(o[3]) ?? null); break; }
           case 'remove': { const n = get(o[1]); n?.remove(); forget(n); break; }
           case 'attr': { const el = get(o[1]); if (!el) break; if (o[3] == null) el.removeAttribute(o[2]); else el.setAttribute(o[2], o[3]); break; }
           case 'text': { const n = get(o[1]); if (n) n.data = o[2]; break; }
@@ -121,6 +160,22 @@ if (!window.__swaswaDom) {
           case 'listen': { const el = get(o[1]); if (el) listen(el, o[1], o[2]); break; }
           case 'unlisten': unlisten(get(o[1]), o[2]); break;
           case 'call': get(o[1])?.[o[2]]?.(); break;
+          case 'script': {
+            if (scripts.has(o[1])) break;
+            scripts.add(o[1]);
+            const s = document.createElement('script');
+            s.dataset.swaswaKind = o[1];
+            s.textContent = o[2];
+            (document.head || document.documentElement).append(s);
+            break;
+          }
+          case 'kind': {
+            const el = get(o[1]);
+            if (!el) break;
+            el.__swaswaData = o[2];
+            if (el.__swaswaMounted) kinds[el.__swaswaKind]?.update?.(el, o[2]);
+            break;
+          }
           case 'scheme': document.documentElement.style.colorScheme = o[1]; break;
           case 'title': document.title = o[1]; break;
           case 'lang': if (o[1] == null) document.documentElement.removeAttribute('lang'); else document.documentElement.lang = o[1]; break;
@@ -185,6 +240,6 @@ if (!window.__swaswaDom) {
       + '[data-swaswa-drop-over]{outline:2px dashed Highlight;outline-offset:-2px}';
     (document.head || document.documentElement).prepend(look);
 
-    return { apply, size: () => nodes.size };
+    return { apply, kind, size: () => nodes.size };
   })();
 }

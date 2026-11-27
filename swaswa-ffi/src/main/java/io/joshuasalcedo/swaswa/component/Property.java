@@ -45,6 +45,7 @@ public final class Property<T> {
      */
     public void set(T value) {
         if (following != null) throw new IllegalStateException("bound: it follows another, set that one (or unbind() first)");
+        if (readOnly) throw new IllegalStateException("a part of another property (map): set that one");
         put(value);
     }
 
@@ -73,6 +74,34 @@ public final class Property<T> {
     public Property<T> removeListener(Listener<? super T> listener) {
         listeners.remove(listener);
         return this;
+    }
+
+    /**
+     * A property holding {@code part} of this one's value, as it changes: its listeners are told only when that part
+     * changes (JavaFX's {@code map}). It cannot be set: it follows this one.
+     * <pre>{@code
+     * Property<Integer> count = cart.map(c -> c.items().size());   // told when the count changes, not every cart change
+     * badge.textProperty().bind(count.map(String::valueOf));
+     * }</pre>
+     */
+    public <R> Property<R> map(java.util.function.Function<? super T, ? extends R> part) {
+        Objects.requireNonNull(part, "part");
+        Property<R> mapped = new Property<>(part.apply(value));
+        mapped.readOnly = true;
+        addListener((old, now) -> mapped.put(part.apply(now)));
+        return mapped;
+    }
+
+    /** Whether it can be set: not when it follows another ({@link #bind}) or is a part of one ({@link #map}). */
+    public boolean isReadOnly() {
+        return readOnly || following != null;
+    }
+
+    private volatile boolean readOnly;
+
+    /** Whether something listens to it (a listener, or a property bound to it): whether anything shows it. */
+    public boolean hasListeners() {
+        return !listeners.isEmpty();
     }
 
     /** Follows {@code other}: holds what it holds, now and as it changes, until {@link #unbind()}. */

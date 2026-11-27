@@ -547,6 +547,38 @@ public abstract class HtmlElement<Self extends HtmlElement<Self>> extends Node i
         return call("scrollIntoView");
     }
 
+    // ---- a kind: an element a script of its own runs in the page (a React component) ----
+
+    /**
+     * The kind of element it is, when a script of its own runs it in the page (swaswa-react's {@code "react"}); null for
+     * a plain element. The page gives it to the kind's script ({@code __swaswaDom.kind(name, {mount, update, unmount})}),
+     * which draws into it; its children go in a slot the script places ({@code slot}: React's {@code children}).
+     */
+    protected String kind() {
+        return null;
+    }
+
+    /**
+     * The scripts its kind needs in the page, in order: the one that registers the kind, then what it draws with (a
+     * React component library). Each is put in a page once, whatever number of elements need it.
+     */
+    protected List<PageScript> kindScripts() {
+        return List.of();
+    }
+
+    /** What its kind's script draws it from (JSON: maps, lists, records...): React's component name and props. */
+    protected Object kindData() {
+        return null;
+    }
+
+    /** Its data changed: the page's script is given it again (React renders anew). */
+    protected final void kindChanged() {
+        if (kind() != null) op("kind", key, kindData());
+    }
+
+    /** An event its kind's script sent ({@code send(name, payload)}): what it holds, as JSON. */
+    protected void kindEvent(Map<String, Object> data) {}
+
     /** Calls the element's own method (no arguments) in the page: {@code focus}, {@code showModal}... */
     protected Self call(String method) {
         op("call", key, method);
@@ -558,6 +590,14 @@ public abstract class HtmlElement<Self extends HtmlElement<Self>> extends Node i
      * listeners, each on its own.
      */
     void fire(String type, Map<String, Object> data, Node draggedNode) {
+        if (type.equals("kind") && kind() != null) {
+            try {
+                kindEvent(data);
+            } catch (RuntimeException e) {
+                System.getLogger("swaswa.html").log(System.Logger.Level.WARNING, kind() + " <" + tag + "> event failed", e);
+            }
+            return;
+        }
         for (String name : holds) {
             if (data.containsKey(name)) {
                 Object v = data.get(name);
@@ -667,6 +707,12 @@ public abstract class HtmlElement<Self extends HtmlElement<Self>> extends Node i
         t.put("key", key);
         t.put("tag", tag);
         for (io.joshuasalcedo.swaswa.css.CssClass c : typed.values()) document.uses(c);   // their CSS, in its page
+        String kind = kind();
+        if (kind != null) {
+            for (PageScript script : kindScripts()) document.usesScript(script);   // once per page, in order
+            t.put("kind", kind);
+            t.put("data", kindData());
+        }
         Map<String, String> attrs = new LinkedHashMap<>(attributes);
         if (!classes.isEmpty()) attrs.put("class", classText());
         if (!style.isEmpty()) attrs.put("style", style.toCss());

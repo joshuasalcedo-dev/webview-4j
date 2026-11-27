@@ -15,3 +15,7 @@ target/
 
 # bun/npm dependencies (swaswa-tailwind/src/build: Tailwind itself, to make the data)
 node_modules/
+
+# shadcn/ui source project: vite output
+swaswa-shadcn/src/build/ui/dist-swaswa/
+swaswa-shadcn/src/build/ui/dist/

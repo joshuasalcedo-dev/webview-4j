@@ -1,6 +1,11 @@
 package io.joshuasalcedo.swaswa.app;
 
+import io.joshuasalcedo.swaswa.component.Property;
 import io.joshuasalcedo.swaswa.css.StyleSheet;
+import io.joshuasalcedo.swaswa.state.LocalState;
+import io.joshuasalcedo.swaswa.state.Session;
+import io.joshuasalcedo.swaswa.state.SessionOwner;
+import io.joshuasalcedo.swaswa.state.Store;
 import io.joshuasalcedo.swaswa.ffi.App;
 import io.joshuasalcedo.swaswa.ffi.AppMode;
 import io.joshuasalcedo.swaswa.ffi.Closed;
@@ -56,7 +61,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * {@link #stop()}. Where its data goes follows {@link #mode()}: in development its build folder, in production the
  * system's place.
  */
-public abstract class SwaApplication extends HtmlElement<SwaApplication> {
+public abstract class SwaApplication extends HtmlElement<SwaApplication> implements SessionOwner {
 
     private final Main main = new Main();
     private Header header;
@@ -73,6 +78,7 @@ public abstract class SwaApplication extends HtmlElement<SwaApplication> {
     private volatile App app;
     private volatile View window;
     private volatile Document document;
+    private volatile Session session;
 
     protected SwaApplication() {
         super("body", false);
@@ -101,6 +107,30 @@ public abstract class SwaApplication extends HtmlElement<SwaApplication> {
     /** Its window: size, place, frame. The page is its own; the title follows {@link #setTitle}. */
     protected WindowOptions window() {
         return WindowOptions.html("").size(1000, 700);
+    }
+
+    // ---- its state ----
+
+    /**
+     * Its session: where its {@link Store}s, saved values and server state live, the top of its components'
+     * {@link io.joshuasalcedo.swaswa.state.Context}. What is persisted goes in the app's own store (its data folder,
+     * as {@link #mode()} says), opened when first needed; closed when it stops.
+     */
+    @Override
+    public final Session session() {
+        Session s = session;
+        if (s == null) {
+            synchronized (this) {
+                if (session == null) session = Session.forApp(getClass().getSimpleName());
+                s = session;
+            }
+        }
+        return s;
+    }
+
+    /** {@code state}'s value in its session, live: bind components to it, set it ({@code CART.in(app.session())}). */
+    public final <T> Property<T> state(LocalState<T> state) {
+        return state.in(session());
     }
 
     // ---- the page's parts, in HTML's order ----
@@ -418,6 +448,9 @@ public abstract class SwaApplication extends HtmlElement<SwaApplication> {
             stop();
         } catch (Exception e) {
             if (failed.get() == null) failed.set(e);
+        } finally {
+            Session s = session;
+            if (s != null) s.close();   // what waits is written; the store is closed
         }
         Throwable f = failed.get();
         if (f != null) throw new IllegalStateException(getClass().getSimpleName() + " failed", f);

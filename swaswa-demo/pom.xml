@@ -35,6 +35,11 @@
             <artifactId>swaswa-dom</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-shadcn</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -71,6 +76,25 @@
                                 <argument>-classpath</argument>
                                 <classpath/>
                                 <argument>io.joshuasalcedo.swaswa.demo.TaildWindDemo</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>shadcn-demo</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-Xmx512m</argument>
+                                <!-- the JVM's own JIT, not GraalVM's: it needs much less memory -->
+                                <argument>-XX:-UseJVMCICompiler</argument>
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/demo</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.demo.ShadcnDemo</argument>
                             </arguments>
                         </configuration>
                     </execution>

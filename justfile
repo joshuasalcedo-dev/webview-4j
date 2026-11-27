@@ -23,6 +23,19 @@ tailwind-docs:
     mvn -q -B -pl swaswa-ffi,swaswa-tailwind,swaswa-dom install -DskipTests
     mvn -q -B -pl swaswa-demo compile exec:exec@tailwind-docs
 
+# shadcn/ui's real components from Java, Swing-style (ShadcnDemo)
+shadcn-demo:
+    mvn -q -B -pl swaswa-ffi,swaswa-tailwind,swaswa-react,swaswa-shadcn install -DskipTests
+    mvn -q -B -pl swaswa-demo compile exec:exec@shadcn-demo
+
+# shadcn/ui's components, their CSS and their Java classes again (after `bunx --bun shadcn@latest add <name>` in swaswa-shadcn/src/build/ui)
+shadcn-build:
+    cd swaswa-shadcn/src/build && bun build.ts
+
+# React in the jar: rebuild swaswa-react's runtime (React, ReactDOM, the bridge) after changing src/build
+react-runtime:
+    cd swaswa-react/src/build && bun install && bun run build
+
 # The docs as web pages, no window: one HTML file per family in swaswa-demo/target/docs-pages
 tailwind-pages:
     mvn -q -B -pl swaswa-ffi,swaswa-tailwind,swaswa-dom install -DskipTests

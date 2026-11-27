@@ -50,6 +50,8 @@ public final class Document {
     private String lang;
     private final Map<Integer, Node> nodes = new ConcurrentHashMap<>();
     private final Map<StyleSheet, Integer> sheets = new LinkedHashMap<>();
+    /** The kinds' scripts in the page, by id: put in once, and again when the page loads anew. */
+    private final Map<String, String> scripts = new LinkedHashMap<>();
     private final Map<StyleSheet, Runnable> sheetListeners = new ConcurrentHashMap<>();
     private int next = 1;
     /** The page's events, delivered in its order and one at a time (as Swing's event thread does). */
@@ -277,6 +279,7 @@ public final class Document {
         if (title != null) ops.add(Arrays.asList("title", title));
         if (lang != null) ops.add(Arrays.asList("lang", lang));
         sheets.forEach((sheet, k) -> ops.add(Arrays.asList("sheet", k, sheet.toCss())));
+        scripts.forEach((kind, script) -> ops.add(Arrays.asList("script", kind, script)));
         Map<String, Object> self = body.tree(this);   // numbers its children; the body itself is the page's
         body.key = 0;
         nodes.put(0, body);
@@ -292,6 +295,13 @@ public final class Document {
         send(RUNTIME + "\n;__swaswaDom.apply(" + Json.write(ops) + ") && document.readyState").thenAccept(state -> {
             if ("complete".equals(state)) page.complete(null);
         });
+    }
+
+    /** A kind's script, in the page once ({@link HtmlElement#kindScripts()}). */
+    synchronized void usesScript(PageScript script) {
+        if (scripts.containsKey(script.id())) return;
+        scripts.put(script.id(), script.source());
+        op("script", script.id(), script.source());
     }
 
     // ---- numbering ----

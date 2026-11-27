@@ -49,6 +49,8 @@
         <module>swaswa-webview</module>
         <module>swaswa-tailwind</module>
         <module>swaswa-dom</module>
+        <module>swaswa-react</module>
+        <module>swaswa-shadcn</module>
         <module>swaswa-demo</module>
     </modules>
 
