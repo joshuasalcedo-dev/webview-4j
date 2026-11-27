@@ -44,7 +44,7 @@ class AppTest {
             assertTrue(metrics.bytesOut() > 0 && metrics.bytesIn() > 0, metrics.toString());
             Metrics.Timing evals = metrics.byAction().stream()
                     .filter(t -> t.name().equals("view.eval")).findFirst().orElseThrow();
-            assertEquals(2, evals.count());
+            assertTrue(evals.count() >= 2, "the two above (and swaswa's own: the page told its window's state): " + evals.count());
             assertTrue(evals.averageMillis() > 0 && evals.maxMillis() >= evals.p95Millis(), evals.toString());
             assertEquals(1, metrics.byAction().stream()
                     .filter(t -> t.name().equals("app.open")).findFirst().orElseThrow().count());

@@ -151,6 +151,24 @@ pub struct Link {
     listening: bool,
     /// The number of the last emit that went out, by either channel.
     next_emit: u64,
+    /// The latest picture Java drew for each of the page's canvases (only the latest: a page that draws
+    /// slower than Java sends skips to it).
+    frames: HashMap<String, Frame>,
+}
+
+/// A picture for one of the page's canvases (`view.<id>.frame.<canvas>`): raw RGBA pixels, or a PNG or JPEG.
+pub struct Frame {
+    pub seq: u64,
+    pub width: u32,
+    pub height: u32,
+    /// 0 RGBA, 1 PNG, 2 JPEG.
+    pub format: u32,
+    pub bytes: Arc<Vec<u8>>,
+}
+
+/// A canvas's name: what goes in a subject and the page's `id`.
+pub fn canvas_name(name: &str) -> bool {
+    !name.is_empty() && name.len() <= 64 && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
 /// Where an emit goes.
@@ -179,6 +197,7 @@ impl Link {
             poll: None,
             queued: Vec::new(),
             listening: false,
+            frames: HashMap::new(),
             next_emit: 0,
         }))
     }
@@ -212,6 +231,11 @@ impl Link {
         )
     }
 
+    /// Keeps `frame` as `canvas`'s latest picture, for the page to fetch.
+    pub fn put_frame(&mut self, canvas: &str, frame: Frame) {
+        self.frames.insert(canvas.to_string(), frame);
+    }
+
     /// A request from the page over the custom protocol. Returns the message to send Java, if it is a call.
     pub fn request(&mut self, request: Request<Vec<u8>>, responder: RequestAsyncResponder) -> Option<Message> {
         let origin = request_origin(request.headers());
@@ -243,6 +267,22 @@ impl Link {
         if let Some(path) = request.uri().path().strip_prefix("/api/") {
             let path = format!("/{path}");
             return self.api_request(&request, path, origin, responder);
+        }
+        if let Some(canvas) = request.uri().path().strip_prefix("/frame/") {
+            // A canvas's latest picture: 20 bytes that say which one it is (its number, size, format; little
+            // endian), then its bytes as Java sent them. Said in the body, not headers: no CORS headers to expose.
+            let Some(frame) = self.frames.get(canvas) else {
+                responder.respond(response(404, Some(&origin), "text/plain", format!("no picture for '{canvas}'").into_bytes()));
+                return None;
+            };
+            let mut body = Vec::with_capacity(20 + frame.bytes.len());
+            body.extend_from_slice(&frame.seq.to_le_bytes());
+            body.extend_from_slice(&frame.width.to_le_bytes());
+            body.extend_from_slice(&frame.height.to_le_bytes());
+            body.extend_from_slice(&frame.format.to_le_bytes());
+            body.extend_from_slice(&frame.bytes);
+            responder.respond(response(200, Some(&origin), "application/octet-stream", body));
+            return None;
         }
         if request.method() != "POST" {
             responder.respond(response(405, Some(&origin), "text/plain", b"POST only".to_vec()));
@@ -431,7 +471,8 @@ impl Link {
         if let Some((poll, origin)) = self.poll.take() {
             poll.respond(response(200, Some(&origin), "application/x-webview4j-frames", frame));
         } else if self.queued.len() + frame.len() > MAX_QUEUED {
-            return Emit::Done(Outcome::error(503, "the page is not taking emits: too many are waiting"));
+            return Emit::Done(Outcome::error(503, "the page is not taking emits: too many are waiting")
+                .hint("The page is not reading what Java emits (it is loading, frozen, or has no listener): emit less often, or wait for its Ready/PageLoad first."));
         } else {
             self.queued.extend_from_slice(&frame);
         }

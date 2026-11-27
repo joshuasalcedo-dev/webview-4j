@@ -37,6 +37,7 @@ final class FfiShowcase {
     public static void main(String[] args) {
         App.run(app -> {
             app.handle("showcase", call -> act(app, call));
+            app.handle("pen", FfiShowcase::pen);
             app.subscribe(WebViewEvent.class, FfiShowcase::show);
             main = app.open(WindowOptions.html(PAGE).title("swaswa-ffi: control panel").size(760, 940).position(40, 40)
                     .minSize(600, 500).devtools(true).capture(Capture.API)).join();
@@ -65,6 +66,33 @@ final class FfiShowcase {
         });
     }
 
+    /** The network calls under way: "view/id" -> "METHOD url". */
+    private static final Map<String, String> calls = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** An event in one line: a network call as method, status, address and time; the rest as they are. */
+    private static String brief(WebViewEvent event) {
+        if (event instanceof NetworkEvent n) {
+            // an end or an error names only the call's id: its method and address came with its start
+            String call = n.phase() == NetworkEvent.Phase.START ? null
+                    : java.util.Objects.requireNonNullElse(calls.remove(n.view() + "/" + n.id()), n.method() + " " + n.url());
+            return switch (n.phase()) {
+                case START -> {
+                    calls.put(n.view() + "/" + n.id(), n.method() + " " + n.url());
+                    yield n.view() + "  → " + n.kind() + " " + n.method() + " " + n.url();
+                }
+                case END -> n.view() + "  ← " + n.status() + " " + call + "  " + n.durationMs() + " ms, "
+                        + n.size() + " bytes" + (n.mimeType() == null ? "" : ", " + n.mimeType());
+                case ERROR -> n.view() + "  ✕ " + call + ": " + n.error();
+                case RESOURCE -> n.view() + "  · " + n.kind() + " " + n.url() + "  " + n.durationMs() + " ms";
+            };
+        }
+        if (event instanceof WebSocketFrame || event instanceof LogRecord) {
+            String text = event.toString();
+            return text.length() > 300 ? text.substring(0, 300) + "…" : text;
+        }
+        return event.toString();
+    }
+
     /** The target window: open, or opened again (it may have been closed). */
     private static synchronized View target(App app) {
         View t = target;
@@ -81,7 +109,7 @@ final class FfiShowcase {
         if (panel == null || event instanceof LogRecord log && log.source() == LogRecord.Source.NATIVE) return;
         if (event instanceof PageCall call && "showcase".equals(call.name())) return; // the buttons' own calls
         if (event.view() != null && event.view().equals(panel.id()) && (event instanceof Moved || event instanceof Resized)) return;
-        panel.emit("showcase.event", Map.of("kind", event.getClass().getSimpleName(), "text", event.toString()));
+        panel.emit("showcase.event", Map.of("kind", event.getClass().getSimpleName(), "text", brief(event)));
         View t = target;
         if (t != null && t.id().equals(event.view())) {
             t.emit("target.event", Map.of("kind", event.getClass().getSimpleName(), "text", event.toString()));
@@ -111,11 +139,36 @@ final class FfiShowcase {
             case "site": return opened(app.open(WindowOptions.url(arg).title(arg).size(1100, 780)));
             case "browser": return browser(app, arg);
             case "multi": return multi(app);
+            case "canvas": return canvas(app);
+            case "sketch": return sketch(app);
             case "browser-nav": return browserNav(call.view(), arg);
             // ---- injecting into a site that is not ours ----
             case "inject-open": return opened(CompletableFuture.completedFuture(injectedWindow(app, true)));
             case "inject-css": return injectCss(app, arg);
             case "inject-script": return injectScript(app);
+            case "inject-listen": {
+                Capture kind = Capture.valueOf(arg);
+                boolean on = flip("listen-" + kind);
+                View wiki = injectedWindow(app, false);
+                wiki.capture(kind, on).join();
+                if (on && kind == Capture.NETWORK) {
+                    // what the page fetched before anyone listened: from its own record of what it loaded
+                    Object before = wiki.eval("""
+                            performance.getEntriesByType('resource').map((r) => ({ kind: r.initiatorType, url: r.name,
+                              ms: Math.round(r.duration), bytes: r.transferSize }))""").join();
+                    if (before instanceof java.util.List<?> list) {
+                        for (Object entry : list) {
+                            if (entry instanceof Map<?, ?> r) {
+                                main.emit("showcase.event", Map.of("kind", "Loaded before",
+                                        "text", wiki.id() + "  · " + r.get("kind") + " " + r.get("url") + "  " + r.get("ms") + " ms, " + r.get("bytes") + " bytes"));
+                            }
+                        }
+                        return "listening to network calls in the Wikipedia window; " + list.size()
+                                + " were made before (listed). New ones come as the page makes them: go to another article, search, or hover a link";
+                    }
+                }
+                return (on ? "listening to " : "no longer listening to ") + kind.name().toLowerCase() + " in the Wikipedia window";
+            }
             default: break;
         }
         View view = target(app);
@@ -313,7 +366,8 @@ final class FfiShowcase {
                       boxShadow: '0 6px 24px #0004' });
                     document.body.append(b);
                   }
-                  const links = document.querySelectorAll('#mw-content-text a[href^="/wiki/"]').length;
+                  const links = [...document.querySelectorAll('#mw-content-text a[href]')]
+                    .filter((a) => new URL(a.href).pathname.startsWith('/wiki/') && !a.closest('.reference')).length;
                   const title = document.querySelector('#firstHeading')?.textContent ?? document.title;
                   b.textContent = 'Injected by swaswa: ' + links + ' links in "' + title + '"';
                   return { title, links, url: location.href };
@@ -346,6 +400,217 @@ final class FfiShowcase {
             }
         }
         return what;
+    }
+
+    /** A sketch pad's picture, kept and drawn by Java: one per window. */
+    private static final class Sketch {
+        static final int WIDTH = 900, HEIGHT = 560;
+        final View window;
+        final byte[] rgba = new byte[WIDTH * HEIGHT * 4];
+        double lastX = Double.NaN, lastY = Double.NaN;
+        /** A picture is on its way to the page: the next goes once it is drawn (never two at once). */
+        boolean sending, dirty;
+        long points;
+
+        Sketch(View window) {
+            this.window = window;
+            clear();
+        }
+
+        void clear() {
+            for (int i = 0; i < rgba.length; i += 4) {
+                rgba[i] = (byte) 250; rgba[i + 1] = (byte) 249; rgba[i + 2] = (byte) 245; rgba[i + 3] = (byte) 255;
+            }
+        }
+
+        /** A round dab of the pen at (x, y), its edge soft for one pixel. */
+        void dab(double x, double y, double radius, int r, int g, int b) {
+            int x0 = (int) Math.floor(x - radius), x1 = (int) Math.ceil(x + radius);
+            int y0 = (int) Math.floor(y - radius), y1 = (int) Math.ceil(y + radius);
+            for (int py = Math.max(0, y0); py <= Math.min(HEIGHT - 1, y1); py++) {
+                for (int px = Math.max(0, x0); px <= Math.min(WIDTH - 1, x1); px++) {
+                    double d = Math.hypot(px - x, py - y);
+                    if (d > radius) continue;
+                    double a = Math.min(1, radius - d);
+                    int i = (py * WIDTH + px) * 4;
+                    rgba[i] = (byte) ((rgba[i] & 0xFF) * (1 - a) + r * a);
+                    rgba[i + 1] = (byte) ((rgba[i + 1] & 0xFF) * (1 - a) + g * a);
+                    rgba[i + 2] = (byte) ((rgba[i + 2] & 0xFF) * (1 - a) + b * a);
+                }
+            }
+        }
+
+        /** A line from the last point to (x, y): dabs half a radius apart, smooth however fast the pen moved. */
+        void lineTo(double x, double y, double radius, int r, int g, int b) {
+            if (Double.isNaN(lastX)) {
+                dab(x, y, radius, r, g, b);
+            } else {
+                double length = Math.hypot(x - lastX, y - lastY);
+                int steps = Math.max(1, (int) Math.ceil(length / Math.max(0.5, radius / 2)));
+                for (int k = 1; k <= steps; k++) dab(lastX + (x - lastX) * k / steps, lastY + (y - lastY) * k / steps, radius, r, g, b);
+            }
+            lastX = x;
+            lastY = y;
+            points++;
+        }
+
+        /** Sends the picture, unless one is on its way: then once that one is drawn. */
+        synchronized void show() {
+            if (sending) {
+                dirty = true;
+                return;
+            }
+            sending = true;
+            dirty = false;
+            window.drawFrame("pad", Frame.rgba(WIDTH, HEIGHT, rgba.clone())).whenComplete((drawn, error) -> {
+                synchronized (this) {
+                    sending = false;
+                    if (error == null && dirty) show();
+                }
+            });
+        }
+    }
+
+    private static final Map<String, Sketch> sketches = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** A sketch pad: the page sends the pen's points, Java draws them into its own pixels and sends the picture back. */
+    private static String sketch(App app) {
+        View window = app.open(WindowOptions.html(SKETCH).title("Sketch: Java draws what you draw").size(980, 680)).join();
+        Sketch sketch = new Sketch(window);
+        sketches.put(window.id(), sketch);
+        app.subscribe(Closed.class, closed -> sketches.remove(closed.view()));
+        sketch.show();
+        return "a sketch pad (" + window.id() + "): draw on it; Java draws each line";
+    }
+
+    /** The pen's points from a sketch pad: drawn into its picture by Java, then the picture sent back. */
+    private static Object pen(Invocation call) {
+        Sketch sketch = sketches.get(call.view().id());
+        if (sketch == null) return Map.of("points", 0);
+        synchronized (sketch) {
+            if (call.has("clear")) {
+                sketch.clear();
+                sketch.lastX = Double.NaN;
+            } else {
+                java.util.List<Object> rgb = call.list("rgb");
+                int r = ((Number) rgb.get(0)).intValue(), g = ((Number) rgb.get(1)).intValue(), b = ((Number) rgb.get(2)).intValue();
+                for (Object o : call.list("points")) {
+                    Map<?, ?> point = (Map<?, ?>) o;
+                    if (Boolean.TRUE.equals(point.get("start"))) sketch.lastX = Double.NaN;
+                    sketch.lineTo(((Number) point.get("x")).doubleValue(), ((Number) point.get("y")).doubleValue(),
+                            Math.max(0.5, ((Number) point.get("radius")).doubleValue()), r, g, b);
+                }
+            }
+        }
+        sketch.show();
+        return Map.of("points", sketch.points);
+    }
+
+    /** The sketch pad's page: colours, a size, a canvas; the pen's points go to Java once a frame. */
+    private static final String SKETCH = """
+            <!doctype html><meta charset=utf-8><title>Sketch: Java draws what you draw</title>
+            <style>
+              body { margin: 0; background: #2a2b30; color: #ddd; font: 13px system-ui; display: grid; place-items: center; height: 100vh }
+              .bar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px }
+              canvas { display: block; border-radius: 8px; cursor: crosshair; touch-action: none; box-shadow: 0 8px 30px #0006 }
+              button.color { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer }
+              button.color.on { border-color: #fff } #stats { opacity: .65; margin-left: 10px }
+            </style>
+            <div>
+              <div class=bar>
+                <button class="color on" style="background:#1d1f24" data-rgb="29,31,36"></button>
+                <button class=color style="background:#d23c3c" data-rgb="210,60,60"></button>
+                <button class=color style="background:#2f6fd6" data-rgb="47,111,214"></button>
+                <button class=color style="background:#2f9e5a" data-rgb="47,158,90"></button>
+                <button class=color style="background:#f5b301" data-rgb="245,179,1"></button>
+                <label>Size <input id=size type=range min=1 max=30 value=4></label>
+                <button id=clear>Clear</button><span id=stats>Draw with the mouse or a pen</span>
+              </div>
+              <canvas id=pad width=900 height=560></canvas>
+            </div>
+            <script>
+              const pad = document.getElementById('pad'), size = document.getElementById('size');
+              let rgb = [29, 31, 36], batch = [], down = false;
+              for (const b of document.querySelectorAll('.color')) b.onclick = () => {
+                document.querySelectorAll('.color').forEach((o) => o.classList.remove('on'));
+                b.classList.add('on');
+                rgb = b.dataset.rgb.split(',').map(Number);
+              };
+              const where = (e) => {
+                const r = pad.getBoundingClientRect();
+                return [(e.clientX - r.left) * pad.width / r.width, (e.clientY - r.top) * pad.height / r.height];
+              };
+              // every point the pen passed (coalesced: several a frame when it moves fast), sent to Java once a frame
+              function add(e, start) {
+                const all = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+                const events = all.length ? all : [e];
+                events.forEach((c, i) => {
+                  const [x, y] = where(c);
+                  const pressure = c.pointerType === 'pen' && c.pressure ? c.pressure * 2 : 1;
+                  batch.push({ x, y, start: start && i === 0, radius: size.value / 2 * pressure });
+                });
+              }
+              pad.onpointerdown = (e) => { down = true; pad.setPointerCapture(e.pointerId); add(e, true); };
+              pad.onpointermove = (e) => { if (down) add(e, false); };
+              pad.onpointerup = pad.onpointercancel = () => { down = false; };
+              document.getElementById('clear').onclick = () => __webview4j.invoke('pen', { clear: true });
+              function frame() {
+                if (batch.length) {
+                  const points = batch, t = performance.now();
+                  batch = [];
+                  __webview4j.invoke('pen', { rgb, points }).then((s) => {
+                    document.getElementById('stats').textContent =
+                      s.points + ' points drawn by Java · it answered in ' + Math.round(performance.now() - t) + ' ms';
+                  });
+                }
+                requestAnimationFrame(frame);
+              }
+              requestAnimationFrame(frame);
+            </script>""";
+
+    /**
+     * A canvas Java draws on: each frame's pixels made in Java (a moving pattern), sent binary, drawn by the page; the
+     * next sent once it is on the canvas. Stops when the window closes.
+     */
+    private static String canvas(App app) {
+        View window = app.open(WindowOptions.html("""
+                <!doctype html><meta charset=utf-8><title>Java draws this canvas</title>
+                <style>body { margin: 0; background: #111; color: #ddd; font: 13px system-ui; display: grid; place-items: center; height: 100vh }
+                  canvas { width: 640px; height: 400px; image-rendering: pixelated; border-radius: 8px } p { margin: 8px 0 0 }</style>
+                <div><canvas id=screen></canvas><p id=fps>starting…</p></div>
+                <script>__webview4j.listen('canvas.fps', (e) => document.getElementById('fps').textContent = e.text);</script>""")
+                .title("Java draws this canvas").size(720, 520)).join();
+        int width = 320, height = 200;
+        byte[] rgba = new byte[width * height * 4];
+        // each frame painted for its time; one a display refresh, the next once the last is on the canvas
+        Animation animation = window.animate("screen", t -> {
+            for (int y = 0, i = 0; y < height; y++) {
+                for (int x = 0; x < width; x++, i += 4) {
+                    double v = Math.sin(x / 16.0 + t) + Math.sin(y / 11.0 - t * 1.3) + Math.sin((x + y) / 23.0 + t * 0.7);
+                    rgba[i] = (byte) (128 + 127 * Math.sin(v * Math.PI));
+                    rgba[i + 1] = (byte) (128 + 127 * Math.sin(v * Math.PI + 2));
+                    rgba[i + 2] = (byte) (128 + 127 * Math.sin(v * Math.PI + 4));
+                    rgba[i + 3] = (byte) 255;
+                }
+            }
+            return Frame.rgba(width, height, rgba.clone());
+        });
+        window.eval("window.__refreshes = 0; (function tick() { window.__refreshes++; requestAnimationFrame(tick); })()");
+        Thread.ofVirtual().name("showcase-canvas-rate").start(() -> {
+            long seen = 0;
+            while (animation.running()) {
+                try {
+                    Thread.sleep(1000);
+                    long refreshes = ((Number) window.eval("window.__refreshes").join()).longValue();
+                    window.emit("canvas.fps", Map.of("text", Math.round(animation.framesPerSecond()) + " frames a second, the display refreshing "
+                            + (refreshes - seen) + " times a second · " + width + "×" + height + " RGBA pixels painted in Java each frame"));
+                    seen = refreshes;
+                } catch (Exception closed) {
+                    return;
+                }
+            }
+        });
+        return "a canvas Java draws on (" + window.id() + ")";
     }
 
     /** One window, several webviews: external sites and a page of our own, side by side under the window's own header. */
@@ -628,6 +893,9 @@ final class FfiShowcase {
                 <div class=row style="margin-top:6px"><span class=hint>Our own UI around an external site (an embedded webview):</span>
                   <button data-a=browser data-arg="https://en.wikipedia.org/wiki/WebView">Browser: Wikipedia</button>
                   <button data-a=browser data-arg="https://www.youtube.com/">Browser: YouTube</button></div>
+                <div class=row style="margin-top:6px"><span class=hint>Graphics: pixels made in Java, drawn on a page's canvas:</span>
+                  <button data-a=canvas>Java draws a canvas</button>
+                  <button data-a=sketch>Sketch pad: you draw, Java draws it</button></div>
                 <div class=row style="margin-top:6px"><span class=hint>One window, several webviews (YouTube, Wikipedia, example.com, GitHub, our own page):</span>
                   <button data-a=multi>Several webviews, one window</button></div></section>
 
@@ -638,7 +906,12 @@ final class FfiShowcase {
                   <button data-a=inject-css data-arg=SEPIA>Sepia, serif</button><button data-a=inject-css data-arg=FOCUS>Hide the sidebars</button>
                   <button data-a=inject-css data-arg=LINKS>Highlight links</button><button data-a=inject-css data-arg=NONE>Take it out</button></div>
                 <div class=row style="margin-top:6px"><button data-a=inject-script>Inject a script</button>
-                  <span class=hint>it adds a banner, and what it returns (the title, its links) comes back to Java</span></div></section>
+                  <span class=hint>it adds a banner, and what it returns (the title, its links) comes back to Java</span></div>
+                <div class=row style="margin-top:6px"><span class=hint>Listen to the page (each on/off; what it does comes to the log):</span>
+                  <button data-a=inject-listen data-arg=NETWORK>Network calls</button>
+                  <button data-a=inject-listen data-arg=WEBSOCKET>WebSockets</button>
+                  <button data-a=inject-listen data-arg=CONSOLE>Console</button>
+                  <button data-a=inject-listen data-arg=CLICKS>Clicks</button></div></section>
 
               <section><h2>Running windows</h2>
                 <div class=row><span class=hint>Arrange them:</span><button data-a=arrange data-arg=TILE>Side by side</button>

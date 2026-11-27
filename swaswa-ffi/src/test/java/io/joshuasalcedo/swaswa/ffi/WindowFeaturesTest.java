@@ -125,14 +125,23 @@ class WindowFeaturesTest {
         try (App app = App.start()) {
             BlockingQueue<WebViewEvent> events = new LinkedBlockingQueue<>();
             app.subscribe(WindowState.class, events::add);
+            java.util.Queue<String> said = new java.util.concurrent.ConcurrentLinkedQueue<>();
+            app.subscribe(LogRecord.class, log -> { if (log.message().contains("escape")) said.add(log.message()); });
+            app.subscribe(PageCall.class, call -> said.add("page: " + call));
             String escape = "document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }))";
 
             View view = app.open(WindowOptions.html("<body>page</body>").size(500, 300)).join();
+            // its page, not the blank one before it (where the window's scripts do not run): what a person presses Escape in
+            ViewMethodsTest.until(() -> view.eval("document.body?.textContent ?? null").join(), "page"::equals);
             view.setFullscreen(true).join();
             WindowState state;
             do state = next(events, WindowState.class); while (!state.fullscreen());
             view.eval(escape).join();
-            do state = next(events, WindowState.class); while (state.fullscreen());
+            try {
+                do state = next(events, WindowState.class); while (state.fullscreen());
+            } catch (AssertionError none) {
+                throw new AssertionError("Escape did not leave fullscreen; the native side said: " + said + "; geometry " + view.geometry().join());
+            }
             assertFalse(state.fullscreen(), "Escape left fullscreen");
 
             // a page that uses Escape itself keeps it: the window stays fullscreen
@@ -145,6 +154,7 @@ class WindowFeaturesTest {
             // a kiosk keeps fullscreen whatever is pressed
             events.clear();
             View kiosk = app.open(WindowOptions.html("<body>kiosk</body>").size(500, 300).fullscreen(true).escapeExitsFullscreen(false)).join();
+            ViewMethodsTest.until(() -> kiosk.eval("document.body?.textContent ?? null").join(), "kiosk"::equals);
             kiosk.eval(escape).join();
             WindowState after = (WindowState) events.poll(1500, java.util.concurrent.TimeUnit.MILLISECONDS);
             assertTrue(after == null || after.fullscreen() || !after.view().equals(kiosk.id()), "the kiosk stayed fullscreen: " + after);

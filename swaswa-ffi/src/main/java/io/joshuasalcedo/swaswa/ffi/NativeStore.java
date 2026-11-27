@@ -45,12 +45,26 @@ public final class NativeStore implements AutoCloseable {
 
     /** The store in {@code file}, made if it is not there. */
     public static NativeStore open(Path file) {
+        // the folder and the file first, in Java: what the system says about them, not a bare "could not be opened"
+        try {
+            Path folder = file.toAbsolutePath().getParent();
+            if (folder != null) java.nio.file.Files.createDirectories(folder);
+            if (java.nio.file.Files.exists(file) && !java.nio.file.Files.isWritable(file)) {
+                throw new java.nio.file.AccessDeniedException(file.toString());
+            }
+            if (folder != null && !java.nio.file.Files.exists(file)) {
+                java.nio.file.Files.deleteIfExists(java.nio.file.Files.createTempFile(folder, ".swaswa-check", ".tmp"));
+            }
+        } catch (java.io.IOException e) {
+            throw OsErrors.of("the state store " + file + " could not be opened", e, file);
+        }
         byte[] path = file.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
         try (Arena arena = Arena.ofConfined()) {
             long h = (long) OPEN.invokeExact(bytes(arena, path), (long) path.length);
-            if (h == 0) throw new IllegalStateException("the state store " + file + " could not be opened");
+            if (h == 0) throw new SystemException("the state store " + file + " could not be opened",
+                    "It may be open in another program (one process at a time per store), or not a store: close the other, or choose another file.", null, null);
             return new NativeStore(h, file);
-        } catch (IllegalStateException e) {
+        } catch (WebViewException e) {
             throw e;
         } catch (Throwable e) {
             throw new IllegalStateException("wv_store_open failed", e);

@@ -380,11 +380,26 @@ public final class WindowOptions {
         return this;
     }
 
-    /** A persistent browser profile (cookies, storage): one directory per account. Must be absolute. */
+    /**
+     * The window's browser profile (cookies, storage, cache, logins), kept between runs: one directory per account.
+     * Must be absolute. Without it, the app's own profile ({@link #defaultDataDirectory()}).
+     */
     public WindowOptions dataDirectory(Path directory) {
         if (directory != null && !directory.isAbsolute()) throw new IllegalArgumentException("dataDirectory must be absolute");
         this.dataDirectory = directory;
         return this;
+    }
+
+    /**
+     * The app's own browser profile, for a window given no {@link #dataDirectory(Path)}: {@code -Dswaswa.webview.data}
+     * (tests and tools point it at a folder of their own), else {@code webview} in the app's data folder
+     * ({@code %LOCALAPPDATA%\<app>\webview}, beside its stores). Never the engine's default (on Windows a folder
+     * beside {@code java.exe}, which every Java app would share).
+     */
+    public static Path defaultDataDirectory() {
+        String set = System.getProperty("swaswa.webview.data");
+        if (set != null && !set.isBlank()) return Path.of(set).toAbsolutePath();
+        return NativeStore.directory(WindowPlaces.appName()).resolve("webview");
     }
 
     /** Exactly these reports on from the start; the rest off. */
@@ -455,7 +470,7 @@ public final class WindowOptions {
         payload.put("devtools", devtools != null ? devtools : Boolean.getBoolean("swaswa.devtools"));
         payload.put("headless", headless);
         if (initializationScript != null) payload.put("initializationScript", initializationScript);
-        if (dataDirectory != null) payload.put("dataDirectory", dataDirectory.toString());
+        payload.put("dataDirectory", (dataDirectory != null ? dataDirectory : defaultDataDirectory()).toString());
         if (capture != null) payload.put("capture", switches(capture));
         if (origins != null) payload.put("origins", origins);
         if (browse) {

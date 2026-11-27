@@ -60,7 +60,9 @@ final class NativeLibrary {
         byte[] bytes;
         try (InputStream in = NativeLibrary.class.getResourceAsStream(resource)) {
             if (in == null) {
-                throw new UnsatisfiedLinkError("No native library for " + platform() + " on the classpath (" + resource + ")");
+                throw new NativeLibraryException("no native library for " + platform() + " on the class path (" + resource + ")",
+                        "Add swaswa-ffi's natives for " + platform() + " (a build for this system and processor), or set "
+                                + "-Dswaswa.library to the library file.");
             }
             bytes = in.readAllBytes();
         } catch (IOException e) {
@@ -82,7 +84,9 @@ final class NativeLibrary {
                 }
             }
         } catch (IOException e) {
-            throw new UncheckedIOException("Could not copy the native library to " + dir, e);
+            WebViewException os = OsErrors.of("the native library could not be copied to " + dir, e, dir);
+            throw new NativeLibraryException(os.reason(), os.hint() + " Or set -Djava.io.tmpdir to a writable folder, or "
+                    + "-Dswaswa.library to the library file.", e);
         }
         return file;
     }

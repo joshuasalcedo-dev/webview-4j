@@ -246,6 +246,8 @@
   function windowAction(action) {
     if (window.ipc && typeof window.ipc.postMessage === 'function') window.ipc.postMessage('WIN ' + action);
   }
+  // a floating embedded view (an MDI child) comes above the others in its window when clicked, as a window would
+  addEventListener('pointerdown', () => { if (window.__webview4j_floating) windowAction('front'); }, true);
   const currentWindow = Object.freeze({
     minimize: () => windowAction('minimize'),
     toggleMaximize: () => windowAction('toggle-maximize'),
@@ -262,7 +264,8 @@
   let edgeStyle = null;
   let shownEdge = '';
   function edgeAt(x, y) {
-    if (!window.__webview4j_frameless) return '';
+    // a window without the system's frame, or a floating embedded view (an MDI child): its edges size it
+    if (!window.__webview4j_frameless && !window.__webview4j_floating) return '';
     const vertical = y < EDGE ? 'n' : y >= window.innerHeight - EDGE ? 's' : '';
     const horizontal = x < EDGE ? 'w' : x >= window.innerWidth - EDGE ? 'e' : '';
     return vertical + horizontal;
@@ -277,7 +280,35 @@
     edgeStyle.textContent = edge ? '* { cursor: ' + EDGE_CURSORS[edge] + ' !important; }' : '';
   }
 
+  // What can be dragged shows it: a drag region's cursor is a hand (closed while held), unless the page says another
+  // (--swaswa-drag-cursor, --swaswa-dragging-cursor). And the window's state is on the page's <html> element, for its
+  // own styles: data-swaswa-active, -floating, -dragging, -dock-target (set by the host: state(...)).
+  function dragCursors() {
+    if (document.getElementById('swaswa-drag-cursors')) return;
+    const style = document.createElement('style');
+    style.id = 'swaswa-drag-cursors';
+    const regions = DRAG_REGION.split(',').map((s) => s.trim());
+    const held = regions.flatMap((r) => ['html[data-swaswa-dragging] ' + r, 'html[data-swaswa-holding] ' + r]).join(', ');
+    style.textContent = regions.join(', ') + ' { cursor: var(--swaswa-drag-cursor, grab); } '
+      + held + ' { cursor: var(--swaswa-dragging-cursor, grabbing); }';
+    (document.head || document.documentElement).appendChild(style);
+  }
+  function state(name, value) {
+    const root = document.documentElement;
+    if (!root) return;
+    const attribute = 'data-swaswa-' + name;
+    if (value === false || value === null || value === undefined) root.removeAttribute(attribute);
+    else root.setAttribute(attribute, value === true ? '' : String(value));
+  }
+
   if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', dragCursors);
+    else dragCursors();
+    // held on a drag region: the closed hand at once, before the system's move starts
+    document.addEventListener('mousedown', (e) => { if (e.button === 0 && e.target.closest && e.target.closest(DRAG_REGION)) state('holding', true); }, true);
+    addEventListener('mouseup', () => state('holding', false), true);
+    // the system's move of the window takes the button's release: the next move with no button held says it is up
+    document.addEventListener('mousemove', (e) => { if (e.buttons === 0 && document.documentElement.hasAttribute('data-swaswa-holding')) state('holding', false); }, true);
     document.addEventListener('mousemove', (event) => showEdge(edgeAt(event.clientX, event.clientY)), true);
     document.addEventListener('mouseleave', () => showEdge(''), true);
     document.addEventListener('mousedown', (event) => {
@@ -297,5 +328,66 @@
     });
   }
 
-  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, request, listen, settle, deliver, window: currentWindow }) });
+  // Pictures Java draws on the page's canvases (View.drawFrame): told a canvas has a new one, the page fetches it
+  // (binary, over the custom protocol) and draws it, then says so. Only the latest: a slow page skips to it.
+  const FRAME_FORMATS = ['rgba', 'image/png', 'image/jpeg'];
+  const canvases = new Map();
+  function drawn(seq, canvas, error) {
+    if (window.ipc && typeof window.ipc.postMessage === 'function') {
+      window.ipc.postMessage('FRM ' + seq + ' ' + canvas + (error ? ' ' + error : ''));
+    }
+  }
+  function frameReady(canvas, seq) {
+    let state = canvases.get(canvas);
+    if (!state) canvases.set(canvas, (state = { busy: false, wanted: 0 }));
+    state.wanted = Math.max(state.wanted, seq);
+    if (!state.busy) drawFrames(canvas, state);
+  }
+  // A shown page puts a picture on its canvas at the display's next refresh, and only then says it is drawn: a Java
+  // loop that waits for each runs at the display's rate, in step with it. A hidden page gets no refreshes: at once.
+  function nextRefresh() {
+    return document.visibilityState === 'visible' ? new Promise((done) => requestAnimationFrame(done)) : Promise.resolve();
+  }
+  async function drawFrames(canvas, state) {
+    state.busy = true;
+    let seq = state.wanted;
+    try {
+      while (true) {
+        const response = await fetch(BASE + 'frame/' + canvas, { cache: 'no-store' });
+        if (!response.ok) throw new Error('no picture (' + response.status + ')');
+        const buffer = await response.arrayBuffer();
+        const head = new DataView(buffer, 0, 20);
+        seq = Number(head.getBigUint64(0, true));
+        const width = head.getUint32(8, true), height = head.getUint32(12, true), format = FRAME_FORMATS[head.getUint32(16, true)];
+        const element = document.getElementById(canvas);
+        if (!(element instanceof HTMLCanvasElement)) {
+          drawn(seq, canvas, 'the page has no <canvas id="' + canvas + '">');
+        } else {
+          const context = element.getContext('2d');
+          if (!context) throw new Error('the canvas has another context than 2d');
+          if (format === 'rgba') {
+            const pixels = new ImageData(new Uint8ClampedArray(buffer, 20, width * height * 4), width, height);
+            await nextRefresh();
+            if (element.width !== width || element.height !== height) { element.width = width; element.height = height; }
+            context.putImageData(pixels, 0, 0);
+          } else {
+            const bitmap = await createImageBitmap(new Blob([new Uint8Array(buffer, 20)], { type: format }));
+            await nextRefresh();
+            if (element.width !== bitmap.width || element.height !== bitmap.height) { element.width = bitmap.width; element.height = bitmap.height; }
+            context.drawImage(bitmap, 0, 0);
+            bitmap.close();
+          }
+          drawn(seq, canvas);
+        }
+        if (state.wanted <= seq) break;
+      }
+    } catch (error) {
+      console.error('[webview4j-bridge] could not draw on', canvas, error);
+      drawn(Math.max(seq, state.wanted), canvas, String(error && error.message || error));
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  Object.defineProperty(window, '__webview4j', { value: Object.freeze({ invoke, request, listen, settle, deliver, frameReady, state, window: currentWindow }) });
 })();

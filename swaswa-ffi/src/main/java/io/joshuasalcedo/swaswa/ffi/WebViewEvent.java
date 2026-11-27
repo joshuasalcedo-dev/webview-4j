@@ -9,7 +9,7 @@ package io.joshuasalcedo.swaswa.ffi;
  */
 public sealed interface WebViewEvent permits Ready, Closed, CloseRequested,
         Resized, Moved, Focused, FileDrop, PageLoad, TitleChanged, DevToolsEvent, ApiCall, Click, DomEvent, WebSocketFrame, NetworkEvent, LogRecord, PageCall,
-        WindowState, ScaleChanged, SystemThemeChanged, Shortcut, NewWindowRequested, Download {
+        WindowState, ScaleChanged, SystemThemeChanged, Shortcut, NewWindowRequested, Download, MemoryPressure, ProcessOutput, ProcessExited, WorkerProgress, WorkerFinished, EngineProcessFailed, WindowMove, ViewReparented {
 
     /** The view the event happened in, or null when it is not about one view. */
     default String view() {

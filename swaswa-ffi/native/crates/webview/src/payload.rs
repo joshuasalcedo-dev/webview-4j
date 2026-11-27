@@ -195,6 +195,8 @@ pub enum NewWindows {
 pub struct WindowBody {
     /// The system's frame and title bar, on or off.
     pub decorations: Option<bool>,
+    /// The frame's border colour (Windows 11): [r, g, b], or [] for the system's own again.
+    pub border_color: Option<Vec<u8>>,
     pub max_width: Option<f64>,
     pub max_height: Option<f64>,
     pub minimizable: Option<bool>,
@@ -485,28 +487,75 @@ pub struct Outcome {
     pub status: u16,
     pub content_type: &'static str,
     pub body: Vec<u8>,
+    /// An error's kind, for Java to throw the matching exception (`Error-Kind`); from the status unless set.
+    pub kind: Option<&'static str>,
+    /// What the app's developer can do about an error (`Hint`): one line.
+    pub hint: Option<String>,
+    /// More said with an error: the system's error code (`Os-Error`), whether administrator rights would help
+    /// (`Elevation`).
+    pub headers: Vec<(&'static str, String)>,
 }
 
 impl Outcome {
     pub fn ok() -> Self {
-        Outcome { status: 200, content_type: "application/json", body: Vec::new() }
+        Outcome { status: 200, content_type: "application/json", body: Vec::new(), kind: None, hint: None, headers: Vec::new() }
     }
 
     pub fn json(value: &impl Serialize) -> Self {
-        Outcome { status: 200, content_type: "application/json", body: serde_json::to_vec(value).expect("serializable") }
+        Outcome { status: 200, content_type: "application/json", body: serde_json::to_vec(value).expect("serializable"), kind: None, hint: None, headers: Vec::new() }
     }
 
     /// An error: `status` with a message saying what went wrong.
     pub fn error(status: u16, message: impl Into<String>) -> Self {
-        Outcome { status, content_type: "text/plain", body: message.into().into_bytes() }
+        Outcome { status, content_type: "text/plain", body: message.into().into_bytes(), kind: None, hint: None, headers: Vec::new() }
+    }
+
+    /// The error's kind (Java's exception): `view-closed`, `unsupported`, `invalid`, `conflict`, `page`,
+    /// `not-found`, `unavailable` or `internal`.
+    pub fn kind(mut self, kind: &'static str) -> Self {
+        self.kind = Some(kind);
+        self
+    }
+
+    /// What to do about the error, for whoever reads the exception: one line.
+    pub fn hint(mut self, hint: impl Into<String>) -> Self {
+        self.hint = Some(hint.into().replace(['\r', '\n'], " "));
+        self
+    }
+
+    /// One more header with the error.
+    pub fn header(mut self, name: &'static str, value: impl Into<String>) -> Self {
+        self.headers.push((name, value.into()));
+        self
+    }
+
+    /// The kind an error of this status is, unless it said.
+    fn kind_or_default(&self) -> &'static str {
+        self.kind.unwrap_or(match self.status {
+            400 | 415 => "invalid",
+            403 => "permission",
+            404 => "not-found",
+            409 => "conflict",
+            410 => "view-closed",
+            501 => "unsupported",
+            502 | 503 => "unavailable",
+            _ => "internal",
+        })
     }
 
     /// The reply to send to `reply_to`.
     pub fn to(self, reply_to: &str) -> Message {
-        Message::new(reply_to)
-            .header("Status", self.status.to_string())
-            .header("Content-Type", self.content_type)
-            .payload(self.body)
+        let mut message = Message::new(reply_to).header("Status", self.status.to_string()).header("Content-Type", self.content_type);
+        if self.status != 200 {
+            message = message.header("Error-Kind", self.kind_or_default());
+            if let Some(hint) = &self.hint {
+                message = message.header("Hint", hint.clone());
+            }
+            for (name, value) in &self.headers {
+                message = message.header(name, value.clone());
+            }
+        }
+        message.payload(self.body)
     }
 }
 

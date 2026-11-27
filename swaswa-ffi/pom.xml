@@ -63,6 +63,8 @@
                             <classpathScope>test</classpathScope>
                             <arguments>
                                 <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <!-- the showcase's own browser profile, kept between runs (mvn clean empties it) -->
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/showcase</argument>
                                 <argument>-classpath</argument>
                                 <classpath/>
                                 <argument>io.joshuasalcedo.swaswa.ffi.FfiShowcase</argument>
@@ -111,6 +113,29 @@
                 </executions>
             </plugin>
             <plugin>
+                <!-- each test run starts from an empty browser profile: no cookie or storage from the run before -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>clean-test-profile</id>
+                        <phase>process-test-classes</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <configuration>
+                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                            <filesets>
+                                <fileset>
+                                    <directory>${project.build.directory}/webview-profile/tests</directory>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
@@ -118,6 +143,8 @@
                     <useModulePath>false</useModulePath>
                     <argLine>--enable-native-access=ALL-UNNAMED</argLine>
                     <systemPropertyVariables>
+                        <!-- the tests' browser profile: their own, new each run (cleaned above), not the user's -->
+                        <swaswa.webview.data>${project.build.directory}/webview-profile/tests</swaswa.webview.data>
                         <!-- the protocol's conformance fixtures, shared with the Rust tests -->
                         <swaswa.fixtures>${native.dir}/protocol/fixtures</swaswa.fixtures>
                         <java.awt.headless>true</java.awt.headless>

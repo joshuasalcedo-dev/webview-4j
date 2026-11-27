@@ -46,6 +46,29 @@ class ExternalSiteTest {
             View injected = app.open(WindowOptions.url("https://example.com/").headless(true).size(800, 500)
                     .initializationScript("window.__swaswa = 'before the page'")).join();
             assertEquals("before the page", until(injected, "window.__swaswa ?? null", "before the page"), "the initialization script ran");
+
+            // browse(): a link to any website opens in the window itself (without it, in the system's browser)
+            View browser = app.open(WindowOptions.html("<a id=a href='https://example.com/'>out</a>").headless(true).browse()).join();
+            until(browser, "document.getElementById('a') !== null", true);   // its page drawn, the link there
+            browser.eval("document.getElementById('a').click()").join();
+            assertEquals("Example Domain", until(browser, "document.title", "Example Domain"), "browsed to in place");
+
+            // the site's network calls, listened to once it is open
+            var calls = new java.util.concurrent.LinkedBlockingQueue<NetworkEvent>();
+            app.subscribe(NetworkEvent.class, calls::add);
+            injected.capture(Capture.NETWORK, true).join();
+            injected.eval("fetch('/?swaswa=1').then(r => r.status)").join();
+            NetworkEvent started = null, done = null;
+            for (int i = 0; i < 50 && done == null; i++) {
+                NetworkEvent e = calls.poll(300, java.util.concurrent.TimeUnit.MILLISECONDS);
+                if (e == null) continue;
+                if (e.phase() == NetworkEvent.Phase.START && e.url() != null && e.url().contains("swaswa=1")) started = e;
+                if (started != null && e.phase() == NetworkEvent.Phase.END && e.id() == started.id()) done = e;
+            }
+            assertNotNull(started, "the fetch was heard starting");
+            assertEquals("GET", started.method());
+            assertNotNull(done, "and ending");
+            assertTrue(done.status() > 0, "with its status: " + done.status());
         }
     }
 }

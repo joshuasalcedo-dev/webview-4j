@@ -47,6 +47,14 @@ final class Events {
             case "new-window" -> new NewWindowRequested(view, text(json, "url"));
             case "download" -> new Download(view, constant(Download.State.class, json, "state"), text(json, "url"),
                     text(json, "path") == null ? null : Path.of(text(json, "path")));
+            case "reparented" -> new ViewReparented(view, text(json, "host"));
+            case "move" -> new WindowMove(view, WindowMove.Phase.valueOf(text(json, "phase").toUpperCase(java.util.Locale.ROOT)),
+                    ((Number) json.get("x")).intValue(), ((Number) json.get("y")).intValue(),
+                    ((Number) json.get("width")).intValue(), ((Number) json.get("height")).intValue(),
+                    json.get("cursorX") instanceof Number cx ? cx.intValue() : 0, json.get("cursorY") instanceof Number cy ? cy.intValue() : 0,
+                    Boolean.TRUE.equals(json.get("ctrl")), Boolean.TRUE.equals(json.get("shift")), Boolean.TRUE.equals(json.get("alt")));
+            case "process-failed" -> new EngineProcessFailed(view, text(json, "kind"), text(json, "reason"),
+                    json.get("exitCode") instanceof Number n ? n.intValue() : 0);
             case "page-load" -> new PageLoad(view, constant(PageLoad.State.class, json, "state"), text(json, "url"));
             case "title-changed" -> new TitleChanged(view, text(json, "title"));
             case "cdp" -> new DevToolsEvent(view, text(json, "event"),

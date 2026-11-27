@@ -40,8 +40,26 @@ redb = "5"
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse",
     # Pictures of the app's own windows (capture.rs): PrintWindow, a DIB, the window's visible bounds.
-    "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_Storage_Xps"] }
+    "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_Storage_Xps",
+    # An opt-in crash recorder (crashdump.rs): a minidump of a crash in a DLL, as it happens.
+    "Win32_System_Diagnostics_Debug", "Win32_System_LibraryLoader", "Win32_Storage_FileSystem", "Win32_System_Threading",
+    "Win32_System_Kernel", "Win32_System_Memory",
+    # Whether the process runs as administrator (oserror.rs).
+    "Win32_Security",
+    # How much memory each process uses (memory.rs).
+    "Win32_System_ProcessStatus",
+    # Child processes that end with the app (jobs.rs).
+    "Win32_System_JobObjects",
+    # When a window is moved or sized by a person (pointer.rs): a subclass of its window.
+    "Win32_UI_Shell"] }
 # MP4 recordings with Windows' own H.264 encoder, Media Foundation (mediafoundation.rs): no ffmpeg needed.
 # The page's DevTools Protocol (cdp.rs): the same WebView2 bindings wry uses.
 webview2-com = "0.38"
-windows = { version = "0.61", features = ["Win32_Media_MediaFoundation", "Win32_System_Com", "Win32_Foundation"] }
+windows = { version = "0.61", features = ["Win32_Media_MediaFoundation", "Win32_System_Com", "Win32_Foundation",
+    # Files dragged out of the app (dragout.rs): the Shell's data object, OLE's drag.
+    "Win32_System_Ole", "Win32_System_SystemServices", "Win32_UI_Shell", "Win32_UI_Shell_Common"] }
+windows-core = "0.61"
+
+[target.'cfg(unix)'.dependencies]
+# Whether the process runs as root (oserror.rs).
+libc = "0.2"

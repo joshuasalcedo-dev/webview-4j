@@ -70,6 +70,12 @@ public final class App implements AutoCloseable {
 
     private App() {
         Thread.ofVirtual().name("swaswa-dispatcher").start(this::dispatch);
+        // the window's state on its page's <html>, for the page's own styles: active, being dragged
+        subscribe(Focused.class, f -> pageState(f.view(), "active", f.focused()));
+        subscribe(WindowMove.class, m -> {
+            if (m.phase() != WindowMove.Phase.MOVING) pageState(m.view(), "dragging", m.phase() == WindowMove.Phase.STARTED);
+            if (m.phase() == WindowMove.Phase.ENDED) pageState(m.view(), "holding", false);   // the move took the release
+        });
     }
 
     /**
@@ -102,13 +108,16 @@ public final class App implements AutoCloseable {
         try {
             return app.ready.get(30, TimeUnit.SECONDS);
         } catch (ExecutionException e) {
-            throw new WebViewException("the event loop did not start", e.getCause());
+            throw e.getCause() instanceof WebViewException failed ? failed
+                    : new NotRunningException("the event loop did not start", "See the cause; run with -Dswaswa.log=debug for the native log.", e.getCause());
         } catch (TimeoutException e) {
             app.quit();
-            throw new WebViewException("the event loop did not start within 30 seconds", e);
+            throw new NotRunningException("the event loop did not start within 30 seconds",
+                    "The browser engine (WebView2 on Windows) may be missing or stuck: install the WebView2 Runtime, "
+                            + "or run with -Dswaswa.log=debug to see where it stopped.", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new WebViewException("interrupted while starting the event loop", e);
+            throw new NotRunningException("interrupted while starting the event loop", "Do not interrupt the thread that calls App.start().", e);
         }
     }
 
@@ -128,7 +137,8 @@ public final class App implements AutoCloseable {
 
     private int loop() {
         if (!RUNNING.compareAndSet(false, true)) {
-            WebViewException running = new WebViewException("an App is already running in this process");
+            WebViewException running = new AlreadyRunningException("an App is already running in this process",
+                    "There is one App per process: use the one you have (pass it where it is needed), or close() it before starting another.");
             ready.completeExceptionally(running);
             inbox.add(STOPPED);
             throw running;
@@ -139,6 +149,15 @@ public final class App implements AutoCloseable {
         } catch (RuntimeException e) {
             ready.completeExceptionally(e);
             throw e;
+        } catch (LinkageError e) {   // ExceptionInInitializerError is one
+            // the native library could not load: said to whoever waits for the app, at once, not after 30 seconds
+            Throwable cause = e instanceof ExceptionInInitializerError init && init.getCause() != null ? init.getCause() : e;
+            WebViewException failed = cause instanceof WebViewException w ? w
+                    : new NativeLibraryException("the native library could not load: " + cause.getMessage(),
+                            "Put swaswa-ffi's native library for this system (" + NativeLibrary.platform() + ") on the class path, "
+                                    + "or set -Dswaswa.library to the library file.", cause);
+            ready.completeExceptionally(failed);
+            throw failed;
         } finally {
             RUNNING.set(false);
             inbox.add(STOPPED);
@@ -146,6 +165,19 @@ public final class App implements AutoCloseable {
     }
 
     // ---- actions ----
+
+    /**
+     * Whether this process runs with administrator rights (Windows: elevated, "Run as administrator"; elsewhere: root).
+     * An app that needs them can say so before trying, instead of meeting a {@link PermissionException}. Needs no running
+     * app; false where the native library cannot say.
+     */
+    public static boolean elevated() {
+        try {
+            return Native.elevated();
+        } catch (RuntimeException | LinkageError unknown) {
+            return false;
+        }
+    }
 
     /** Where the next windows with a title open: a live reload's, so they open where the ones before them were. */
     private final Map<String, java.util.Deque<Geometry>> placements = new ConcurrentHashMap<>();
@@ -165,6 +197,12 @@ public final class App implements AutoCloseable {
 
     /** Opens a window; the future completes once it exists. */
     public CompletableFuture<View> open(WindowOptions options) {
+        Objects.requireNonNull(options, "options");
+        if (memoryLimit > 0) return withinLimit("open another window").thenCompose(ok -> openNow(options));
+        return openNow(options);
+    }
+
+    private CompletableFuture<View> openNow(WindowOptions options) {
         java.util.Deque<Geometry> places = placements.get(options.currentTitle());
         Geometry where = places == null ? null : places.poll();
         if (where != null) {
@@ -205,6 +243,323 @@ public final class App implements AutoCloseable {
             }
             return List.copyOf(views);
         });
+    }
+
+    /** Sets {@code data-swaswa-<name>} on a view's page's <html> (true: there; false: gone; else its value). */
+    void pageState(String view, String name, Object value) {
+        String said = value instanceof Boolean b ? b.toString() : Json.write(String.valueOf(value));
+        view(view).eval("window.__webview4j && window.__webview4j.state(" + Json.write(name) + ", " + said + ")")
+                .exceptionally(closed -> null);
+    }
+
+    // ---- the pointer ----
+
+    /** Where the pointer is on the screen now. */
+    @SuppressWarnings("unchecked")
+    public CompletableFuture<Cursor> cursor() {
+        return request(Message.of("app.cursor")).thenApply(reply -> {
+            Map<String, Object> m = object(reply);
+            return new Cursor(((Number) m.get("x")).doubleValue(), ((Number) m.get("y")).doubleValue(),
+                    ((Number) m.get("physicalX")).doubleValue(), ((Number) m.get("physicalY")).doubleValue(),
+                    ((Number) m.get("scale")).doubleValue());
+        });
+    }
+
+    /**
+     * Which of the app's windows is at the screen point ({@code physicalX}, {@code physicalY}: physical pixels, as
+     * {@link Cursor#physicalX()}), as the system has them stacked: the top one. Empty when none of them is there.
+     * Windows; elsewhere always empty for now.
+     */
+    public CompletableFuture<java.util.Optional<View>> windowAt(double physicalX, double physicalY) {
+        return request(Message.of("app.window-at").withJson(Map.of("x", physicalX, "y", physicalY)))
+                .thenApply(reply -> java.util.Optional.ofNullable(Events.text(object(reply), "view")).map(this::view));
+    }
+
+    /** The app's window under the pointer, if any: where a drag was let go. */
+    public CompletableFuture<java.util.Optional<View>> windowUnderCursor() {
+        return cursor().thenCompose(at -> windowAt(at.physicalX(), at.physicalY()));
+    }
+
+    /**
+     * The app's window at the screen point below {@code except} (the window being dragged, which is on top of all):
+     * what it was let go over, to dock it into. Empty if none of the app's windows is there below it.
+     */
+    public CompletableFuture<java.util.Optional<View>> windowAt(double physicalX, double physicalY, View except) {
+        Objects.requireNonNull(except, "except");
+        return request(Message.of("app.window-at").withJson(Map.of("x", physicalX, "y", physicalY, "except", except.id())))
+                .thenApply(reply -> java.util.Optional.ofNullable(Events.text(object(reply), "view")).map(this::view));
+    }
+
+    /** {@link #windowAt(double, double, View)} at the pointer: the window a dragged one was let go over. */
+    public CompletableFuture<java.util.Optional<View>> windowUnderCursor(View except) {
+        return cursor().thenCompose(at -> windowAt(at.physicalX(), at.physicalY(), except));
+    }
+
+    // ---- child processes ----
+
+    private final java.util.Set<ChildProcess> children = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Starts {@code command} as a child process tied to the app (see {@link ChildProcess}): its lines come as
+     * {@link ProcessOutput} events, its end as {@link ProcessExited}; {@code name} names it in them.
+     *
+     * @throws SystemException if it could not start (no such program); a {@link PermissionException} if the system
+     *                         refused to run it
+     */
+    public ChildProcess process(String name, String... command) {
+        return process(name, new ProcessBuilder(command));
+    }
+
+    /** {@link #process(String, String...)} from a {@link ProcessBuilder} (its folder, its environment); its output is read here. */
+    public ChildProcess process(String name, ProcessBuilder builder) {
+        Objects.requireNonNull(name, "name");
+        builder.redirectOutput(ProcessBuilder.Redirect.PIPE).redirectError(ProcessBuilder.Redirect.PIPE);
+        Process started;
+        try {
+            started = builder.start();
+        } catch (java.io.IOException e) {
+            String program = builder.command().isEmpty() ? "" : builder.command().getFirst();
+            if (String.valueOf(e.getMessage()).contains("error=5")) {
+                throw new PermissionException("could not start " + program + ": access denied",
+                        "This user may not run it: check its permissions, or whether it needs administrator rights.", false, 5, e);
+            }
+            throw new SystemException("could not start " + program + ": " + e.getMessage(),
+                    "Check the program's name and that it is on the PATH (or give its full path); a .bat file or a "
+                            + "command built into the shell runs through cmd /c on Windows.", null, e);
+        }
+        boolean tied;
+        try {
+            tied = Native.assignToJob(started.pid()) == 1;
+        } catch (RuntimeException | LinkageError unknown) {
+            tied = false;
+        }
+        java.nio.charset.Charset charset = java.nio.charset.Charset.forName(System.getProperty("native.encoding",
+                java.nio.charset.Charset.defaultCharset().name()), java.nio.charset.Charset.defaultCharset());
+        ChildProcess child = new ChildProcess(name, started, tied, charset);
+        children.add(child);
+        Thread out = Thread.ofVirtual().name("swaswa-process-" + name + "-out")
+                .start(() -> lines(child, started.getInputStream(), ProcessOutput.Stream.OUTPUT, charset));
+        Thread err = Thread.ofVirtual().name("swaswa-process-" + name + "-err")
+                .start(() -> lines(child, started.getErrorStream(), ProcessOutput.Stream.ERROR, charset));
+        started.onExit().thenAccept(p -> {
+            try {
+                out.join();   // its last lines, before its end
+                err.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            children.remove(child);
+            publish(new ProcessExited(name, p.pid(), p.exitValue(), java.time.Duration.between(child.started(), java.time.Instant.now())));
+        });
+        return child;
+    }
+
+    private void lines(ChildProcess child, java.io.InputStream stream, ProcessOutput.Stream which, java.nio.charset.Charset charset) {
+        try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(stream, charset))) {
+            String line;
+            while ((line = reader.readLine()) != null) publish(new ProcessOutput(child.name(), child.pid(), which, line));
+        } catch (java.io.IOException ended) {
+            // its stream closed: it ended
+        }
+    }
+
+    /** The child processes the app started that still run. */
+    public List<ChildProcess> children() {
+        return List.copyOf(children);
+    }
+
+    /** Ends the children as the app closes, so none outlives it (on Windows the system would end them too). */
+    private void endChildren() {
+        List<CompletableFuture<Integer>> ending = new ArrayList<>();
+        for (ChildProcess child : children) ending.add(child.kill(java.time.Duration.ofSeconds(2)));
+        try {
+            CompletableFuture.allOf(ending.toArray(CompletableFuture[]::new)).get(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException | TimeoutException e) {
+            LOG.log(System.Logger.Level.WARNING, "a child process did not end in time", e);
+        }
+    }
+
+    // ---- background work ----
+
+    /**
+     * Starts {@code work} in the background, on a virtual thread, as a {@link Worker}: its progress and its end come as
+     * {@link WorkerProgress} and {@link WorkerFinished} events, and it can be cancelled.
+     */
+    public <T> Worker<T> worker(String name, Worker.Work<T> work) {
+        Objects.requireNonNull(work, "work");
+        return new Worker<>(name, work, this::publish);
+    }
+
+    // ---- memory ----
+
+    /**
+     * How much memory the app uses now: Java's heap, this process, and each process of the browser engine (usually most
+     * of it). Cheap enough to call every second or so for a dashboard.
+     */
+    @SuppressWarnings("unchecked")
+    public CompletableFuture<Memory> memory() {
+        return request(Message.of("app.memory")).thenApply(reply -> {
+            Runtime runtime = Runtime.getRuntime();
+            List<Memory.Process> processes = new ArrayList<>();
+            for (Object item : (List<Object>) reply.json()) {
+                Map<String, Object> p = (Map<String, Object>) item;
+                processes.add(new Memory.Process(((Number) p.get("pid")).longValue(), (String) p.get("kind"),
+                        ((Number) p.get("resident")).longValue(), ((Number) p.get("private")).longValue()));
+            }
+            return new Memory(runtime.totalMemory() - runtime.freeMemory(), runtime.maxMemory(), processes);
+        });
+    }
+
+    private volatile Thread budgetWatch;
+    /** Over the budget, as last told; kept across budgets, so a raised one says "back under". */
+    private boolean budgetOver;
+    /** The windows lowered while over the budget: set back to normal once under it. */
+    private final java.util.Set<String> lowered = ConcurrentHashMap.newKeySet();
+
+    /**
+     * A soft limit on the memory the app uses ({@link Memory#total()}), checked every 2 seconds. Going over it, a
+     * {@link MemoryPressure} event says so (once) and the engine is asked to use less in every window not shown
+     * (hidden or minimized: {@link View#setMemoryLevel}); coming back under, another says so and those windows are back
+     * to normal. Nothing is refused or closed: the app decides what to free. 0 or less: no budget.
+     */
+    public synchronized void memoryBudget(long bytes) {
+        memoryBudget(bytes, java.time.Duration.ofSeconds(2));
+    }
+
+    /** {@link #memoryBudget(long)}, checked every {@code every}. */
+    public synchronized void memoryBudget(long bytes, java.time.Duration every) {
+        Thread old = budgetWatch;
+        if (old != null) {
+            old.interrupt();
+            try {
+                old.join(10_000);   // one watcher at a time: the next goes on from where it was
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        budgetWatch = null;
+        if (bytes <= 0) {
+            if (budgetOver) {   // no budget is never over it
+                budgetOver = false;
+                relieve();
+                memory().thenAccept(now -> publish(new MemoryPressure(now, 0, false)));
+            }
+            return;
+        }
+        budgetWatch = Thread.ofVirtual().name("swaswa-memory-budget").start(() -> watchBudget(bytes, every));
+    }
+
+    /** The windows lowered while over the budget, back to normal. */
+    private void relieve() {
+        for (String id : List.copyOf(lowered)) view(id).setMemoryLevel(View.MemoryLevel.NORMAL);
+        lowered.clear();
+    }
+
+    private void watchBudget(long budget, java.time.Duration every) {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                Memory now = memory().get(10, TimeUnit.SECONDS);
+                boolean isOver = now.total() > budget;
+                if (isOver) {
+                    // the windows not shown: asked to use less (and those shown again: back to normal)
+                    for (ViewInfo info : views().get(10, TimeUnit.SECONDS)) {
+                        View v = view(info.id());
+                        boolean shown;
+                        try {
+                            Geometry g = v.geometry().get(10, TimeUnit.SECONDS);
+                            shown = g.visible() && !g.minimized();
+                        } catch (ExecutionException embedded) {
+                            continue;   // an embedded view goes with its window
+                        }
+                        if (!shown && lowered.add(info.id())) v.setMemoryLevel(View.MemoryLevel.LOW);
+                        if (shown && lowered.remove(info.id())) v.setMemoryLevel(View.MemoryLevel.NORMAL);
+                    }
+                }
+                if (isOver != budgetOver) {
+                    budgetOver = isOver;
+                    if (!isOver) relieve();
+                    publish(new MemoryPressure(now, budget, isOver));
+                }
+                Thread.sleep(every);
+            } catch (InterruptedException e) {
+                return;
+            } catch (ExecutionException | TimeoutException e) {
+                if (e.getCause() instanceof NotRunningException) return;   // the app has quit
+            }
+        }
+    }
+
+    // ---- the memory limit ----
+
+    private volatile long memoryLimit;
+
+    /**
+     * A hard limit on the memory the app uses ({@link Memory#total()}): over it, what would take more is refused with a
+     * {@link ResourceLimitException} (opening another window, embedding another view), and what runs goes on. For a
+     * warning before it, see {@link #memoryBudget(long)}; for the system to hold the app to a limit,
+     * {@link #enforceMemoryLimit(long)}. 0 or less: no limit.
+     */
+    public void memoryLimit(long bytes) {
+        memoryLimit = Math.max(0, bytes);
+    }
+
+    private static volatile long enforced;
+
+    /**
+     * Holds the whole app to {@code bytes} of memory, by the system (Windows): this process (Java, its heap included)
+     * and every process it starts from then on: the browser engine and each process the engine starts, the app's child
+     * processes. Past it, what any of them asks for is refused: a page gets "allocation failed" (or its renderer
+     * fails: {@link EngineProcessFailed}), Java an {@link OutOfMemoryError}. Call it once, before {@link #start()} or
+     * {@link #run}: processes started before it are outside. It holds until the process ends; it cannot be raised or
+     * taken off. Leave room for Java's heap ({@code -Xmx}): it is counted too.
+     *
+     * @return true if the system holds the app to it; false if it could not (not on this system, or set already)
+     */
+    public static synchronized boolean enforceMemoryLimit(long bytes) {
+        if (bytes <= 0) throw new IllegalArgumentException("a memory limit is positive: " + bytes);
+        if (enforced != 0) return false;
+        if (RUNNING.get()) {
+            throw new IllegalStateException("an App runs already: its browser engine started outside the limit. "
+                    + "Call App.enforceMemoryLimit(...) before App.start().");
+        }
+        boolean held;
+        try {
+            held = Native.capMemory(bytes) == 1;
+        } catch (RuntimeException | LinkageError unknown) {
+            held = false;
+        }
+        if (held) enforced = bytes;
+        return held;
+    }
+
+    /** The limit the system holds the app to ({@link #enforceMemoryLimit}); 0 if none. */
+    public static long enforcedMemoryLimit() {
+        return enforced;
+    }
+
+    /** Completes if the app is within its limit; fails with a ResourceLimitException saying what uses the most if not. */
+    private CompletableFuture<Void> withinLimit(String what) {
+        long limit = memoryLimit;
+        return memory().thenCompose(now -> {
+            if (now.total() <= limit) return CompletableFuture.completedFuture(null);
+            Memory.Process most = now.processes().stream().max(java.util.Comparator.comparingLong(Memory.Process::privateBytes)).orElseThrow();
+            return CompletableFuture.failedFuture(new ResourceLimitException(
+                    "could not " + what + ": the app uses " + mb(now.total()) + ", over its limit of " + mb(limit),
+                    "The most is the " + most.kind() + " process (pid " + most.pid() + ", " + mb(most.privateBytes()) + "). Close windows "
+                            + "or views the person is done with, or free what can be made again; or raise the limit (memoryLimit).",
+                    now, limit));
+        });
+    }
+
+    private static String mb(long bytes) {
+        return Math.round(bytes / 1024.0 / 1024.0) + " MB";
+    }
+
+    /** Whether opening one more would go over the limit: for embed (View). */
+    CompletableFuture<Void> withinMemoryLimit(String what) {
+        return memoryLimit > 0 ? withinLimit(what) : CompletableFuture.completedFuture(null);
     }
 
     // ---- dialogs ----
@@ -285,8 +640,11 @@ public final class App implements AutoCloseable {
         }
         if (sent != Native.SENT) {
             pending.remove(inbox);
-            reply.completeExceptionally(new WebViewException(message.subject() + ": "
-                    + (sent == Native.NOT_RUNNING ? "the event loop is not running" : "the message is malformed or too large")));
+            reply.completeExceptionally(sent == Native.NOT_RUNNING
+                    ? new NotRunningException("the event loop is not running",
+                            "Start the app first (App.start(), or App.run on macOS), and do not use it after close() or quit().", message.subject())
+                    : new InvalidRequestException("the message is malformed or too large",
+                            "A message is at most 64 MB: send a large picture as PNG or JPEG, or a smaller one.", message.subject()));
         }
         return reply;
     }
@@ -330,6 +688,7 @@ public final class App implements AutoCloseable {
     /** Quits and waits up to 10 seconds for the loop to stop. */
     @Override
     public void close() {
+        endChildren();
         quit();
         try {
             stopped.get(10, TimeUnit.SECONDS);
@@ -573,15 +932,17 @@ public final class App implements AutoCloseable {
         String[] tokens = subject.split("\\.");
         if (subject.equals("app.ready")) {
             if (!PROTOCOL.equals(message.header("Protocol"))) {
-                ready.completeExceptionally(new WebViewException("the native library speaks protocol "
-                        + message.header("Protocol") + ", this jar " + PROTOCOL + ": use the same version of both"));
+                ready.completeExceptionally(new NativeLibraryException("the native library speaks protocol "
+                        + message.header("Protocol") + ", this jar " + PROTOCOL,
+                        "Use swaswa-ffi's jar and its native library of the same version (an old library may be left in -Dswaswa.library)."));
                 quit();
                 return;
             }
             // The browser engine starts now, while the app gets ready, not when its first window opens: that
             // window then takes ~100 ms instead of ~450 (WebView2). -Dswaswa.prewarm=false leaves it for then.
             if (!"false".equals(System.getProperty("swaswa.prewarm"))) {
-                request(Message.of("app.warm")).exceptionally(e -> {
+                // on the windows' own profile: an engine started on another would be of no use to them
+                request(Message.of("app.warm").withJson(Map.of("dataDirectory", WindowOptions.defaultDataDirectory().toString()))).exceptionally(e -> {
                     LOG.log(System.Logger.Level.DEBUG, "the browser engine did not start early: {0}", e.getMessage());
                     return null;
                 });
@@ -630,13 +991,14 @@ public final class App implements AutoCloseable {
         if ("200".equals(reply.header("Status"))) {
             virtualThreads.execute(() -> waiting.reply().complete(reply));
         } else {
-            WebViewException failure = new WebViewException(waiting.subject() + ": " + reply.text());
+            WebViewException failure = WebViewException.fromReply(waiting.subject(), reply);
             virtualThreads.execute(() -> waiting.reply().completeExceptionally(failure));
         }
     }
 
     private void stop() {
-        WebViewException quit = new WebViewException("the app has quit");
+        WebViewException quit = new NotRunningException("the app has quit",
+                "Its windows are gone and nothing more can be done with it: start a new App if the program goes on.");
         ready.completeExceptionally(quit);
         for (String inbox : List.copyOf(pending.keySet())) {
             Pending waiting = pending.remove(inbox);

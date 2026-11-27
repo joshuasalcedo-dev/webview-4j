@@ -12,10 +12,17 @@
 //! No panic crosses the boundary: each function catches it and answers with an error code instead.
 
 mod bridge;
+mod crashdump;
 mod cdp;
 pub mod capture;
 #[cfg(windows)]
 mod mediafoundation;
+mod memory;
+pub mod jobs;
+mod pointer;
+mod dragout;
+mod dock;
+pub mod oserror;
 mod dialog;
 mod icon;
 pub mod frame;
@@ -35,11 +42,52 @@ use std::panic::{self, AssertUnwindSafe};
 /// Returns the loop's exit code, or -1 if a loop is already running or it panicked.
 #[unsafe(no_mangle)]
 pub extern "C" fn wv_run(on_message: Option<runtime::MessageCallback>) -> i32 {
-    match panic::catch_unwind(|| runtime::run(on_message)) {
+    static CRASHES: std::sync::Once = std::sync::Once::new();
+    CRASHES.call_once(crashdump::install);
+    let run = move || match panic::catch_unwind(|| runtime::run(on_message)) {
         Ok(Ok(code)) => code,
         Ok(Err(_)) | Err(_) => -1,
+    };
+    // Not on the caller's stack: a JVM thread's stack is the JVM's (its guard zones, its size), and a window's
+    // messages can nest deep in a loop (a debug build's frames are large). The loop gets a native thread of its own,
+    // with room, and this call waits for it. macOS: the loop must be on the process's first thread, the caller's.
+    #[cfg(not(target_os = "macos"))]
+    {
+        match std::thread::Builder::new().name("swaswa-event-loop".into()).stack_size(LOOP_STACK).spawn(run) {
+            Ok(thread) => thread.join().unwrap_or(-1),
+            Err(_) => -1,
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        run()
     }
 }
+
+/// Whether this process runs with administrator rights (Windows: elevated; elsewhere: root): 1 yes, 0 no. Needs no
+/// running loop.
+#[unsafe(no_mangle)]
+pub extern "C" fn wv_elevated() -> i32 {
+    i32::from(oserror::elevated())
+}
+
+/// Puts process `pid` in the app's job, so it ends with the app however the app ends (Windows): 1 done, 0 not, -1 not
+/// on this system. Needs no running loop.
+#[unsafe(no_mangle)]
+pub extern "C" fn wv_job_assign(pid: u32) -> i32 {
+    jobs::assign(pid)
+}
+
+/// Holds this process and all it starts from now on to `bytes` of memory together (Windows): 1 done, 0 not, -1 not
+/// on this system. Before the browser engine starts. Needs no running loop.
+#[unsafe(no_mangle)]
+pub extern "C" fn wv_cap_memory(bytes: u64) -> i32 {
+    jobs::cap_this_process(bytes)
+}
+
+/// The event loop's own stack: 16 MB reserved (committed only as it is used).
+#[cfg(not(target_os = "macos"))]
+const LOOP_STACK: usize = 16 * 1024 * 1024;
 
 /// Hands one frame to the event loop and returns at once: 0 taken, 1 no loop is running, 2 the
 /// frame is malformed or over a limit (PROTOCOL.md §1). Anything wrong with what the frame asks

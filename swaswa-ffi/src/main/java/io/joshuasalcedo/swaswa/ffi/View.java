@@ -140,7 +140,15 @@ public final class View {
 
     public CompletableFuture<Void> show()  { return done(message("show")); }
     public CompletableFuture<Void> hide()  { return done(message("hide")); }
-    public CompletableFuture<Void> focus() { return done(message("focus")); }
+    /**
+     * Brings the window to the front, the keyboard to it (an embedded view: the keyboard to its page). Completes with
+     * whether it came to the front: Windows refuses a background app that while the person works in another app
+     * (against stolen focus), and flashes its taskbar button instead; false then.
+     */
+    public CompletableFuture<Boolean> focus() {
+        return app.request(message("focus")).thenApply(reply ->
+                !(reply.json() instanceof Map<?, ?> m) || !Boolean.FALSE.equals(m.get("focused")));
+    }
 
     public CompletableFuture<Void> minimize() { return state(Map.of("minimized", true)); }
     public CompletableFuture<Void> maximize() { return state(Map.of("maximized", true)); }
@@ -177,12 +185,151 @@ public final class View {
     /** Takes the largest size off. */
     public CompletableFuture<Void> clearMaxSize() { return window(Map.of("maxWidth", 0, "maxHeight", 0)); }
 
+    // ---- views between windows: docking, tearing off, MDI children ----
+
+    /**
+     * Takes {@code other}, a window's view, into this window at ({@code x}, {@code y}), {@code width} × {@code height}
+     * (logical pixels): its page runs on, its state kept (nothing reloads); its own window goes, without a
+     * {@link Closed}. It is an embedded view of this window from then on: {@link #place} moves it,
+     * {@link #detach} takes it out again. A {@link ViewReparented} says so. Windows; elsewhere a
+     * {@link NotSupportedException}.
+     */
+    public CompletableFuture<Void> adopt(View other, double x, double y, double width, double height) {
+        Objects.requireNonNull(other, "other");
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("a view's size is positive");
+        return done(message("adopt").withJson(Map.of("view", other.id(), "x", x, "y", y, "width", width, "height", height)));
+    }
+
+    /**
+     * Takes this embedded (or adopted) view out into a window of its own, {@code width} × {@code height}, at
+     * ({@code x}, {@code y}): its page runs on, its state kept. A {@link ViewReparented} says so.
+     */
+    public CompletableFuture<Void> detach(String title, double x, double y, double width, double height) {
+        return detach(title, x, y, width, height, false);
+    }
+
+    /**
+     * Tears this embedded view off into a window of its own under the pointer, following the mouse as a dragged title
+     * bar does until it is let go (call it while the person holds the button: a tab dragged out of its strip). When it
+     * is let go, a {@link WindowMove} {@code ENDED} says where: dock it back with {@link #adopt} if it is over a window
+     * that takes it ({@link App#windowUnderCursor()}).
+     */
+    public CompletableFuture<Void> tearOff(String title, double width, double height) {
+        return detach(title, Double.NaN, Double.NaN, width, height, true);
+    }
+
+    private CompletableFuture<Void> detach(String title, double x, double y, double width, double height, boolean follow) {
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("a window's size is positive");
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        if (title != null) body.put("title", title);
+        if (!Double.isNaN(x) && !Double.isNaN(y)) {
+            body.put("x", x);
+            body.put("y", y);
+        }
+        body.put("width", width);
+        body.put("height", height);
+        body.put("followCursor", follow);
+        return done(message("detach").withJson(body));
+    }
+
+    /** Where the window's page area is on the screen: x, y, width, height in physical pixels, and its scale. */
+    CompletableFuture<Object> client() {
+        return app.request(message("client")).thenApply(Message::json);
+    }
+
+    /** Raises this embedded view above the others in its window. */
+    public CompletableFuture<Void> toFront() {
+        return done(message("front"));
+    }
+
+    private volatile Subscription floatingAgain;
+
+    /**
+     * Makes this embedded view an MDI child (true): a person moves it inside its window by what the page calls
+     * {@code __webview4j.window.startDrag()} on (its own title bar), sizes it from its edges, and a click raises it;
+     * its moves come as {@link WindowMove}s. It stays so across its page's loads. False: placed by Java only.
+     */
+    public CompletableFuture<Void> setFloating(boolean on) {
+        Subscription again = floatingAgain;
+        if (again != null) again.close();
+        floatingAgain = on ? subscribe(PageLoad.class, load -> {
+            if (load.state() == PageLoad.State.FINISHED) done(message("floating").withText("true", "text/plain"));
+        }) : null;
+        app.pageState(id, "floating", on);
+        return done(message("floating").withText(Boolean.toString(on), "text/plain"));
+    }
+
+    /** What a drop of dragged files did. */
+    public enum DropEffect {
+        /** Copied where they were dropped (a folder, a mail). */
+        COPY,
+        /** Moved there: the files are no longer where they were. */
+        MOVE,
+        /** A link to them made there. */
+        LINK,
+        /** Let go where nothing takes files, or cancelled with Escape. */
+        NONE
+    }
+
+    /**
+     * Drags {@code files} out of the window, following the person's mouse until they let go: to a folder, the desktop,
+     * a mail, another app, another of the app's windows. Call it while they hold the mouse button (when the page
+     * says a drag began: its {@code mousedown} or {@code dragstart}, told to Java); the files are Java's to name, never
+     * the page's. Completes with what the drop did. Windows; elsewhere a {@link NotSupportedException}.
+     *
+     * @throws IllegalArgumentException with no files
+     */
+    public CompletableFuture<DropEffect> dragFiles(java.util.List<java.nio.file.Path> files) {
+        Objects.requireNonNull(files, "files");
+        if (files.isEmpty()) throw new IllegalArgumentException("no files to drag");
+        java.util.List<String> paths = files.stream().map(f -> f.toAbsolutePath().toString()).toList();
+        return app.request(message("drag-files").withJson(Map.of("paths", paths))).thenApply(reply ->
+                DropEffect.valueOf(String.valueOf(((Map<?, ?>) reply.json()).get("effect")).toUpperCase(java.util.Locale.ROOT)));
+    }
+
+    /** How much memory the browser engine may use for a view. */
+    public enum MemoryLevel {
+        /** As much as it likes: the default. */
+        NORMAL,
+        /** As little as it can: caches dropped, what can be drawn again discarded (a view not shown). */
+        LOW
+    }
+
+    /**
+     * Asks the browser engine to use less memory for this view ({@link MemoryLevel#LOW}), or as much as it likes: for a
+     * window not shown, or one the app knows is idle. Windows (WebView2 from 2023 on); elsewhere a
+     * {@link NotSupportedException}.
+     */
+    public CompletableFuture<Void> setMemoryLevel(MemoryLevel level) {
+        return done(message("memory-level").withText(level.name().toLowerCase(java.util.Locale.ROOT), "text/plain"));
+    }
+
+    /** The view's memory level. */
+    public CompletableFuture<MemoryLevel> memoryLevel() {
+        return app.request(message("memory-level")).thenApply(reply ->
+                Boolean.TRUE.equals(((Map<?, ?>) reply.json()).get("low")) ? MemoryLevel.LOW : MemoryLevel.NORMAL);
+    }
+
     /**
      * The system's frame and title bar, on or off. Without them the app draws its own title bar (the page's
      * {@code __webview4j.window.startDrag()}, {@code minimize()}, {@code toggleMaximize()}, {@code close()}), and the
      * window is resized from the page's edges.
      */
     public CompletableFuture<Void> setDecorations(boolean on) { return window(Map.of("decorations", on)); }
+
+    /**
+     * The window's frame border in a colour (Windows 11), as to show it is the one something goes to: a dock target,
+     * the active one of several, one with an error. Elsewhere a {@link NotSupportedException}.
+     */
+    public CompletableFuture<Void> setBorderColor(int red, int green, int blue) {
+        int[] c = WindowOptions.rgba(red, green, blue, 255);
+        return window(Map.of("borderColor", java.util.List.of(c[0], c[1], c[2])));
+    }
+
+    /** The system's own border colour again. */
+    public CompletableFuture<Void> clearBorderColor() {
+        return window(Map.of("borderColor", java.util.List.of()));
+    }
 
     public CompletableFuture<Void> setMinimizable(boolean on) { return window(Map.of("minimizable", on)); }
 
@@ -371,6 +518,35 @@ public final class View {
     }
 
     /**
+     * Draws {@code frame} on the page's {@code <canvas id="canvas">} (a 2d canvas, sized to the picture): the bytes go
+     * to the page binary, over the app's own protocol. Completes with true once it is on the canvas, so a loop that
+     * waits for each draws no faster than the page can; false if a later picture was drawn first and this one
+     * skipped (only the latest is drawn). Fails if the page has no such canvas.
+     *
+     * @param canvas the canvas's id: letters, digits, {@code -} and {@code _}, up to 64
+     */
+    public CompletableFuture<Boolean> drawFrame(String canvas, Frame frame) {
+        Objects.requireNonNull(canvas, "canvas");
+        Objects.requireNonNull(frame, "frame");
+        if (!canvas.matches("[A-Za-z0-9_-]{1,64}")) throw new IllegalArgumentException("not a canvas id (letters, digits, - and _): " + canvas);
+        Message message = message("frame." + canvas).with("Format", frame.format().name().toLowerCase(java.util.Locale.ROOT))
+                .with("Width", Integer.toString(frame.width())).with("Height", Integer.toString(frame.height()))
+                .withPayload(frame.bytes(), "application/octet-stream");
+        return app.request(message).thenApply(reply -> Boolean.TRUE.equals(((Map<?, ?>) reply.json()).get("drawn")));
+    }
+
+    /**
+     * Animates the page's {@code <canvas id="canvas">}: {@code painter} paints each frame for the time since the start,
+     * and the next is painted once the last is on the canvas, at the display's rate in a shown window (see
+     * {@link Animation}). Returns at once; stop it with {@link Animation#stop()}.
+     */
+    public Animation animate(String canvas, Animation.Painter painter) {
+        Objects.requireNonNull(canvas, "canvas");
+        if (!canvas.matches("[A-Za-z0-9_-]{1,64}")) throw new IllegalArgumentException("not a canvas id (letters, digits, - and _): " + canvas);
+        return new Animation(this, canvas, painter);
+    }
+
+    /**
      * A picture of the window as it looks now, title bar and all: a PNG. Only the app's own windows can be captured;
      * a hidden (headless) one too, so tests and CI can take pictures without showing anything. Windows for now; other
      * systems fail saying so.
@@ -387,11 +563,12 @@ public final class View {
     /** A picture of the window, written to {@code file} (PNG). */
     public CompletableFuture<java.nio.file.Path> screenshot(java.nio.file.Path file) {
         return screenshot().thenApply(png -> {
+            // a folder or file the system refuses: PermissionException; another failure: SystemException
             try {
                 if (file.toAbsolutePath().getParent() != null) java.nio.file.Files.createDirectories(file.toAbsolutePath().getParent());
                 return java.nio.file.Files.write(file, png);
             } catch (java.io.IOException e) {
-                throw new java.io.UncheckedIOException(e);
+                throw OsErrors.of("the screenshot could not be written", e, file);
             }
         });
     }
@@ -401,7 +578,7 @@ public final class View {
         try {
             if (file.toAbsolutePath().getParent() != null) java.nio.file.Files.createDirectories(file.toAbsolutePath().getParent());
         } catch (java.io.IOException e) {
-            return CompletableFuture.failedFuture(e);
+            return CompletableFuture.failedFuture(OsErrors.of("the recording's folder could not be made", e, file));
         }
         return done(message("record").withJson(options.payload(file))).thenApply(v -> new Recording(this, file));
     }
@@ -453,6 +630,10 @@ public final class View {
     public CompletableFuture<View> embed(WindowOptions options, double x, double y, double width, double height) {
         Objects.requireNonNull(options, "options");
         if (width <= 0 || height <= 0) throw new IllegalArgumentException("an embedded view's size is positive");
+        return app.withinMemoryLimit("embed another view").thenCompose(ok -> embedNow(options, x, y, width, height));
+    }
+
+    private CompletableFuture<View> embedNow(WindowOptions options, double x, double y, double width, double height) {
         Map<String, Object> payload = options.toPayload();
         payload.put("parent", id);
         payload.put("x", x);

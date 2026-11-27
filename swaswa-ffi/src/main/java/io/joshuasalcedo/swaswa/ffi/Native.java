@@ -33,6 +33,9 @@ final class Native {
     private static final Linker LINKER = Linker.nativeLinker();
 
     private static final MethodHandle WV_VERSION = downcall("wv_version", FunctionDescriptor.of(ValueLayout.ADDRESS));
+    private static final MethodHandle WV_ELEVATED = downcall("wv_elevated", FunctionDescriptor.of(ValueLayout.JAVA_INT));
+    private static final MethodHandle WV_JOB_ASSIGN = downcall("wv_job_assign", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
+    private static final MethodHandle WV_CAP_MEMORY = downcall("wv_cap_memory", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
     private static final MethodHandle WV_RUN = downcall("wv_run",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     private static final MethodHandle WV_SEND = downcall("wv_send",
@@ -48,6 +51,33 @@ final class Native {
     private static final AtomicBoolean RUNNING = new AtomicBoolean();
 
     /** The native library's version, e.g. {@code 0.1.0}. */
+    /** Whether the process runs with administrator rights (root elsewhere); no running loop needed. */
+    static boolean elevated() {
+        try {
+            return (int) WV_ELEVATED.invokeExact() == 1;
+        } catch (Throwable e) {
+            throw new IllegalStateException("wv_elevated failed", e);
+        }
+    }
+
+    /** Puts process {@code pid} in the app's job (it ends with the app): 1 done, 0 not, -1 not on this system. */
+    static int assignToJob(long pid) {
+        try {
+            return (int) WV_JOB_ASSIGN.invokeExact((int) pid);
+        } catch (Throwable e) {
+            throw new IllegalStateException("wv_job_assign failed", e);
+        }
+    }
+
+    /** Holds this process and all it starts from now on to {@code bytes}: 1 done, 0 not, -1 not on this system. */
+    static int capMemory(long bytes) {
+        try {
+            return (int) WV_CAP_MEMORY.invokeExact(bytes);
+        } catch (Throwable e) {
+            throw new IllegalStateException("wv_cap_memory failed", e);
+        }
+    }
+
     static String version() {
         try {
             return ((MemorySegment) WV_VERSION.invokeExact()).reinterpret(Long.MAX_VALUE).getString(0);
