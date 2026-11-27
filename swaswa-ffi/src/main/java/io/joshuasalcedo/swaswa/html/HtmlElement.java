@@ -571,6 +571,23 @@ public abstract class HtmlElement<Self extends HtmlElement<Self>> extends Node i
         return null;
     }
 
+    /** Its number in its page (what the page's scripts find it by); -1 while it is in no page. */
+    protected final int pageKey() {
+        return document == null ? -1 : key;
+    }
+
+    /** Runs {@code script} in its page: its value, when the page gives it (a page that is not there yet: null). */
+    protected final java.util.concurrent.CompletableFuture<Object> pageEval(String script) {
+        Document d = document;
+        return d == null ? java.util.concurrent.CompletableFuture.completedFuture(null) : d.view().eval(script);
+    }
+
+    /** The app of the page it is in (to serve what its page fetches); null while it is in no page. */
+    protected final io.joshuasalcedo.swaswa.ffi.App pageApp() {
+        Document d = document;
+        return d == null ? null : d.view().app();
+    }
+
     /** Its data changed: the page's script is given it again (React renders anew). */
     protected final void kindChanged() {
         if (kind() != null) op("kind", key, kindData());

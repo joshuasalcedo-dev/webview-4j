@@ -1,0 +1,176 @@
+/* Charts (Recharts, as shadcn/ui's). The categorical colours are validated against the kit's own card surfaces:
+   light #fbfbfb (CVD ΔE ≥ 11.8, normal ≥ 20.5) and dark #2b2b2b (CVD ΔE ≥ 10.1, all ≥ 3:1). In light, four slots
+   are under 3:1 against the card: every chart has a legend, values on hover, and a table view. Fixed order, never
+   cycled: a ninth series is "Other". */
+.nt-root {
+  --nt-chart-1: #257de0;
+  --nt-chart-2: #f47230;
+  --nt-chart-3: #00b894;
+  --nt-chart-4: #f2a600;
+  --nt-chart-5: #ee7fac;
+  --nt-chart-6: #008a17;
+  --nt-chart-7: #6a4ce2;
+  --nt-chart-8: #ec4647;
+  --nt-chart-grid: #e7e7e7;
+  --nt-chart-axis: #c2c2c2;
+}
+
+.nt-root[data-theme="dark"] {
+  --nt-chart-1: #338ced;
+  --nt-chart-2: #e76624;
+  --nt-chart-3: #00a888;
+  --nt-chart-4: #d28e05;
+  --nt-chart-5: #e24d8b;
+  --nt-chart-6: #0aac23;
+  --nt-chart-7: #9887ef;
+  --nt-chart-8: #eb6263;
+  --nt-chart-grid: #3a3a3a;
+  --nt-chart-axis: #555555;
+}
+
+.nt-chart {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 16px 12px;
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nt-chart-title {
+  font-weight: 600;
+}
+
+.nt-chart-description {
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-chart-view {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  background: var(--nt-subtle-hover);
+  border-radius: var(--nt-radius);
+}
+
+.nt-chart-view button {
+  height: 22px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--nt-radius) - 1px);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-chart-view button[aria-pressed="true"] {
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  box-shadow: 0 0 0 1px var(--nt-control-border);
+}
+
+.nt-chart-plot {
+  min-width: 0;
+  font-size: 11px;
+}
+
+/* recessive axes and grid: the data is the loudest thing */
+.nt-chart-plot .recharts-cartesian-axis-tick-value,
+.nt-chart-plot .recharts-polar-angle-axis-tick-value {
+  fill: var(--nt-text-secondary);
+}
+
+.nt-chart-plot .recharts-surface:focus,
+.nt-chart-plot .recharts-wrapper:focus {
+  outline: none;
+}
+
+.nt-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nt-chart-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.nt-chart-tooltip {
+  display: grid;
+  gap: 4px;
+  min-width: 130px;
+  padding: 7px 10px;
+  font-size: var(--nt-small);
+  color: var(--nt-text);
+  background: var(--nt-surface);
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+}
+
+.nt-chart-tooltip-label {
+  font-weight: 600;
+}
+
+.nt-chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nt-chart-tooltip-row span:nth-child(2) {
+  flex: 1;
+  color: var(--nt-text-secondary);
+}
+
+.nt-chart-tooltip-row span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+.nt-chart-table {
+  width: 100%;
+  font-size: var(--nt-small);
+  border-collapse: collapse;
+}
+
+.nt-chart-table th,
+.nt-chart-table td {
+  padding: 5px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--nt-chart-grid);
+}
+
+.nt-chart-table td:not(:first-child),
+.nt-chart-table th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nt-chart-table th {
+  font-weight: 600;
+  color: var(--nt-text-secondary);
+}

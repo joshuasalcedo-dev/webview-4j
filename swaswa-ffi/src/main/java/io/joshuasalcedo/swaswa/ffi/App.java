@@ -81,14 +81,27 @@ public final class App implements AutoCloseable {
 
     /**
      * Serves {@code classPathDirectory}'s files, read by {@code loader}, at {@link #SHARED_URL}: what every page in
-     * every window may load ({@code <SHARED_URL>ui.js}). One directory per app; serving the same one again does
-     * nothing. A component library calls it before its first window opens; core itself serves nothing there.
-     *
-     * @throws IllegalStateException if another directory is served there already
+     * every window may load ({@code <SHARED_URL>swaswa-ui/ui.js}). Several libraries may each serve theirs (a path is
+     * answered by the first that has it: each keeps its files in a folder of its own name); serving the same one
+     * again does nothing. A page's served script ({@code html.PageScript.served}) does it for its library.
      */
     public App serveShared(String classPathDirectory, ClassLoader loader) {
         assets.serveShared(Objects.requireNonNull(classPathDirectory, "classPathDirectory"), Objects.requireNonNull(loader, "loader"));
         return this;
+    }
+
+    /**
+     * Serves {@code data} to every page of the app, at a URL of its own under {@link #SHARED_URL}, until
+     * {@link #unserveBytes}: what a page fetches (a PDF a viewer shows, a picture) without it passing through the
+     * bridge's JSON. {@code contentType}: its type ({@code application/pdf}), null for bytes of no type.
+     */
+    public String serveBytes(byte[] data, String contentType) {
+        return SHARED_URL + assets.serveBytes(Objects.requireNonNull(data, "data"), contentType);
+    }
+
+    /** Serves what {@code url} (from {@link #serveBytes}) is no more. */
+    public void unserveBytes(String url) {
+        if (url != null && url.startsWith(SHARED_URL)) assets.unserveBytes(url.substring(SHARED_URL.length()));
     }
 
     /**

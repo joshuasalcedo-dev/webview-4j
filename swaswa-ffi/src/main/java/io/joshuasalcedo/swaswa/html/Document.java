@@ -50,6 +50,8 @@ public final class Document {
     private String lang;
     private final Map<Integer, Node> nodes = new ConcurrentHashMap<>();
     private final Map<StyleSheet, Integer> sheets = new LinkedHashMap<>();
+    /** How many times the page was drawn anew (mount): each batch says which drawing it changes. */
+    private int epoch;
     /** The kinds' scripts in the page, by id: put in once, and again when the page loads anew. */
     private final Map<String, String> scripts = new LinkedHashMap<>();
     private final Map<StyleSheet, Runnable> sheetListeners = new ConcurrentHashMap<>();
@@ -227,7 +229,8 @@ public final class Document {
     public synchronized CompletableFuture<Void> flush() {
         scheduled = false;
         if (!waiting.isEmpty()) {
-            String script = "window.__swaswaDom && __swaswaDom.apply(" + Json.write(waiting) + ")";
+            // with the page's epoch it was made in: a batch that reaches the page after the page was drawn anew is dropped
+            String script = "window.__swaswaDom && __swaswaDom.apply(" + Json.write(waiting) + ", " + epoch + ")";
             waiting = new ArrayList<>();
             send(script);
         }
@@ -269,7 +272,8 @@ public final class Document {
         nodes.put(0, body);
         next = 1;
         List<List<Object>> ops = new ArrayList<>();
-        ops.add(Arrays.asList("reset"));
+        epoch++;   // what was made before this, sent or not, is the page's past
+        ops.add(Arrays.asList("reset", epoch));
         ops.add(Arrays.asList("seq", 0));
         synchronized (arrived) {
             arrived.clear();
@@ -300,6 +304,7 @@ public final class Document {
     /** A kind's script, in the page once ({@link HtmlElement#kindScripts()}). */
     synchronized void usesScript(PageScript script) {
         if (scripts.containsKey(script.id())) return;
+        if (script.directory() != null) view.app().serveShared(script.directory(), script.loader());   // its files, before it loads them
         scripts.put(script.id(), script.source());
         op("script", script.id(), script.source());
     }

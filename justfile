@@ -32,6 +32,25 @@ shadcn-demo:
 shadcn-build:
     cd swaswa-shadcn/src/build && bun build.ts
 
+# every shadcn/ui component (or some: just shadcn-add-all calendar sonner), then the bundle and their Java packages
+shadcn-add-all *names:
+    cd swaswa-shadcn/src/build && bun add-all.ts {{names}}
+
+# swaswa-ui's desktop controls (the system's look) from Java, Swing-style (UiDemo)
+ui-demo:
+    mvn -q -B -pl swaswa-ffi,swaswa-react,swaswa-ui install -DskipTests
+    mvn -q -B -pl swaswa-demo compile exec:exec@ui-demo
+
+# swaswa-ui's chat from Java: a ChatService in memory, Ana answers (ChatDemo)
+chat-demo:
+    mvn -q -B -pl swaswa-ffi,swaswa-react,swaswa-ui install -DskipTests
+    mvn -q -B -pl swaswa-demo compile exec:exec@chat-demo
+
+# swaswa-ui's served files and Java classes again (after changing swaswa-ui/src/build/ui)
+ui-build:
+    cd swaswa-ui/src/build/ui && bun install
+    cd swaswa-ui/src/build && bun build.ts
+
 # React in the jar: rebuild swaswa-react's runtime (React, ReactDOM, the bridge) after changing src/build
 react-runtime:
     cd swaswa-react/src/build && bun install && bun run build
@@ -57,3 +76,10 @@ native:
 # The native library unoptimised, built faster, for trying a Rust change (into native/lib too: rebuild with `just native` before committing)
 native-dev:
     mvn -B -pl swaswa-ffi -Dnative.build "-Dcargo.profile=dev" -DskipTests process-resources
+
+# the swaswa command, installed in ~/.swaswa (put ~/.swaswa/bin on the PATH): swaswa new | run | build
+cli-install:
+    mvn -q -B -pl swaswa-cli package
+    rm -rf ~/.swaswa
+    unzip -q -o swaswa-cli/target/swaswa-cli-*.zip -d ~/.swaswa-tmp && mv ~/.swaswa-tmp/swaswa ~/.swaswa && rm -rf ~/.swaswa-tmp
+    @echo "installed: ~/.swaswa/bin/swaswa"

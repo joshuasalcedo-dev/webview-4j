@@ -1,0 +1,618 @@
+/*
+ * Files: FileIcon (Material Icon Theme's icons), FileTree (an IDE's explorer), FileChip (an attachment).
+ */
+
+.nt-file-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+}
+
+.nt-file-icon img {
+  display: block;
+  pointer-events: none;
+}
+
+/* --- FileTree -------------------------------------------------------------------------------- */
+
+.nt-filetree {
+  --nt-indent: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px;
+  overflow: auto;
+  outline: none;
+}
+
+.nt-filetree-row {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 8px 0 4px;
+  white-space: nowrap;
+  border-radius: var(--nt-radius);
+  cursor: var(--nt-cursor-action);
+}
+
+/* Indent lines: one per level, under each parent's chevron, as in VS Code. */
+.nt-filetree-guides {
+  flex: none;
+  align-self: stretch;
+  width: calc(var(--nt-level) * var(--nt-indent));
+  margin-right: -6px;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0 7.5px,
+    var(--nt-separator) 7.5px 8.5px,
+    transparent 8.5px var(--nt-indent)
+  );
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.nt-filetree:hover .nt-filetree-guides,
+.nt-filetree:focus-within .nt-filetree-guides {
+  opacity: 1;
+}
+
+.nt-filetree-twisty {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--nt-text-secondary);
+}
+
+.nt-filetree-twisty svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 120ms ease;
+}
+
+.nt-filetree-row[aria-expanded="true"] .nt-filetree-twisty svg {
+  transform: rotate(90deg);
+}
+
+.nt-filetree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nt-root[data-platform="windows"] .nt-filetree-row {
+  height: 28px;
+}
+
+.nt-root[data-platform="windows"] .nt-filetree-row:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-filetree-row[aria-selected="true"] {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-filetree-row[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 16px;
+  margin-top: -8px;
+  background: var(--nt-accent);
+  border-radius: 2px;
+}
+
+/* macOS: Finder's list, a filled triangle to open folders, the chosen row filled with the accent colour. */
+.nt-root[data-platform="mac"] .nt-filetree-row {
+  height: 22px;
+  border-radius: 5px;
+}
+
+.nt-root[data-platform="windows"] .nt-twisty-triangle,
+.nt-root[data-platform="mac"] .nt-twisty-chevron {
+  display: none;
+}
+
+.nt-root[data-platform="mac"] .nt-filetree-row[aria-selected="true"] {
+  color: #ffffff;
+  background: var(--nt-accent);
+}
+
+.nt-root[data-platform="mac"] .nt-filetree-row[aria-selected="true"] .nt-filetree-twisty {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.nt-root[data-platform="mac"] .nt-filetree:not(:focus-within) .nt-filetree-row[aria-selected="true"] {
+  color: inherit;
+  background: var(--nt-subtle-pressed);
+}
+
+.nt-root[data-platform="mac"] .nt-filetree:not(:focus-within) .nt-filetree-row[aria-selected="true"] .nt-filetree-twisty {
+  color: var(--nt-text-secondary);
+}
+
+/* --- FileChip -------------------------------------------------------------------------------- */
+
+.nt-filechip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: 240px;
+  max-width: 100%;
+  padding: 8px 8px 8px 10px;
+  overflow: hidden;
+  color: var(--nt-text);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-filechip-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The start of the name gives way; the end (the extension) always shows. */
+.nt-filechip-name {
+  display: flex;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.nt-filechip-start {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nt-filechip-end {
+  flex: none;
+}
+
+.nt-filechip-meta {
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-filechip-meta[data-error] {
+  color: var(--nt-error);
+}
+
+.nt-filechip-meta:empty {
+  display: none;
+}
+
+.nt-filechip-remove {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--nt-radius);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-filechip-remove svg {
+  width: 10px;
+  height: 10px;
+}
+
+.nt-filechip-remove:hover {
+  color: var(--nt-text);
+  background: var(--nt-subtle-hover);
+}
+
+.nt-filechip-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+}
+
+.nt-filechip-progress span {
+  display: block;
+  height: 100%;
+  background: var(--nt-accent);
+  transition: width 200ms ease;
+}
+
+.nt-root[data-platform="windows"] .nt-filechip {
+  background: var(--nt-control);
+  border: 1px solid var(--nt-control-border);
+  border-bottom-color: var(--nt-control-border-bottom);
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-root[data-platform="windows"] .nt-filechip[role="button"]:hover {
+  background: var(--nt-control-hover);
+}
+
+.nt-root[data-platform="mac"] .nt-filechip {
+  background: var(--nt-group);
+  border: 0.5px solid var(--nt-group-border);
+  border-radius: var(--nt-radius-large);
+}
+
+.nt-root[data-platform="mac"] .nt-filechip[role="button"]:hover {
+  background: var(--nt-subtle-hover);
+}
+
+/* --- FileChip inline: a file named in text --------------------------------------------------------- */
+
+.nt-filechip[data-variant="inline"] {
+  display: inline-flex;
+  gap: 5px;
+  width: auto;
+  max-width: 240px;
+  height: 22px;
+  padding: 0 8px 0 5px;
+  vertical-align: middle;
+  font-size: var(--nt-small);
+  border-radius: 999px;
+}
+
+.nt-filechip[data-variant="inline"] .nt-filechip-remove {
+  width: 16px;
+  height: 16px;
+  margin-right: -4px;
+  border-radius: 999px;
+}
+
+.nt-filechip[data-variant="inline"] .nt-filechip-remove svg {
+  width: 8px;
+  height: 8px;
+}
+
+/* --- Find and empty ----------------------------------------------------------------------------- */
+
+.nt-find-match {
+  color: inherit;
+  background: color-mix(in srgb, var(--nt-accent) 28%, transparent);
+  border-radius: 2px;
+}
+
+[aria-selected="true"] .nt-find-match {
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.nt-files-empty {
+  padding: 24px 16px;
+  color: var(--nt-text-secondary);
+  text-align: center;
+}
+
+/* --- FileGrid: large icons -------------------------------------------------------------------------- */
+
+.nt-filegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  align-content: start;
+  gap: 4px;
+  padding: 8px;
+  overflow: auto;
+}
+
+.nt-filegrid > .nt-files-empty {
+  grid-column: 1 / -1;
+}
+
+.nt-filegrid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 4px 6px;
+  text-align: center;
+  border-radius: var(--nt-radius);
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-filegrid-name {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--nt-small);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.nt-root[data-platform="windows"] .nt-filegrid-item:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-filegrid-item[aria-selected="true"] {
+  background: color-mix(in srgb, var(--nt-accent) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nt-accent) 45%, transparent);
+}
+
+/* macOS: Finder's icon view; the icon gets a grey rounded backing, the name an accent pill. */
+.nt-root[data-platform="mac"] .nt-filegrid-item[aria-selected="true"] .nt-file-icon {
+  background: var(--nt-subtle-pressed);
+  border-radius: 6px;
+  box-shadow: 0 0 0 4px var(--nt-subtle-pressed);
+}
+
+.nt-root[data-platform="mac"] .nt-filegrid-item[aria-selected="true"] .nt-filegrid-name {
+  padding: 0 5px;
+  color: #ffffff;
+  background: var(--nt-accent);
+  border-radius: 4px;
+}
+
+/* --- FileList: rows with columns -------------------------------------------------------------------- */
+
+.nt-filelist {
+  min-width: 0;
+  overflow: auto;
+}
+
+.nt-filelist table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.nt-filelist th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0;
+  font-weight: 400;
+  text-align: left;
+  background: var(--nt-window);
+}
+
+.nt-filelist th button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--nt-text-secondary);
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: var(--nt-cursor-action);
+}
+
+.nt-filelist th button:hover {
+  color: var(--nt-text);
+}
+
+.nt-filelist th svg {
+  width: 10px;
+  height: 10px;
+  flex: none;
+}
+
+.nt-filelist th svg[data-down] {
+  transform: rotate(180deg);
+}
+
+.nt-filelist th[data-column="folder"] {
+  padding: 0 8px;
+  color: var(--nt-text-secondary);
+}
+
+.nt-filelist th[data-column="modified"] {
+  width: 26%;
+}
+
+.nt-filelist th[data-column="type"] {
+  width: 18%;
+}
+
+.nt-filelist th[data-column="size"] {
+  width: 12%;
+}
+
+.nt-filelist th[data-column="folder"] {
+  width: 22%;
+}
+
+.nt-filelist td {
+  padding: 0 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--nt-text-secondary);
+}
+
+.nt-filelist td[data-column="name"] {
+  color: var(--nt-text);
+}
+
+.nt-filelist td[data-column="size"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nt-filelist th[data-column="size"] button {
+  justify-content: flex-end;
+}
+
+.nt-filelist-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nt-filelist-name > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nt-filelist tr {
+  cursor: var(--nt-cursor-action);
+  outline: none;
+}
+
+.nt-root[data-platform="windows"] .nt-filelist th {
+  height: 32px;
+  border-bottom: 1px solid var(--nt-separator);
+}
+
+.nt-root[data-platform="windows"] .nt-filelist th + th {
+  border-left: 1px solid var(--nt-separator);
+}
+
+.nt-root[data-platform="windows"] .nt-filelist td {
+  height: 30px;
+}
+
+.nt-root[data-platform="windows"] .nt-filelist tbody tr:hover td {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-root[data-platform="windows"] .nt-filelist tbody tr[aria-selected="true"] td {
+  background: color-mix(in srgb, var(--nt-accent) 18%, transparent);
+}
+
+.nt-root[data-platform="windows"] .nt-filelist tr:focus-visible td {
+  box-shadow: inset 0 1px 0 var(--nt-focus), inset 0 -1px 0 var(--nt-focus);
+}
+
+/* macOS: Finder's list; alternate rows banded, the chosen row filled with the accent colour. */
+.nt-root[data-platform="mac"] .nt-filelist th {
+  height: 24px;
+  font-size: var(--nt-small);
+  border-bottom: 0.5px solid var(--nt-separator);
+}
+
+.nt-root[data-platform="mac"] .nt-filelist td {
+  height: 24px;
+}
+
+.nt-root[data-platform="mac"] .nt-filelist tbody tr:nth-child(even) td {
+  background: var(--nt-group);
+}
+
+.nt-root[data-platform="mac"] .nt-filelist tbody tr[aria-selected="true"] td {
+  color: #ffffff;
+  background: var(--nt-accent);
+}
+
+.nt-root[data-platform="mac"] .nt-filelist tbody tr[aria-selected="true"] td:first-child {
+  border-radius: 5px 0 0 5px;
+}
+
+.nt-root[data-platform="mac"] .nt-filelist tbody tr[aria-selected="true"] td:last-child {
+  border-radius: 0 5px 5px 0;
+}
+
+/* --- FileExplorer -------------------------------------------------------------------------------- */
+
+.nt-explorer {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.nt-explorer-toolbar {
+  gap: 6px;
+}
+
+.nt-explorer-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nt-explorer-find {
+  width: 200px;
+}
+
+.nt-explorer-body {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.nt-explorer-pane {
+  min-height: 0;
+  border-right: 1px solid var(--nt-separator);
+}
+
+.nt-explorer-view {
+  display: grid;
+  min-height: 0;
+  min-width: 0;
+  background: var(--nt-surface);
+}
+
+.nt-explorer-view > * {
+  min-height: 0;
+}
+
+.nt-root[data-platform="windows"] .nt-explorer-path {
+  height: 32px;
+  padding: 0 4px;
+  background: var(--nt-control);
+  border: 1px solid var(--nt-control-border);
+  border-radius: var(--nt-radius);
+}
+
+.nt-root[data-platform="windows"] .nt-explorer-path ol {
+  height: 100%;
+}
+
+.nt-root[data-platform="mac"] .nt-explorer-pane {
+  background: var(--nt-group);
+}
+
+/* Explorer's own toolbar has icon-only back, forward and up buttons, so the path box gets the room. */
+.nt-root[data-platform="windows"] .nt-explorer-toolbar .nt-tool[data-icon] {
+  min-width: 36px;
+  padding: 0 10px;
+}
+
+.nt-root[data-platform="windows"] .nt-explorer-toolbar .nt-tool[data-icon] .nt-tool-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* The path stays on one line; when it is too long the start gives way, so where you are stays in view. */
+.nt-explorer-path ol {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  white-space: nowrap;
+}
+
+.nt-explorer-path li {
+  flex: none;
+}
+
+.nt-explorer-path li:last-child {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nt-explorer-find {
+  flex: 0 1 200px;
+  min-width: 120px;
+}

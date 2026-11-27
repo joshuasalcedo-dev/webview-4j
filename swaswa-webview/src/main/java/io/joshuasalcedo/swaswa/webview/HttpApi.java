@@ -1,6 +1,7 @@
 package io.joshuasalcedo.swaswa.webview;
 
 import io.joshuasalcedo.swaswa.ffi.*;
+import io.joshuasalcedo.swaswa.internal.Json;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;

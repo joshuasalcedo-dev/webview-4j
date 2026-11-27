@@ -1,0 +1,87 @@
+/* LogView: a list of lines that scrolls, the newest at the bottom. */
+.nt-log {
+  overflow: auto;
+  min-height: 0;
+  border: 1px solid var(--nt-surface-border);
+  border-radius: var(--nt-radius-large);
+  background: var(--nt-surface);
+  padding: 4px 0;
+  user-select: text;
+}
+
+.nt-log-empty {
+  padding: 16px;
+  color: var(--nt-text-secondary);
+}
+
+.nt-log-line {
+  display: grid;
+  grid-template-columns: max-content 64px 1fr;
+  gap: 12px;
+  padding: 4px 12px;
+  align-items: baseline;
+  border-left: 3px solid transparent;
+}
+
+.nt-log-line[tabindex] {
+  cursor: pointer;
+}
+
+.nt-log-line[tabindex]:hover {
+  background: var(--nt-subtle-hover);
+}
+
+.nt-log-time,
+.nt-log-source {
+  color: var(--nt-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nt-log-source {
+  margin-right: 8px;
+}
+
+.nt-log-level {
+  font-size: var(--nt-small);
+  color: var(--nt-text-secondary);
+}
+
+.nt-log-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.nt-log-line[data-level="trace"],
+.nt-log-line[data-level="debug"] {
+  color: var(--nt-text-secondary);
+}
+
+.nt-log-line[data-level="warn"] {
+  border-left-color: #c27c00;
+}
+
+.nt-log-line[data-level="warn"] .nt-log-level {
+  color: #c27c00;
+  font-weight: 600;
+}
+
+.nt-log-line[data-level="error"] {
+  border-left-color: var(--nt-error);
+}
+
+.nt-log-line[data-level="error"] .nt-log-level {
+  color: var(--nt-error);
+  font-weight: 600;
+}
+
+.nt-log-detail {
+  display: block;
+  margin-top: 4px;
+  padding: 6px 8px;
+  border-radius: var(--nt-radius);
+  background: var(--nt-subtle-hover);
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+  font-size: var(--nt-small);
+  white-space: pre-wrap;
+}

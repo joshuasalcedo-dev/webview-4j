@@ -55,10 +55,17 @@ class ViewMethodsTest {
         Path site = Files.createDirectories(dir.resolve("site"));
         Files.writeString(site.resolve("one.html"), "<!doctype html><title>one</title><p>one</p>");
         Files.writeString(site.resolve("two.html"), "<!doctype html><title>two</title><p>two</p>");
+        Path other = Files.createDirectories(dir.resolve("other"));
+        Files.writeString(other.resolve("three.html"), "<!doctype html><title>three</title><p>three</p>");
         try (App app = App.start(); URLClassLoader loader = new URLClassLoader(new URL[] {dir.toUri().toURL()})) {
             app.serveShared("site", loader);
             app.serveShared("site", loader);   // the same again: nothing
-            assertThrows(IllegalStateException.class, () -> app.serveShared("other", loader), "one shared directory per app");
+            app.serveShared("other", loader);  // a second library's: both are served
+
+            View third = app.open(WindowOptions.html("<title>start</title>").headless(true)).join();
+            third.navigate(App.SHARED_URL + "three.html").join();
+            assertEquals("three", until(() -> eval(third, "document.title"), "three"::equals), "the second directory's file");
+            third.close().join();
 
             View view = app.open(WindowOptions.html("<title>start</title>").headless(true)).join();
             view.navigate(App.SHARED_URL + "one.html").join();

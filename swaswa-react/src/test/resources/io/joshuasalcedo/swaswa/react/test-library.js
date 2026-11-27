@@ -24,4 +24,39 @@
   const Group = React.createContext('none');
   register('Group', ({ name, children }) => h(Group.Provider, { value: name }, h('div', { id: 'group' }, children)));
   register('Item', ({ itemId }) => h('span', { id: itemId, className: 'item' }, React.useContext(Group)));
+
+  // what JSON cannot carry: a day, a moment, bytes; and its own style
+  const pad = (n) => String(n).padStart(2, '0');
+  register('Stamp', ({ day, at, bytes, style }) =>
+    h('div', { id: 'stamp', style },
+      h('span', { id: 'stamp-day' }, day instanceof Date ? `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}` : 'none'),
+      h('span', { id: 'stamp-at' }, at instanceof Date ? at.toISOString() : 'none'),
+      h('span', { id: 'stamp-bytes' }, bytes instanceof ArrayBuffer ? String(new Uint8Array(bytes).reduce((a, b) => a + b, 0)) : 'none')));
+
+  // an adapter: a query answered by Java, events Java pushes
+  register('Inbox', ({ service }) => {
+    const [title, setTitle] = React.useState('loading');
+    const [last, setLast] = React.useState('none');
+    const [error, setError] = React.useState('none');
+    React.useEffect(() => {
+      service.queries.load('inbox').then((page) => setTitle(page.title + ':' + page.count), (e) => setError(e.message));
+      service.queries.load('broken').catch((e) => setError(e.message));
+      return service.events.subscribe((event) => setLast(event.text));
+    }, [service]);
+    return h('div', { id: 'inbox' }, h('span', { id: 'inbox-title' }, title), h('span', { id: 'inbox-last' }, last),
+      h('span', { id: 'inbox-error' }, error));
+  });
+
+  // a handle: Java calls its actions
+  register('Counter2', ({ actionsRef }) => {
+    const [n, setN] = React.useState(0);
+    React.useImperativeHandle(actionsRef, () => ({ add: (by) => setN((x) => x + by), twice: (x) => x * 2 }), []);
+    return h('span', { id: 'counter2' }, String(n));
+  });
+
+  // a menu per row: the first entry chosen when a row is clicked
+  register('Rows', ({ rows = [], rowMenu }) =>
+    h('ul', { id: 'rows' }, rows.map((row) => h('li', { key: row.id, id: 'row-' + row.id,
+      'data-menu': (rowMenu?.(row) ?? []).filter((e) => e !== 'separator').map((e) => e.label).join(','),
+      onClick: () => rowMenu?.(row).find((e) => e !== 'separator')?.onSelect() }, row.name))));
 })();

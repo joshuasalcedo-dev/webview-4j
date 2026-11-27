@@ -4,6 +4,7 @@ if (!window.__swaswaDom) {
   window.__swaswaDom = (() => {
     const nodes = new Map();
     let seq = 0;   // the events' order: Java delivers them in it
+    let epoch = 0;   // which drawing of the page from Java this is: a batch made for an earlier one is dropped
     const sheets = new Map();
     const get = (key) => (key === 0 ? document.body : nodes.get(key));
     // where an element's children go: an element of a kind keeps them in its slot (its script places the slot)
@@ -138,11 +139,13 @@ if (!window.__swaswaDom) {
       for (const c of n.childNodes || []) forget(c);
     };
 
-    const apply = (ops) => {
+    const apply = (ops, from) => {
+      if (from !== undefined && from < epoch) return true;   // made before the page was drawn anew: already in it
       for (const o of ops) {
         switch (o[0]) {
           case 'seq': seq = o[1]; break;
           case 'reset':
+            if (o[1] !== undefined) epoch = o[1];
             for (const n of nodes.values()) if (n.__swaswaKind) unmountKind(n);
             for (const n of nodes.values()) if (n.parentNode === document.body) n.remove();
             nodes.clear();
@@ -151,8 +154,9 @@ if (!window.__swaswaDom) {
             sheets.clear();
             for (const type of Object.keys(document.body?.__swaswaOn || {})) unlisten(document.body, type);
             break;
-          case 'append': inside(get(o[1]))?.append(build(o[2])); break;
-          case 'insert': { const p = inside(get(o[1])); p?.insertBefore(build(o[2]), get(o[3]) ?? null); break; }
+          // an element the page has already (Java added it while the page was drawn anew: the drawing has it): once
+          case 'append': if (!nodes.has(o[2].key)) inside(get(o[1]))?.append(build(o[2])); break;
+          case 'insert': { if (nodes.has(o[2].key)) break; const p = inside(get(o[1])); p?.insertBefore(build(o[2]), get(o[3]) ?? null); break; }
           case 'remove': { const n = get(o[1]); n?.remove(); forget(n); break; }
           case 'attr': { const el = get(o[1]); if (!el) break; if (o[3] == null) el.removeAttribute(o[2]); else el.setAttribute(o[2], o[3]); break; }
           case 'text': { const n = get(o[1]); if (n) n.data = o[2]; break; }

@@ -11,7 +11,7 @@
     <parent>
         <groupId>io.joshuasalcedo.swaswa</groupId>
         <artifactId>swaswa-parent</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.1.1</version>
     </parent>
 
     <artifactId>swaswa-demo</artifactId>
@@ -38,6 +38,11 @@
         <dependency>
             <groupId>io.joshuasalcedo.swaswa</groupId>
             <artifactId>swaswa-shadcn</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-ui</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
@@ -95,6 +100,44 @@
                                 <argument>-classpath</argument>
                                 <classpath/>
                                 <argument>io.joshuasalcedo.swaswa.demo.ShadcnDemo</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>ui-demo</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-Xmx512m</argument>
+                                <!-- the JVM's own JIT, not GraalVM's: it needs much less memory -->
+                                <argument>-XX:-UseJVMCICompiler</argument>
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/demo</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.demo.UiDemo</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>chat-demo</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-Xmx512m</argument>
+                                <!-- the JVM's own JIT, not GraalVM's: it needs much less memory -->
+                                <argument>-XX:-UseJVMCICompiler</argument>
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/demo</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.demo.ChatDemo</argument>
                             </arguments>
                         </configuration>
                     </execution>

@@ -63,6 +63,42 @@ class ReactTest {
         @Override protected List<PageScript> libraries() { return List.of(LIBRARY); }
     }
 
+    // written by hand: the base converts what it is given, whatever made the class
+    static final class Stamp extends ReactElement<Stamp> {
+        Stamp() { super("Stamp", false); }
+        Stamp setDay(java.time.LocalDate day) { return prop("day", day); }
+        Stamp setAt(java.time.Instant at) { return prop("at", at); }
+        Stamp setBytes(byte[] bytes) { return prop("bytes", bytes); }
+        @Override protected List<PageScript> libraries() { return List.of(LIBRARY); }
+    }
+
+    record InboxPage(String title, int count) {}
+
+    record Message(String text) {}
+
+    static final class Inbox extends ReactElement<Inbox> {
+        Inbox(ReactAdapter service) {
+            super("Inbox", false);
+            adapter("service", List.of("queries.load"), List.of("events.subscribe"), service);
+        }
+        @Override protected List<PageScript> libraries() { return List.of(LIBRARY); }
+    }
+
+    static final class Counter2 extends ReactElement<Counter2> {
+        Counter2() { super("Counter2", false); handleProp("actionsRef"); }
+        java.util.concurrent.CompletableFuture<Object> add(int by) { return handle("actionsRef", "add", by); }
+        java.util.concurrent.CompletableFuture<Object> twice(int x) { return handle("actionsRef", "twice", x); }
+        @Override protected List<PageScript> libraries() { return List.of(LIBRARY); }
+    }
+
+    record Row(String id, String name) {}
+
+    static final class Rows extends ReactElement<Rows> {
+        Rows(List<Row> rows) { super("Rows", false); prop("rows", rows); }
+        Rows setRowMenu(java.util.function.Function<Row, List<MenuItem>> menu) { return menu("rowMenu", Row.class, menu); }
+        @Override protected List<PageScript> libraries() { return List.of(LIBRARY); }
+    }
+
     static <T> T until(Supplier<T> value, Predicate<T> done) throws InterruptedException {
         T v = value.get();
         for (int i = 0; i < 100 && !done.test(v); i++) {
@@ -183,6 +219,94 @@ class ReactTest {
             assertEquals("beta", until(() -> js(view, "document.getElementById('second')?.textContent ?? ''"), "beta"::equals));
             assertEquals("beta", js(view, "document.getElementById('first').textContent"), "every item follows");
             assertEquals(1L, ((Number) js(view, "document.querySelectorAll('#group').length")).longValue(), "one group: no second root");
+        }
+    }
+
+    @Test
+    void datesBytesAndItsStyleReachTheComponentAsTheyAre() throws Exception {
+        try (App app = App.start()) {
+            View view = page(app, "swaswa test: react values");
+            Document doc = Document.of(view);
+            Stamp stamp = new Stamp();
+            stamp.setDay(java.time.LocalDate.of(2026, 11, 27));
+            stamp.setAt(java.time.Instant.parse("2026-11-27T10:15:30Z"));
+            stamp.setBytes(new byte[] {1, 2, 3, 4});
+            stamp.getStyle().set(io.joshuasalcedo.swaswa.css.CssProperty.BACKGROUND_COLOR, "rgb(255, 0, 0)");
+            doc.body().add(stamp);
+            doc.flush().join();
+
+            assertEquals("2026-11-27", until(() -> js(view, "document.getElementById('stamp-day')?.textContent ?? ''"), "2026-11-27"::equals),
+                    "a LocalDate: the page's Date, that day");
+            assertEquals("2026-11-27T10:15:30.000Z", js(view, "document.getElementById('stamp-at').textContent"), "an Instant: that moment");
+            assertEquals("10", until(() -> js(view, "document.getElementById('stamp-bytes').textContent"), "10"::equals),
+                    "bytes: served by the app, fetched into an ArrayBuffer (1+2+3+4)");
+            assertEquals("rgb(255, 0, 0)", js(view, "getComputedStyle(document.getElementById('stamp')).backgroundColor"),
+                    "its getStyle(): the component's own style");
+            assertEquals("contents", js(view, "getComputedStyle(document.querySelector('[data-swaswa-react=Stamp]')).display"),
+                    "its own element still lays out as its parent's");
+
+            stamp.setBytes(new byte[] {9});
+            doc.flush().join();
+            assertEquals("9", until(() -> js(view, "document.getElementById('stamp-bytes').textContent"), "9"::equals), "new bytes");
+        }
+    }
+
+    @Test
+    void anAdapterIsAnsweredByJavaAndHearsItsEvents() throws Exception {
+        try (App app = App.start()) {
+            View view = page(app, "swaswa test: react adapter");
+            Document doc = Document.of(view);
+            List<ReactAdapter.ReactEmitter> listening = new CopyOnWriteArrayList<>();
+            ReactAdapter service = new ReactAdapter() {
+                @Override
+                public java.util.concurrent.CompletableFuture<?> call(ReactCall call) {
+                    String box = call.arg(0, String.class);
+                    if (box.equals("broken")) return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException("You're offline."));
+                    return java.util.concurrent.CompletableFuture.supplyAsync(() -> new InboxPage("Inbox", 3));   // later, on another thread
+                }
+
+                @Override
+                public void subscribe(String method, ReactEmitter emitter) {
+                    listening.add(emitter);
+                }
+            };
+            doc.body().add(new Inbox(service));
+            doc.flush().join();
+
+            assertEquals("Inbox:3", until(() -> js(view, "document.getElementById('inbox-title')?.textContent ?? ''"), "Inbox:3"::equals),
+                    "the query answered by Java, a record");
+            assertEquals("You're offline.", until(() -> js(view, "document.getElementById('inbox-error').textContent"), "You're offline."::equals),
+                    "a failed future fails the promise, with its message");
+            until(() -> listening, l -> !l.isEmpty());
+            listening.getFirst().emit(new Message("hello from Java"));
+            assertEquals("hello from Java", until(() -> js(view, "document.getElementById('inbox-last').textContent"), "hello from Java"::equals),
+                    "an event Java pushed");
+        }
+    }
+
+    @Test
+    void javaCallsAComponentsHandleAndItsMenusAreReady() throws Exception {
+        try (App app = App.start()) {
+            View view = page(app, "swaswa test: react handles and menus");
+            Document doc = Document.of(view);
+            Counter2 counter = new Counter2();
+            List<String> chosen = new CopyOnWriteArrayList<>();
+            Rows rows = new Rows(List.of(new Row("a1", "Apples"), new Row("b2", "Bread")));
+            rows.setRowMenu(row -> List.of(MenuItem.of("Open " + row.name(), () -> chosen.add("open " + row.id())), MenuItem.separator(),
+                    MenuItem.of("Delete", () -> chosen.add("delete " + row.id()))));
+            doc.body().add(counter);
+            doc.body().add(rows);
+            doc.flush().join();
+            until(() -> js(view, "document.getElementById('counter2')?.textContent ?? ''"), "0"::equals);
+
+            counter.add(5).join();
+            assertEquals("5", until(() -> js(view, "document.getElementById('counter2').textContent"), "5"::equals), "Java called add(5)");
+            assertEquals(84L, ((Number) counter.twice(42).join()).longValue(), "and got what it returned");
+
+            assertEquals("Open Bread,Delete", until(() -> js(view, "document.getElementById('row-b2')?.dataset.menu ?? ''"), "Open Bread,Delete"::equals),
+                    "each row's menu, made in Java, ready when the component asks");
+            js(view, "document.getElementById('row-b2').click()");
+            assertEquals(List.of("open b2"), until(() -> chosen, l -> !l.isEmpty()), "the chosen entry's action ran in Java");
         }
     }
 }

@@ -16,7 +16,7 @@ module io.joshuasalcedo.swaswa.ffi {
     exports io.joshuasalcedo.swaswa.css;
     exports io.joshuasalcedo.swaswa.html;
     // inside swaswa: its own modules only (JSON, the hooks between packages); never the API
-    exports io.joshuasalcedo.swaswa.internal to io.joshuasalcedo.swaswa.tailwind, io.joshuasalcedo.swaswa.dom, io.joshuasalcedo.swaswa.react;
+    exports io.joshuasalcedo.swaswa.internal to io.joshuasalcedo.swaswa.tailwind, io.joshuasalcedo.swaswa.dom, io.joshuasalcedo.swaswa.react, io.joshuasalcedo.swaswa.webview;
     // an app's life: SwaApplication (init, start, stop, launch)
     exports io.joshuasalcedo.swaswa.app;
     // the app's state: Store, Saved, ServerState, Mutation, Context, a Session's (the hooks' Java equivalent)

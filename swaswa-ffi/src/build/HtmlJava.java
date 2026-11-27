@@ -93,8 +93,21 @@ public class HtmlJava {
     /** The URL attributes only ever loaded as an image (where an SVG cannot run script): Class.attribute. */
     static final java.util.Set<String> IMAGES = java.util.Set.of("Img.src", "Input.src", "Video.poster");
 
+    /** The elements that are a role's (a button, a text input, a choice): they implement it, as every library's do. */
+    static final Map<String, String> ROLES = Map.ofEntries(
+            Map.entry("Button", "ButtonBase"), Map.entry("Label", "Labeled"),
+            Map.entry("Input", "TextField"), Map.entry("Textarea", "TextArea"),
+            Map.entry("Select", "Choice"), Map.entry("Option", "ChoiceOption"), Map.entry("Datalist", "ComboBox"),
+            Map.entry("Data", "DataValue"), Map.entry("Dialog", "DialogBase"), Map.entry("Details", "Disclosure"),
+            Map.entry("Progress", "ProgressIndicator"), Map.entry("Meter", "ProgressIndicator"), Map.entry("Table", "TableView"),
+            Map.entry("Menu", "MenuBase"), Map.entry("Nav", "Navigation"), Map.entry("Hr", "Separator"), Map.entry("Img", "ImageView"),
+            Map.entry("Kbd", "KeyboardKey"), Map.entry("Code", "CodeView"), Map.entry("Pre", "CodeView"),
+            Map.entry("Ul", "ListView"), Map.entry("Ol", "ListView"), Map.entry("Li", "ListItem"), Map.entry("A", "Hyperlink"),
+            Map.entry("Form", "FormBase"), Map.entry("Fieldset", "FieldGroup"), Map.entry("Audio", "MediaView"),
+            Map.entry("Video", "MediaView"));
+
     static String selfStamp() {
-        return "8";
+        return "10";
     }
 
     /** React's name as HTML writes it: {@code hrefLang} is {@code hreflang}, {@code htmlFor} {@code for}. */
@@ -114,7 +127,10 @@ public class HtmlJava {
         b.append("/** {@code <").append(tag).append(">} ({@code ").append(dom)
                 .append("}): <a href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/").append(tag).append("\">MDN</a>. */\n");
         // open, as Swing's JPanel: a panel of one's own extends Div
-        b.append("public class ").append(cls).append(" extends HtmlElement<").append(cls).append("> {\n\n");
+        b.append("public class ").append(cls).append(" extends HtmlElement<").append(cls).append(">");
+        String role = ROLES.get(cls);   // the role every library's control of this kind shares (component.ButtonBase...)
+        if (role != null) b.append(" implements io.joshuasalcedo.swaswa.component.").append(role).append('<').append(cls).append('>');
+        b.append(" {\n\n");
         b.append("    public ").append(cls).append("() {\n        super(\"").append(tag).append("\", ").append(isVoid).append(");\n");
         if (HOLDS_VALUE.contains(tag)) {
             b.append("        // what the user types or picks: the page holds it, and it is kept here before any listener\n");

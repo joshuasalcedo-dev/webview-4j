@@ -1,0 +1,6 @@
+#!/bin/sh
+# swaswa: new, run and build swaswa apps. Needs Java 25 (java on the PATH, or JAVA_HOME).
+here=$(cd "$(dirname "$0")" && pwd)
+java=java
+[ -n "$JAVA_HOME" ] && java="$JAVA_HOME/bin/java"
+exec "$java" -jar "$here/../lib/swaswa-cli.jar" "$@"

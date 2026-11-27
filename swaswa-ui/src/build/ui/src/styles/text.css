@@ -1,0 +1,283 @@
+/*
+ * Text: the systems' type (Text, Link, Code, Shortcut), and the pointer people expect over each kind of thing.
+ */
+
+/* --- pointers: what the mouse shows over things ---------------------------------------------------
+   Desktop apps show the arrow over controls (set on .nt-root), the I-beam over text that can be selected or
+   typed in, the hand only over links, resize arrows over things that resize. */
+
+.nt-root input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"]),
+.nt-root textarea,
+.nt-root [contenteditable=""],
+.nt-root [contenteditable="true"] {
+  cursor: text;
+  user-select: text;
+}
+
+.nt-root a[href],
+.nt-root .nt-link {
+  cursor: pointer;
+}
+
+.nt-root :disabled,
+.nt-root [aria-disabled="true"] {
+  cursor: default;
+}
+
+.nt-root [data-resize="x"] {
+  cursor: col-resize;
+}
+
+.nt-root [data-resize="y"] {
+  cursor: row-resize;
+}
+
+.nt-root [data-resize="xy"] {
+  cursor: nwse-resize;
+}
+
+/* --- Text ---------------------------------------------------------------------------------------- */
+
+.nt-text {
+  margin: 0;
+  font-family: var(--nt-font);
+  color: var(--nt-text);
+  overflow-wrap: break-word;
+}
+
+.nt-text[data-strong] {
+  font-weight: 600;
+}
+
+.nt-text[data-mono] {
+  font-family: var(--nt-mono);
+}
+
+.nt-text[data-tone="secondary"] {
+  color: var(--nt-text-secondary);
+}
+
+.nt-text[data-tone="tertiary"] {
+  color: var(--nt-text-disabled);
+}
+
+.nt-text[data-tone="accent"] {
+  color: var(--nt-accent-text, var(--nt-accent));
+}
+
+.nt-text[data-tone="error"] {
+  color: var(--nt-error);
+}
+
+.nt-text[data-tone="success"] {
+  color: var(--nt-success);
+}
+
+.nt-text[data-tone="warning"] {
+  color: var(--nt-warning);
+}
+
+/* Cut off with "…": one line, or several (--nt-lines). */
+.nt-text[data-lines="1"] {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nt-text[data-lines]:not([data-lines="1"]) {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--nt-lines);
+}
+
+/* Windows 11: the type ramp. Segoe UI Variable picks its optical size: Small under 14px, Display from 20px. */
+.nt-root[data-platform="windows"] {
+  --nt-mono: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+  --nt-success: #0f7b0f;
+  --nt-warning: #9d5d00;
+}
+
+.nt-root[data-platform="windows"][data-theme="dark"] {
+  --nt-success: #6ccb5f;
+  --nt-warning: #fce100;
+}
+
+.nt-root[data-platform="windows"] .nt-text[data-variant="display"] {
+  font: 600 68px/92px "Segoe UI Variable Display", var(--nt-font);
+}
+
+.nt-root[data-platform="windows"] .nt-text[data-variant="largeTitle"] {
+  font: 600 40px/52px "Segoe UI Variable Display", var(--nt-font);
+}
+
+.nt-root[data-platform="windows"] .nt-text[data-variant="title"] {
+  font: 600 28px/36px "Segoe UI Variable Display", var(--nt-font);
+}
+
+.nt-root[data-platform="windows"] .nt-text[data-variant="subtitle"] {
+  font: 600 20px/28px "Segoe UI Variable Display", var(--nt-font);
+}
+
+.nt-root[data-platform="windows"] .nt-text[data-variant="headline"] {
+  font: 600 14px/20px var(--nt-font);
+}
+
+.nt-root[data-platform="windows"] .nt-text[data-variant="body"] {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.nt-root[data-platform="windows"] .nt-text[data-variant="caption"],
+.nt-root[data-platform="windows"] .nt-text[data-variant="footnote"] {
+  font: 400 12px/16px "Segoe UI Variable Small", var(--nt-font);
+}
+
+.nt-root[data-platform="windows"] .nt-text[data-variant="footnote"]:not([data-tone]) {
+  color: var(--nt-text-secondary);
+}
+
+/* macOS: the text styles (SF Pro; the system picks Text or Display by size). */
+.nt-root[data-platform="mac"] {
+  --nt-mono: "SF Mono", ui-monospace, Menlo, monospace;
+  --nt-success: #28a745;
+  --nt-warning: #b25000;
+}
+
+.nt-root[data-platform="mac"][data-theme="dark"] {
+  --nt-success: #32d74b;
+  --nt-warning: #ffd60a;
+}
+
+.nt-root[data-platform="mac"] .nt-text[data-variant="display"] {
+  font-size: 34px;
+  line-height: 41px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.nt-root[data-platform="mac"] .nt-text[data-variant="largeTitle"] {
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 400;
+}
+
+.nt-root[data-platform="mac"] .nt-text[data-variant="title"] {
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 400;
+}
+
+.nt-root[data-platform="mac"] .nt-text[data-variant="subtitle"] {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 400;
+}
+
+.nt-root[data-platform="mac"] .nt-text[data-variant="headline"] {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.nt-root[data-platform="mac"] .nt-text[data-variant="body"] {
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.nt-root[data-platform="mac"] .nt-text[data-variant="caption"] {
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.nt-root[data-platform="mac"] .nt-text[data-variant="footnote"] {
+  font-size: 10px;
+  line-height: 13px;
+}
+
+.nt-root[data-platform="mac"] .nt-text[data-strong] {
+  font-weight: 700;
+}
+
+/* --- Link ------------------------------------------------------------------------------------------ */
+
+.nt-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  color: var(--nt-accent);
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.nt-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.nt-root[data-platform="windows"] .nt-link:active {
+  color: var(--nt-text-secondary);
+}
+
+.nt-link-external {
+  width: 0.75em;
+  height: 0.75em;
+  flex: none;
+  align-self: center;
+}
+
+/* --- Code and Shortcut ------------------------------------------------------------------------------ */
+
+.nt-code {
+  padding: 1px 4px;
+  font-family: var(--nt-mono);
+  font-size: 0.92em;
+  background: var(--nt-subtle-hover);
+  border: 1px solid var(--nt-separator, transparent);
+  border-radius: 4px;
+}
+
+.nt-shortcut {
+  display: inline-flex;
+  gap: 2px;
+  font: inherit;
+  vertical-align: baseline;
+}
+
+.nt-shortcut > kbd {
+  min-width: 1.6em;
+  padding: 0 4px;
+  font: 500 0.85em/1.6 var(--nt-font);
+  text-align: center;
+  color: var(--nt-text-secondary);
+  background: var(--nt-control);
+  border: 1px solid var(--nt-control-border, var(--nt-separator));
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+/* --- Label: text that belongs to the controls ---------------------------------------------------- */
+
+.nt-root .nt-label {
+  display: inline-block;
+  cursor: default;
+  user-select: none;
+}
+
+/* Clickable text in the text's own colour ("Show more"). */
+.nt-link[data-subtle] {
+  color: inherit;
+}
+
+.nt-link[data-subtle]:hover {
+  color: var(--nt-accent);
+}
+
+/* Anything clickable that has no rule of its own: the action cursor (a hand unless --nt-cursor-action says
+   otherwise). The disabled rule above outranks it. */
+.nt-root :where(a[href], button, summary, select, [role="button"], [role="tab"], [role="menuitem"], [role="menuitemcheckbox"],
+  [role="menuitemradio"], [role="option"], [role="switch"], [role="checkbox"], [role="radio"], [role="treeitem"],
+  input[type="checkbox"], input[type="radio"], input[type="range"], input[type="color"], label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"])):not(:disabled, [aria-disabled="true"]) {
+  cursor: var(--nt-cursor-action);
+}

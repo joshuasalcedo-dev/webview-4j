@@ -1,0 +1,182 @@
+/*
+ * Pill: a small rounded label. Each named colour has a shade for light and one for dark (--nt-pill), set
+ * here; the variants mix it with the surface.
+ */
+
+.nt-root {
+  --nt-pill-grey: #6b6b6b;
+  --nt-pill-red: #c42b1c;
+  --nt-pill-orange: #ca5010;
+  --nt-pill-yellow: #a37700;
+  --nt-pill-green: #107c10;
+  --nt-pill-teal: #00787f;
+  --nt-pill-blue: #0063b1;
+  --nt-pill-purple: #7a4bc8;
+  --nt-pill-pink: #c2185b;
+}
+
+.nt-root[data-theme="dark"] {
+  --nt-pill-grey: #a8a8a8;
+  --nt-pill-red: #ff7b72;
+  --nt-pill-orange: #ff9f4a;
+  --nt-pill-yellow: #f5c400;
+  --nt-pill-green: #6ccb5f;
+  --nt-pill-teal: #4fd1d9;
+  --nt-pill-blue: #60b6ff;
+  --nt-pill-purple: #c3a6ff;
+  --nt-pill-pink: #ff8fc0;
+}
+
+.nt-pill {
+  --nt-pill: var(--nt-pill-grey);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  max-width: 160px;
+  height: 18px;
+  padding: 0 7px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: var(--nt-pill);
+  background: color-mix(in srgb, var(--nt-pill) 15%, transparent);
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.nt-pill[data-size="medium"] {
+  height: 22px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+.nt-pill[data-color="red"] { --nt-pill: var(--nt-pill-red); }
+.nt-pill[data-color="orange"] { --nt-pill: var(--nt-pill-orange); }
+.nt-pill[data-color="yellow"] { --nt-pill: var(--nt-pill-yellow); }
+.nt-pill[data-color="green"] { --nt-pill: var(--nt-pill-green); }
+.nt-pill[data-color="teal"] { --nt-pill: var(--nt-pill-teal); }
+.nt-pill[data-color="blue"] { --nt-pill: var(--nt-pill-blue); }
+.nt-pill[data-color="purple"] { --nt-pill: var(--nt-pill-purple); }
+.nt-pill[data-color="pink"] { --nt-pill: var(--nt-pill-pink); }
+.nt-pill[data-color="accent"] { --nt-pill: var(--nt-accent); }
+
+.nt-pill[data-variant="filled"] {
+  color: #ffffff;
+  background: var(--nt-pill);
+}
+
+.nt-root[data-theme="dark"] .nt-pill[data-variant="filled"] {
+  color: #1a1a1a;
+}
+
+.nt-pill[data-variant="filled"][data-color="accent"] {
+  color: var(--nt-on-accent);
+}
+
+.nt-pill[data-variant="outline"] {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--nt-pill) 55%, transparent);
+}
+
+.nt-pill-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nt-pill-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+}
+
+.nt-pill-icon svg {
+  width: 11px;
+  height: 11px;
+}
+
+.nt-pill[data-size="medium"] .nt-pill-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.nt-pill[data-icon-only] {
+  justify-content: center;
+  width: 18px;
+  padding: 0;
+}
+
+.nt-pill[data-icon-only][data-size="medium"] {
+  width: 22px;
+}
+
+.nt-pill-remove {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-right: -4px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  opacity: 0.75;
+}
+
+.nt-pill-remove:hover {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.nt-pill-remove svg {
+  width: 7px;
+  height: 7px;
+}
+
+/* As a toggle (a filter): off is outlined and quiet, on is the full subtle tint. */
+button.nt-pill {
+  cursor: var(--nt-cursor-action);
+}
+
+button.nt-pill:not([data-pressed]) {
+  color: var(--nt-text-secondary);
+  background: transparent;
+  border-color: var(--nt-separator, var(--nt-surface-border));
+}
+
+button.nt-pill:not([data-pressed]):hover {
+  color: var(--nt-text);
+  background: var(--nt-subtle-hover);
+}
+
+.nt-pill-group {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* A fitted group takes only the room left over beside the text (the text keeps priority). */
+.nt-pill-group[data-fit] {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* The hidden rows that measure the pills. */
+.nt-pill-ruler {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  gap: 3px;
+  white-space: nowrap;
+  visibility: hidden;
+  pointer-events: none;
+}

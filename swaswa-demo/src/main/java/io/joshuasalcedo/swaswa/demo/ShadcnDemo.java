@@ -6,28 +6,28 @@ import io.joshuasalcedo.swaswa.ffi.Theme;
 import io.joshuasalcedo.swaswa.html.Div;
 import io.joshuasalcedo.swaswa.html.H1;
 import io.joshuasalcedo.swaswa.html.P;
-import io.joshuasalcedo.swaswa.shadcn.Badge;
-import io.joshuasalcedo.swaswa.shadcn.Button;
-import io.joshuasalcedo.swaswa.shadcn.Card;
-import io.joshuasalcedo.swaswa.shadcn.CardContent;
-import io.joshuasalcedo.swaswa.shadcn.CardDescription;
-import io.joshuasalcedo.swaswa.shadcn.CardFooter;
-import io.joshuasalcedo.swaswa.shadcn.CardHeader;
-import io.joshuasalcedo.swaswa.shadcn.CardTitle;
-import io.joshuasalcedo.swaswa.shadcn.Dialog;
-import io.joshuasalcedo.swaswa.shadcn.DialogContent;
-import io.joshuasalcedo.swaswa.shadcn.DialogDescription;
-import io.joshuasalcedo.swaswa.shadcn.DialogFooter;
-import io.joshuasalcedo.swaswa.shadcn.DialogHeader;
-import io.joshuasalcedo.swaswa.shadcn.DialogTitle;
-import io.joshuasalcedo.swaswa.shadcn.Input;
-import io.joshuasalcedo.swaswa.shadcn.Label;
-import io.joshuasalcedo.swaswa.shadcn.Progress;
-import io.joshuasalcedo.swaswa.shadcn.Switch;
-import io.joshuasalcedo.swaswa.shadcn.Tabs;
-import io.joshuasalcedo.swaswa.shadcn.TabsContent;
-import io.joshuasalcedo.swaswa.shadcn.TabsList;
-import io.joshuasalcedo.swaswa.shadcn.TabsTrigger;
+import io.joshuasalcedo.swaswa.shadcn.badge.ShadcnBadge;
+import io.joshuasalcedo.swaswa.shadcn.button.ShadcnButton;
+import io.joshuasalcedo.swaswa.shadcn.card.ShadcnCard;
+import io.joshuasalcedo.swaswa.shadcn.card.ShadcnCardContent;
+import io.joshuasalcedo.swaswa.shadcn.card.ShadcnCardDescription;
+import io.joshuasalcedo.swaswa.shadcn.card.ShadcnCardFooter;
+import io.joshuasalcedo.swaswa.shadcn.card.ShadcnCardHeader;
+import io.joshuasalcedo.swaswa.shadcn.card.ShadcnCardTitle;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialog;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialogContent;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialogDescription;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialogFooter;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialogHeader;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialogTitle;
+import io.joshuasalcedo.swaswa.shadcn.input.ShadcnInput;
+import io.joshuasalcedo.swaswa.shadcn.label.ShadcnLabel;
+import io.joshuasalcedo.swaswa.shadcn.progress.ShadcnProgress;
+import io.joshuasalcedo.swaswa.shadcn.switch_.ShadcnSwitch;
+import io.joshuasalcedo.swaswa.shadcn.tabs.ShadcnTabs;
+import io.joshuasalcedo.swaswa.shadcn.tabs.ShadcnTabsContent;
+import io.joshuasalcedo.swaswa.shadcn.tabs.ShadcnTabsList;
+import io.joshuasalcedo.swaswa.shadcn.tabs.ShadcnTabsTrigger;
 import io.joshuasalcedo.swaswa.state.Store;
 import io.joshuasalcedo.swaswa.tailwind.Tw;
 
@@ -47,10 +47,10 @@ public class ShadcnDemo extends SwaApplication {
 
     // ---- the parts that change ----
 
-    private final Input name = new Input();
-    private final Badge saved = new Badge("0 saved");
-    private final Progress progress = new Progress();
-    private final Dialog confirm = new Dialog();
+    private final ShadcnInput name = new ShadcnInput();
+    private final ShadcnBadge saved = new ShadcnBadge("0 saved");
+    private final ShadcnProgress progress = new ShadcnProgress();
+    private final ShadcnDialog confirm = new ShadcnDialog();
     private int count;
 
     @Override
@@ -70,11 +70,11 @@ public class ShadcnDemo extends SwaApplication {
         H1 title = new H1("shadcn/ui, from Java");
         title.cssClass(Tw.Text.TEXT_2XL, Tw.Font.FONT_SEMIBOLD);
 
-        Switch dark = new Switch();
+        ShadcnSwitch dark = new ShadcnSwitch();
         dark.checkedProperty().bindBidirectional(state(DARK));
         state(DARK).addListener((was, now) -> setTheme(now ? Theme.DARK : Theme.LIGHT));
 
-        Label darkLabel = new Label("Dark");
+        ShadcnLabel darkLabel = new ShadcnLabel("Dark");
 
         Div themes = new Div(darkLabel, dark);
         themes.cssClass(Tw.Flex.FLEX, Tw.Items.ITEMS_CENTER, Tw.Gap.GAP_2);
@@ -85,63 +85,63 @@ public class ShadcnDemo extends SwaApplication {
     }
 
     private void buildOrderCard() {
-        CardHeader header = new CardHeader(new CardTitle("New order"), new CardDescription("Who is it for?"));
+        ShadcnCardHeader header = new ShadcnCardHeader(new ShadcnCardTitle("New order"), new ShadcnCardDescription("Who is it for?"));
 
-        Label label = new Label("Customer");
+        ShadcnLabel label = new ShadcnLabel("Customer");
         name.setPlaceholder("Ana Reyes");
 
         Div field = new Div(label, name);
         field.cssClass(Tw.Flex.FLEX, Tw.Flex.FLEX_COL, Tw.Gap.GAP_2);
 
         progress.setValue(0);
-        CardContent content = new CardContent(field, progress);
+        ShadcnCardContent content = new ShadcnCardContent(field, progress);
         content.cssClass(Tw.Flex.FLEX, Tw.Flex.FLEX_COL, Tw.Gap.GAP_4);
 
-        Button save = new Button("Save");
+        ShadcnButton save = new ShadcnButton("Save");
         save.onClick(e -> saveOrder());
 
-        Button delete = new Button("Delete…");
-        delete.setVariant(Button.Variant.OUTLINE);
+        ShadcnButton delete = new ShadcnButton("Delete…");
+        delete.setVariant(ShadcnButton.Variant.OUTLINE);
         delete.onClick(e -> confirm.openProperty().set(true));
 
-        CardFooter footer = new CardFooter(save, delete, saved);
+        ShadcnCardFooter footer = new ShadcnCardFooter(save, delete, saved);
         footer.cssClass(Tw.Gap.GAP_2);
 
-        getMain().add(new Card(header, content, footer));
+        getMain().add(new ShadcnCard(header, content, footer));
     }
 
     private void buildTabs() {
-        TabsList list = new TabsList(open("open", "Open"), open("shipped", "Shipped"));
+        ShadcnTabsList list = new ShadcnTabsList(open("open", "Open"), open("shipped", "Shipped"));
 
-        Tabs tabs = new Tabs(list, panel("open", "Three orders wait to be shipped."), panel("shipped", "Ten went out this week."));
+        ShadcnTabs tabs = new ShadcnTabs(list, panel("open", "Three orders wait to be shipped."), panel("shipped", "Ten went out this week."));
         tabs.setValue("open");
         getMain().add(tabs);
     }
 
-    private TabsTrigger open(String value, String text) {
-        TabsTrigger trigger = new TabsTrigger(text);
+    private ShadcnTabsTrigger open(String value, String text) {
+        ShadcnTabsTrigger trigger = new ShadcnTabsTrigger(text);
         trigger.setValue(value);
         return trigger;
     }
 
-    private TabsContent panel(String value, String text) {
-        TabsContent panel = new TabsContent(new P(text));
+    private ShadcnTabsContent panel(String value, String text) {
+        ShadcnTabsContent panel = new ShadcnTabsContent(new P(text));
         panel.setValue(value);
         return panel;
     }
 
     private void buildConfirm() {
-        DialogHeader header = new DialogHeader(new DialogTitle("Delete the order?"), new DialogDescription("It cannot be undone."));
+        ShadcnDialogHeader header = new ShadcnDialogHeader(new ShadcnDialogTitle("Delete the order?"), new ShadcnDialogDescription("It cannot be undone."));
 
-        Button cancel = new Button("Cancel");
-        cancel.setVariant(Button.Variant.OUTLINE);
+        ShadcnButton cancel = new ShadcnButton("Cancel");
+        cancel.setVariant(ShadcnButton.Variant.OUTLINE);
         cancel.onClick(e -> confirm.openProperty().set(false));
 
-        Button delete = new Button("Delete");
-        delete.setVariant(Button.Variant.DESTRUCTIVE);
+        ShadcnButton delete = new ShadcnButton("Delete");
+        delete.setVariant(ShadcnButton.Variant.DESTRUCTIVE);
         delete.onClick(e -> deleteOrder());
 
-        confirm.add(new DialogContent(header, new DialogFooter(cancel, delete)));
+        confirm.add(new ShadcnDialogContent(header, new ShadcnDialogFooter(cancel, delete)));
         getMain().add(confirm);
     }
 

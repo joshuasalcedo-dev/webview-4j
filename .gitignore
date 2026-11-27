@@ -19,3 +19,5 @@ node_modules/
 # shadcn/ui source project: vite output
 swaswa-shadcn/src/build/ui/dist-swaswa/
 swaswa-shadcn/src/build/ui/dist/
+# swaswa-ui source project: vite output
+swaswa-ui/src/build/ui/dist-swaswa/

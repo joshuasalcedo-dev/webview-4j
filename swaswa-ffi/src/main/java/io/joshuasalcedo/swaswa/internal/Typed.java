@@ -36,7 +36,18 @@ public final class Typed {
         if ((raw == double.class || raw == Double.class) && json instanceof Number n) return n.doubleValue();
         if ((raw == float.class || raw == Float.class) && json instanceof Number n) return n.floatValue();
         if ((raw == boolean.class || raw == Boolean.class) && json instanceof Boolean) return json;
-        if (raw.isEnum() && json instanceof String s) return Enum.valueOf((Class) raw, s);
+        // a page's Date, as JSON writes it (an ISO moment): that moment, or its day where the app runs
+        if (raw == java.time.Instant.class && json instanceof String s) return java.time.Instant.parse(s);
+        if (raw == java.time.LocalDate.class && json instanceof String s) {
+            return s.length() == 10 ? java.time.LocalDate.parse(s) : java.time.LocalDate.ofInstant(java.time.Instant.parse(s), java.time.ZoneId.systemDefault());
+        }
+        if (raw.isEnum() && json instanceof String s) {
+            // by its literal when it has one (a React prop's word: "default"), else by its name
+            if (io.joshuasalcedo.swaswa.html.HtmlLiteral.class.isAssignableFrom(raw)) {
+                for (Object e : raw.getEnumConstants()) if (((io.joshuasalcedo.swaswa.html.HtmlLiteral) e).literal().equals(s)) return e;
+            }
+            return Enum.valueOf((Class) raw, s);
+        }
         if (Record.class.isAssignableFrom(raw) && json instanceof Map<?, ?> m) return record((Class) raw, (Map<String, Object>) m, where);
         if (raw == List.class && json instanceof List<?> l) {
             Type element = type instanceof ParameterizedType p ? p.getActualTypeArguments()[0] : Object.class;

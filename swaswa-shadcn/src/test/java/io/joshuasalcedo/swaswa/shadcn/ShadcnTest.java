@@ -1,5 +1,17 @@
 package io.joshuasalcedo.swaswa.shadcn;
 
+import io.joshuasalcedo.swaswa.shadcn.button.ShadcnButton;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialog;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialogContent;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialogDescription;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialogHeader;
+import io.joshuasalcedo.swaswa.shadcn.dialog.ShadcnDialogTitle;
+import io.joshuasalcedo.swaswa.shadcn.switch_.ShadcnSwitch;
+import io.joshuasalcedo.swaswa.shadcn.tabs.ShadcnTabs;
+import io.joshuasalcedo.swaswa.shadcn.tabs.ShadcnTabsContent;
+import io.joshuasalcedo.swaswa.shadcn.tabs.ShadcnTabsList;
+import io.joshuasalcedo.swaswa.shadcn.tabs.ShadcnTabsTrigger;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.joshuasalcedo.swaswa.ffi.App;
@@ -43,8 +55,8 @@ class ShadcnTest {
             View view = page(app, "swaswa test: shadcn button");
             Document doc = Document.of(view);
             List<String> clicked = new CopyOnWriteArrayList<>();
-            Button save = new Button("Save");
-            save.setVariant(Button.Variant.DESTRUCTIVE);
+            ShadcnButton save = new ShadcnButton("Save");
+            save.setVariant(ShadcnButton.Variant.DESTRUCTIVE);
             save.onClick(e -> clicked.add("save"));
             doc.body().add(save);
             doc.flush().join();
@@ -64,11 +76,11 @@ class ShadcnTest {
         try (App app = App.start()) {
             View view = page(app, "swaswa test: shadcn switch and tabs");
             Document doc = Document.of(view);
-            Switch dark = new Switch();
-            Tabs tabs = new Tabs(
-                    new TabsList(new TabsTrigger("Open").setValue("open"), new TabsTrigger("Shipped").setValue("shipped")),
-                    new TabsContent("three open orders").setValue("open"),
-                    new TabsContent("ten shipped").setValue("shipped"));
+            ShadcnSwitch dark = new ShadcnSwitch();
+            ShadcnTabs tabs = new ShadcnTabs(
+                    new ShadcnTabsList(new ShadcnTabsTrigger("Open").setValue("open"), new ShadcnTabsTrigger("Shipped").setValue("shipped")),
+                    new ShadcnTabsContent("three open orders").setValue("open"),
+                    new ShadcnTabsContent("ten shipped").setValue("shipped"));
             tabs.setValue("open");
             doc.body().add(dark);
             doc.body().add(tabs);
@@ -96,8 +108,8 @@ class ShadcnTest {
         try (App app = App.start()) {
             View view = page(app, "swaswa test: shadcn dialog");
             Document doc = Document.of(view);
-            Dialog dialog = new Dialog(new DialogContent(
-                    new DialogHeader(new DialogTitle("Delete the order?"), new DialogDescription("It cannot be undone."))));
+            ShadcnDialog dialog = new ShadcnDialog(new ShadcnDialogContent(
+                    new ShadcnDialogHeader(new ShadcnDialogTitle("Delete the order?"), new ShadcnDialogDescription("It cannot be undone."))));
             doc.body().add(dialog);
             doc.flush().join();
             Thread.sleep(300);

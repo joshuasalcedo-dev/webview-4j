@@ -74,6 +74,12 @@ final class Assets {
      */
     static final String SHARED = "webview4j-ui";
 
+    /**
+     * The shared files' directories, looked in in order: each component library's own (its files in a folder of its
+     * name, so two never answer for one path).
+     */
+    private final java.util.List<Source> shared = new java.util.concurrent.CopyOnWriteArrayList<>();
+
     /** A file to send: its type and bytes. */
     record File(String contentType, byte[] bytes) {}
 
@@ -82,9 +88,13 @@ final class Assets {
         put(root, new Source(root, loader));
     }
 
-    /** Serves {@code directory}'s files, read by {@code loader}, as the shared ones ({@code <base>ui/...}), from now on. */
-    void serveShared(String directory, ClassLoader loader) {
-        put(SHARED, new Source(root(directory), loader));
+    /**
+     * Serves {@code directory}'s files, read by {@code loader}, among the shared ones ({@code <base>ui/...}), from now
+     * on. Several may be: a path is answered by the first that has it. The same one again does nothing.
+     */
+    synchronized void serveShared(String directory, ClassLoader loader) {
+        Source source = new Source(root(directory), loader);
+        if (!shared.contains(source)) shared.add(source);
     }
 
     private void put(String root, Source source) {
@@ -101,6 +111,7 @@ final class Assets {
      * @throws HttpException 404 for a directory never served or a file it lacks, 400 for a bad path
      */
     File read(String root, String path) {
+        if (SHARED.equals(root)) return readShared(path);
         Source source = root == null ? null : roots.get(root);
         if (source == null) throw new HttpException(404, "no files are served from '" + root + "'");
         if (path == null || !safe(path)) throw new HttpException(400, "not a file path");
@@ -110,6 +121,40 @@ final class Assets {
         } catch (IOException e) {
             throw new HttpException(500, "could not read " + path + ": " + e.getMessage());
         }
+    }
+
+    /** Bytes Java serves by themselves (a document a viewer shows): at {@code <base>ui/swaswa-bytes/<id>}. */
+    static final String BYTES = "swaswa-bytes/";
+    private final Map<String, File> bytes = new ConcurrentHashMap<>();
+
+    /** Serves {@code data} as {@code contentType} among the shared files; returns its path under them. */
+    String serveBytes(byte[] data, String contentType) {
+        String id = java.util.UUID.randomUUID().toString();
+        bytes.put(id, new File(contentType == null ? "application/octet-stream" : contentType, data));
+        return BYTES + id;
+    }
+
+    /** Serves what {@code path} (from {@link #serveBytes}) is no more. */
+    void unserveBytes(String path) {
+        if (path != null && path.startsWith(BYTES)) bytes.remove(path.substring(BYTES.length()));
+    }
+
+    private File readShared(String path) {
+        if (path != null && path.startsWith(BYTES)) {
+            File f = bytes.get(path.substring(BYTES.length()));
+            if (f == null) throw new HttpException(404, "no bytes " + path);
+            return f;
+        }
+        if (shared.isEmpty()) throw new HttpException(404, "no files are served from '" + SHARED + "'");
+        if (path == null || !safe(path)) throw new HttpException(400, "not a file path");
+        for (Source source : shared) {
+            try (InputStream in = source.loader().getResourceAsStream(source.directory() + "/" + path)) {
+                if (in != null) return new File(type(path), in.readAllBytes());
+            } catch (IOException e) {
+                throw new HttpException(500, "could not read " + path + ": " + e.getMessage());
+            }
+        }
+        throw new HttpException(404, "no file " + path);
     }
 
     /** A class path directory as a root: its segments safe, no leading or trailing slash. */

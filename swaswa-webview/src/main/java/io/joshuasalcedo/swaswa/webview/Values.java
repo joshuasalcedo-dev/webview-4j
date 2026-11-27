@@ -1,6 +1,7 @@
 package io.joshuasalcedo.swaswa.webview;
 
 import io.joshuasalcedo.swaswa.ffi.*;
+import io.joshuasalcedo.swaswa.internal.Json;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
