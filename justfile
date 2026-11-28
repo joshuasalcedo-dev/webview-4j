@@ -4,6 +4,10 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 default:
     @just --list
 
+# Build the stable, batteries-included application module and every feature it assembles
+core-install:
+    mvn -q -B -pl swaswa-core -am install -DskipTests
+
 # Every swaswa-ffi feature in one window: windows, title bars, taskbar, the page, dialogs, the system, and its events
 ffi-showcase:
     mvn -q -B -pl swaswa-ffi test-compile exec:exec@showcase

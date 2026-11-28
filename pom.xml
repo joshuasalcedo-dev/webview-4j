@@ -64,6 +64,7 @@
         <module>swaswa-react</module>
         <module>swaswa-shadcn</module>
         <module>swaswa-ui</module>
+        <module>swaswa-core</module>
         <module>swaswa-cli</module>
         <module>swaswa-demo</module>
     </modules>
@@ -87,6 +88,11 @@
             <dependency>
                 <groupId>io.joshuasalcedo.swaswa</groupId>
                 <artifactId>swaswa-ffi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.joshuasalcedo.swaswa</groupId>
+                <artifactId>swaswa-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

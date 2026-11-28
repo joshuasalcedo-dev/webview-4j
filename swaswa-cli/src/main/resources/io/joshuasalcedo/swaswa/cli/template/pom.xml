@@ -32,10 +32,10 @@
     </repositories>
 
     <dependencies>
-        <!-- the components (swaswa-ui: the system's look), and through it swaswa-ffi (the window, the page) -->
+        <!-- the supported application entry point: core APIs, native bridge, and standard UI features -->
         <dependency>
             <groupId>io.joshuasalcedo.swaswa</groupId>
-            <artifactId>swaswa-ui</artifactId>
+            <artifactId>swaswa-core</artifactId>
             <version>${swaswa.version}</version>
         </dependency>
     </dependencies>

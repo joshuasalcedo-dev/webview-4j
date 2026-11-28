@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  swaswa-core is the supported application dependency. It assembles the native bridge and the standard
+  application, DOM, webview, React, Tailwind, UI, and shadcn modules behind one stable Maven/JPMS entry point.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.joshuasalcedo.swaswa</groupId>
+        <artifactId>swaswa-parent</artifactId>
+        <version>0.1.1</version>
+    </parent>
+
+    <artifactId>swaswa-core</artifactId>
+    <name>swaswa-core</name>
+    <description>The stable, batteries-included application entry point for swaswa.</description>
+
+    <dependencies>
+        <dependency><groupId>io.joshuasalcedo.swaswa</groupId><artifactId>swaswa-ffi</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.joshuasalcedo.swaswa</groupId><artifactId>swaswa-webview</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.joshuasalcedo.swaswa</groupId><artifactId>swaswa-tailwind</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.joshuasalcedo.swaswa</groupId><artifactId>swaswa-dom</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.joshuasalcedo.swaswa</groupId><artifactId>swaswa-react</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.joshuasalcedo.swaswa</groupId><artifactId>swaswa-shadcn</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.joshuasalcedo.swaswa</groupId><artifactId>swaswa-ui</artifactId><version>${project.version}</version></dependency>
+    </dependencies>
+</project>
