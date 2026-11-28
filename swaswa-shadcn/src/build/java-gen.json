@@ -1,0 +1,23 @@
+{
+  "tsconfig": "ui/tsconfig.app.json",
+  "components": "ui/src/components/ui",
+  "out": "../main/java",
+  "package": "io.joshuasalcedo.swaswa.shadcn",
+  "library": "Shadcn",
+  "source": "shadcn/ui",
+  "noChildren": [
+    "Input",
+    "Textarea",
+    "Separator",
+    "Switch",
+    "Checkbox"
+  ],
+  "taken": [
+    "../../../swaswa-ffi/src/main/java/io/joshuasalcedo/swaswa/component/Component.java",
+    "../../../swaswa-ffi/src/main/java/io/joshuasalcedo/swaswa/component/Container.java",
+    "../../../swaswa-ffi/src/main/java/io/joshuasalcedo/swaswa/html/HtmlElement.java",
+    "../../../swaswa-react/src/main/java/io/joshuasalcedo/swaswa/react/ReactElement.java"
+  ],
+  "moduleInfo": "../main/java/module-info.java",
+  "classPrefix": "Shadcn"
+}

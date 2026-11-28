@@ -1,0 +1,18 @@
+{
+  "tsconfig": "ui/tsconfig.json",
+  "components": "ui/src/components",
+  "exclude": ["code-editor-monaco", "docx-impl", "pdf-viewer-embed", "xlsx/workbook"],
+  "out": "../main/java",
+  "package": "io.joshuasalcedo.swaswa.ui",
+  "library": "Ui",
+  "classPrefix": "Ui",
+  "source": "swaswa-ui",
+  "moduleInfo": "../main/java/module-info.java",
+  "noChildren": [],
+  "taken": [
+    "../../../swaswa-ffi/src/main/java/io/joshuasalcedo/swaswa/component/Component.java",
+    "../../../swaswa-ffi/src/main/java/io/joshuasalcedo/swaswa/component/Container.java",
+    "../../../swaswa-ffi/src/main/java/io/joshuasalcedo/swaswa/html/HtmlElement.java",
+    "../../../swaswa-react/src/main/java/io/joshuasalcedo/swaswa/react/ReactElement.java"
+  ]
+}

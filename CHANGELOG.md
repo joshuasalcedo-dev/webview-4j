@@ -1,114 +1,21 @@
 # Changelog
 
-## 0.2.0 — unreleased
+## 0.1.0 — 2026-11-27
 
-- Java windows as in Swing: `WebviewApplication` (the entry point, as JavaFX's `Application`: `init`, `start(App)`, `stop`, `launch(args)`; the dev tools beside it while developing) and `ui.Window` (a `JFrame`: `setTitle`, `setSize`, `setContentPane`, `add`, `open(app)`, `dispose`). Components made with `new`, kept in fields, changed through their methods
-- Live reload while developing (`-Dwebview4j.dev=true`): the dev tools' `LiveReload` watches the app's `src/main/java` and `src/main/resources`, compiles them with the JDK's compiler when they change (in ~200 ms), and the `WebviewApplication` starts again from the new classes in the same process: the new windows open where the old ones were (same title: same place and size, maximized too), then the old ones close. Sources that do not compile are logged and the app stays as it was. `-Dwebview4j.dev.reload=false` turns it off; `-Dwebview4j.dev.sources` / `.resources` say where the sources are
-- The dev window's buttons: **Reload app** (compile and start again now), **Reload pages**, **Inspect** (the browser's developer tools on each window; while developing every window allows them)
-- A `WebviewApplication` quits when its last window closes
-- Components keep what the user typed or picked (`getText`, `isSelected`, `getSelectedValue`, `getValue`...), with Swing's listeners: `addActionListener` and `addChangeListener` (`ui.event`), as many as are added, in order, and `remove...Listener`. Every component: `setEnabled`, `setVisible`, `setToolTipText`, `setPreferredSize`, `getComponents`; containers: `add`, `add(child, index)`, `remove`, `removeAll`. java-gen writes the same for generated components
-- Providers (`plugin`): what an app implements for a plugin extends `Provider`; `Providers.register(type, yours)`, a `WebviewApplication` that implements the interface, or `META-INF/services`. A plugin with a default uses its own without one (`Providers.get`); one that cannot work without it throws `MissingProviderException`, saying what to implement and how to give it (`Providers.require`). First: `DesignSpecProvider`, the design specs an app offers and the one it starts with (default: Windows 11 and macOS)
-- Settings (`plugin.settings`): `new Settings()` is a Settings button and the dialog it opens: Appearance first (light, dark or system, and the design spec), then the app's own sections (`.section("Account", ...)`); changes take effect at once; `open()` for a menu's Preferences; `Button.icon(Icon)`
-- Design specs (`plugin.theme`): `DesignSpec`, a design system (one platform's shapes, and a typed colour for each of the kit's tokens in light and in dark, both required); `DesignSpec.WINDOWS` (Microsoft's Windows 11) and `DesignSpec.MACOS` (Apple's macOS) built in, `DesignSpec.basedOn(base, "Brand").token(ACCENT, light, dark).build()` for an app's own. `Appearance.current().use(spec).mode(Theme.DARK)` changes every window at once (its page and its frame), remembered between runs by a `WebviewApplication`; `ThemeSwitcher`, Light / Dark / System and the design, for a settings page
-- Icons: Lucide (lucide-react, ISC), typed. icon-gen (run by the build) makes `ui.icons.Icon` from Lucide's list: 2,436 names (older names say which icon they draw). `new IconView(Icon.SHOPPING_CART).size(20).color(Style.Token.ACCENT)`; components with an icon take one (`dropdownMenu.icon(Icon.LIST)`; java-gen adds `icon(Icon)` to generated ones). The page loads Lucide once, the first time an icon is drawn
-- egui-4j's Rust components in Java screens (`ui.components.egui`), embedded like any component: `LineChart` (series in a colour, `append(series, x, y)` from any thread, `maxPoints`, axis labels, `onClick((x, y) -> ...)`), `LiveCsv` (columns, `addRow(...)`, `progress`, `done`, `failed`, egui-spreadsheet's viewer with sort, filter and search), and `EguiView` for any egui component by name (`monitor`, `dev-logger`, an app's own), with `EguiEvent`s back in Java. Java keeps the data, so a redraw never loses or doubles it
-- Typed styles: style-gen (`bun run style-gen`, run by the build) makes one enum per component from the kit's CSS into build/generated (`ui.style`: `ButtonPart`, `DialogPart`, `TextFieldPart`... 79 of them, mapped in `style-gen.json`), each a `StylePart` of its component only: `button.style(ButtonPart.ROOT, Style.of().radius(20))`, and `new StyleSheet().rule(DialogPart.TITLE, ...)` for every one in the window. The CSS is never edited
-- `Box.Direction` and `Box.Align`: no more strings for a box's direction and alignment
-- The pages of Java-made windows and of the dev logger are static files in core's jar (`ui/screen.html`, `ui/dev-logger.html`), no longer HTML in Java
-- The annotation processor is in core (`io.joshuasalcedo.webview4j.processor`): `annotationProcessor("io.joshuasalcedo:webview-4j-core")`; the `webview-4j-processor` module is gone
-- Documents are one use case: `plugin.document` (Word, PDF, Excel and CSV; React's `components/plugin/document/{docx,pdf,xlsx}`), in place of the `docx`, `pdf` and `xlsx` packages. The empty use-case packages that held only plans are gone
-- Use cases are core's built-in plugins, in `io.joshuasalcedo.webview4j.plugin.<name>` (`authentication`, `automation`, `autoupdate`, `chat`, `collection`, `devtools`, `document`, `mdi`), in place of `ui.components.usecase.<name>`; React's `components/plugin/<name>`. Chat (`ChatHeader`, `ConversationList`, `MessageList`, `MessageBubble`...) moved out of `ui.components` into `plugin.chat`; java-gen writes a component into its own package (`"package"` in java-gen.json)
-- Dev tools are a use case in core (`plugin.devtools`); the `webview-4j-devtools` module is gone
-- Removed: the Spring Boot starter, the JavaFX module (fx) and its demo, and the samples (the Sampler, the Notes template)
-- The dev window's Network tab: every request of the app's windows as a list (name, method, status, type, size, time, started), filtered by URL and by type (Fetch/XHR, WebSocket, resources), paused, cleared; the chosen one's headers, request and response bodies (JSON laid out), timing, and a WebSocket's frames. Failed requests in red. `Capture.NETWORK` and `NetworkEvent` (start, end, error, and the page's other loads), `view.<view>.network`
-- The dev window's Storage tab: a view's cookies (HttpOnly ones too), localStorage and sessionStorage; delete a cookie, remove a key, clear
-- Cookies from Java: `view.allCookies()`, `setCookie(Cookie.of(name, value))`, `setCookie(cookie, maxAge, SameSite)`, `deleteCookie(cookie)`; a cookie without a domain is the page's site's
-- `view.localStorage()` and `view.sessionStorage()` (`PageStorage`: `entries`, `get`, `set`, `remove`, `clear`); keys and values go in as JSON, never as script
-- `view.openDevTools()`, `closeDevTools()`, `devToolsOpen()`: the browser's own developer tools, for a window opened with `devtools(true)` (`view.<view>.devtools`)
-- java-gen (`bun run java-gen` in core/src/main/ui): Java classes for React components, made from their props by TypeScript's type checker, with their cases in the renderer; opt-in per component (`java-gen.json`), never over a hand-written class, checked by `:core:uiJavaGenCheck`. New in Java from it: `EmptyState`, `Pages`, `SkeletonRows`, `ChatHeader`, `ConversationList`, `MessageList`, `VoiceNote`, `ChatComposer`
-- PROTOCOL.md §6.1: the native library's direct calls (store, secrets, grammar)
-- The first window opens in ~100 ms instead of ~450 (Windows): the browser engine starts while the app gets ready (`app.warm`), unless a window is opened at once; `-Dwebview4j.prewarm=false` turns it off
-- Spelling and grammar check once typing pauses for 500 ms (was 250), not on every key; `checkDelay` sets it (React `GrammarTextArea checkDelay`, `useGrammar({ delay })`; Java `grammarTextArea(...).checkDelay(Duration)`)
-- `just bench` also measures what apps do on top of the transport: a Java screen's click until drawn again, refreshes of 100 to 5,000 rows, the store (put, get, keys), a grammar check, the frame codec, and opening a plain and an owned window
-- Owned windows: `WindowOptions.owner(view)` makes another of the app's windows own this one (a tool window, an inspector): above it, minimized with it, no taskbar button, closed just before it (an owner's owned windows first, innermost first). Windows: an owned window; macOS: a child window; Linux: transient. `View.nativeHandle()`: the window's HWND (Windows) or NSWindow (macOS), for code that talks to the system itself (`view.<view>.handle`)
-- Documents (use cases `xlsx`, `pdf`, `docx`, each library loaded the first time it is shown): Excel viewer and editor (formula bar, undo/redo, merge, sheets, save to bytes), CSV viewer; PDF viewer (PDFium as WebAssembly: zoom, search, selection, thumbnails, rotate), file thumbnails, bounding-box citations, document splits; Word viewer and editor (toolbar, styles, lists, tables, images, comments and tracked changes shown, save to bytes), annotation cards, document side panel, layout blocks. Java: `XlsxViewer`, `XlsxEditor`, `CsvViewer`, `PdfViewer`, `FileThumbnail`, `BoundingBoxCitations`, `DocumentSplits`, `DocxViewer`, `DocxEditor`, `DocxAnnotationCard`, `DocumentViewerSidebar`, `DocxLayoutBlocks`; the Sampler's Documents pages
-- WebHost's content security policy lets WebAssembly, blob: workers and data: documents through
-- Spelling and grammar in the page as WebAssembly (`GrammarTextArea`, `useGrammar`, `checkGrammar`; Java `grammarTextArea`): mistakes underlined as they are typed, fixes at the caret; and in Java through the native library (`Grammar.of("en-GB").check(text)`, `fix`)
-- `TitleBar` leading corner (`titleBar(...).sidebarTrigger(...)`, `.leading(...)`): the sidebar button in the title bar
-- Fixed: a click during a redraw could reach a neighbouring handler; handlers are now named by their place in the tree
-- Sidebar built from parts, as shadcn/ui's: a header (the app's name, a search), groups of menu buttons with icons, counts and places under them, a footer; folds to its icons with Ctrl+B or a trigger; floating and inset variants (React: `SidebarProvider`, `SidebarHeader`, `SidebarGroup`, `SidebarMenuButton`, ...; Java: `sidebarGroup`, `sidebarMenuButton`, `sidebarInput`, `sidebarSeparator`, `sidebarTrigger`)
-- Icons by name for Java (`.icon("table")`)
-- The pointer shows a hand over everything clickable (`--nt-cursor-action`; set it to `default` for the native arrow)
-- The Sampler's sidebar, written by hand on the new parts, with a search
-- Fixed: SplitPane's panes fill, its dividers show in dark themes, no stray scrollbar; the one-time code field no longer looks like inline code
-- `crates/grammar`: spelling and grammar with Harper (`just grammar "text"`)
-- Automation (`io.joshuasalcedo.webview4j.plugin.automation`): drive a window as a person would (`Automation.of(view)`, `button("Save").click()`, `field("Name").type(...)`, `press`, `select`, `check`, `waitForText`, `expectText`), each step waiting for its target, a missing one saying what the page has; `record()` writes down what a person does (by role and name, a password as `${PASSWORD}`), a `Script` saved as JSON, replayed with a report, turned into a JUnit test (`toJava`)
-- `ListItem.onDoubleClick`
-- Authentication (`plugin.authentication`): `Auth.configure(app, ...)` signs people in with OpenID Connect providers (Keycloak, Microsoft Entra, Google, any by its issuer) in the system's browser with PKCE and a loopback redirect, the ID token checked against the provider's keys, or with names and passwords checked by the app's own server; `Auth.account()` in every screen, `Auth.bearer()` renewed before it runs out, the sign-in remembered in the system's vault (`SecretStore`), signing out revokes it; `SignInForm`, `CodeField`, `PasswordStrength`, `AccountMenu`, `SessionExpired` (React first, with a story); `WebHost`'s sign-in screen is the `SignInForm`
-- Window capture: `view.screenshot()` (a PNG, or `screenshot(path)`), `view.record(path, options)` until `stop()`: an animated GIF made by webview-4j, MP4 with Windows' own encoder (Media Foundation, no ffmpeg), WebM through ffmpeg; only the app's own windows, hidden ones too (tests and CI); Windows first, other systems say they cannot yet
-- Secrets in the system's vault (the native library's `secret.rs`: Credential Manager, the Keychain, the Secret Service), for signed-in tokens
-- `markdown("...")`: Markdown in the kit's look (CommonMark with GitHub's tables and task lists), safe for text from anywhere (no HTML run, only http, https and mailto links); links open in the browser through `Host.openUrl`
-- Auto-update (`plugin.autoupdate`): `AutoUpdate.start(app)` shows What's new once after an update, checks the release's signed manifest (Ed25519, the public key in the app) every few hours, and with Update now, Later or Skip downloads the jpackage installer over https, checks its size and SHA-256, runs it and quits; `Changelog` and `UpdatePrompt` components, `AutoUpdate.openChangelog(app)`
-- Releases: the build puts the app's `CHANGELOG.md` and `app.properties` in its jar; `UpdateTool` (and the sample's `updateKey`, `packageApp`, `updateManifest` tasks) make the release key and the signed manifest; `UiWindow.current()`
-- MDI workspaces: any component (layouts too) in a window; `Mdi.remember("workspace")` keeps where the windows are between runs, `onLayoutChange` and `layout(MdiLayout)` for screens that keep it themselves, `arrangeButtons()` for Cascade and Tile, `MdiWindow.state(...)`
-- `WindowOptions.remember("main")`: a window opens where it was left (place, size, maximized), back on the main monitor when its monitor is gone; `WindowOptions.position(x, y)`; `View.monitors()` (bounds, scale, primary, current)
-- `Host.current()`: files to open and save, messages, questions and notifications, the same in a desktop window (the system's dialogs and disk) and a browser tab (the browser's file chooser and downloads, dialogs in the page, the browser's notifications); `supports(Feature)` says what is there; what is chained to an answer redraws the screen
-- `WebHost` signs people in: `.signIn(authenticator)` (a sign-in screen in the kit's look, tries limited per name and per address, a new session id once signed in, `WebHost.account().signOut()`), `.allow(user -> ...)`, `.trustProxyUser(header, groups)` from a proxy on the same machine; and serves TLS itself (`.tls(pkcs12, password)`: Secure cookies, HSTS), with a warning when it listens beyond the machine with neither
-- The same screens on the web: `WebHost.of(MyScreen::new).port(8080).start()` shows a `Screen` in every browser tab over a WebSocket (no dependency: sockets and virtual threads); each browser session (a cookie) is a `Session` of its own, keeping what it persists in that browser's IndexedDB; another site's page is refused; `UiWindow.onWeb()` tells a screen where it is (`just gallery-web`)
-- `loadable(serverState, data -> ...)` and a collection's `.state(serverState)`: loading, errors with Try again and the reload bar from server state, nothing by hand
-- Invalidations leave the JVM: `ServerState.invalidate` (and every `Mutation`) tells the app's pages, and `@webview4j/api` refreshes a page's TanStack queries (`invalidateFromJava(queryClient)`, `javaQuery(command)`); a server pushes them over server-sent events (`Invalidations.listen`), the starter has the endpoint (`StateInvalidations.publish`) and a desktop client listens by itself
-- `paragraph(...)`: code, links and bold inside one paragraph; a file rename asks for the new name (`onRename((path, name) -> ...)`); `Quantity.Display`; `result(query.apply(rows))` instead of `page(result)`
-- `just gallery`, `just showcase`, `just notes`, `just storybook`, `just gallery-check`
-- Layout panes named as JavaFX's (`ui.components.layout`): `HBox`, `VBox`, `GridPane`, `BorderPane`, `StackPane`, `SplitPane`, `FlowPane`, `TilePane`, `AnchorPane`, `ScrollPane`, and `CardPane` (Swing's CardLayout); `Pos`, `HPos`, `VPos`, `Insets`, `Priority`; min and max sizes on every component
-- `Carousel`, `TitledPane` and `Accordion`
-- State (`ui.state`): `Store`, `Saved`, `ServerState` (as TanStack Query: cached by key, shown from memory or disk, fetched again only when invalidated, stale or changed by the server's ETag) and `Mutation` (pending, errors, invalidation, optimistic changes); `Property` says how long a value lives; `Context` and `ContextProperty` carry values down to a component's children; all of it a `Session`'s, never the process's
-- The app's local store: redb in the native library (`NativeStore`, one ACID file in the system's place for the app's data), behind `StateStorage`
-- Collections (`plugin.collection`), React first and then Java: `DataTable`, `DataList`, `DataTree`, `DataMap` and `DataGrid`, from records and maps
-- One query model for every collection: `Query` (page, size, sorts, search, column filters) and `Paging`; with `onQueryChange` the server answers it, and `Query.apply` answers one in memory
-- Column filters in `DataTable`: text contains, one of some options (an enum), a range (numbers, money, dates), yes/no; Shift-click sorts by more than one column
-- States shared by the collections: grey rows on the first load, a running bar after, an error with Try again, an empty state with an action, and "No matches" with Clear filters
-- Spring Data in the starter: `SpringPaging.pageable(query)` and `SpringPaging.result(page)`
-- File dialogs: `app.openFile`, `openFiles`, `saveFile` and `pickFolder`, with filters, a start directory and a parent window
-- Message boxes: `app.message` (info, warning or error; OK, OK/Cancel, Yes/No, Yes/No/Cancel) and `app.confirm`
-- A dialog never holds the app up: other windows keep working while it is open
-- Window controls: `minimize`, `maximize`, `restore`, `setFullscreen`, `setAlwaysOnTop`, `setResizable`, `setMinSize`
-- `view.geometry()`: where a window is and how it is shown, to save its place and restore it next time
-- Window events: `Resized`, `Moved` (the last of each per round, not dozens a second while dragging) and `Focused`
-- `WindowOptions.confirmClose(true)`: the close button sends `CloseRequested` and the app decides, such as after asking about unsaved work
-- `WindowOptions.fileDrop(true)`: files dropped on a window arrive as `FileDrop` events with their paths
-- `WindowOptions.minSize`, `maximized`, `fullscreen` and `alwaysOnTop`
-- README: on macOS, run the app with `App.run` from `main` and `-XstartOnFirstThread`
-- `@webview4j/ui`: native-looking React components (Windows 11 or macOS, light or dark), from `core/src/main/ui`; an npm library for apps with a bundler
-- Core's jar carries the kit built (`ui.js` with React, `ui.css`): every window loads it from `<base>ui/` (`App.UI_URL`), no bundler needed
-- The page's own window: `data-webview4j-drag-region` moves it, a double click maximizes it, and `currentWindow` (`@webview4j/api`) minimizes, maximizes and closes it; `TitleBar` uses them by itself
-- Building core needs bun, for the kit
-- A window without the system's frame resizes from its edges, with the system's resize pointers
-- `WindowOptions.theme` and `view.setTheme`: light or dark for the window and the page's `prefers-color-scheme` together
-- `samples/notes`: a whole sample app, its own Gradle build, with a look (Windows 11 / macOS) and theme switcher
-- Embedded views: `view.embed(options, x, y, width, height)` opens a website inside a window (Windows, macOS), `place` moves it; no bridge for it unless Java names its origins; it closes with its window
-- `MdiArea` and `useMdi` in `@webview4j/ui`: windows inside the app's window (move, resize, minimize, maximize, cascade, tile, Ctrl+F6)
-- `WindowOptions.app(...).page("other.html")`: another page of the app's own files
-- `TitleBar dragsWindow={false}`: a title bar that is not the window's own
-- `io.joshuasalcedo.webview4j.ui`: screens built only in Java from the native components (`Ui`, `Screen`, `UiWindow`): Java sends what to show as data, core's jar draws it, the user's actions run Java handlers; nothing is generated
-- The sample's component gallery, written only in Java (`./gradlew run -Pgallery`)
-- `UiException`: a handler's problem said for people (title, message, level) in the kit's dialog, the technical message under "Show details"; any other exception shows a calm generic message and is logged; `Ui.explain` for a library's own exceptions; `UiWindow.notify`
-- devtools `ApiExplorer`: an API from its OpenAPI description (Spring's /v3/api-docs, any server, local or not): every endpoint with example values, sent from Java; every endpoint at once; a `MockServer` that answers from the description; the project's JUnit tests run from a button (`TestRunner`)
-- `Json` is public: a small JSON reader and writer
-- `webview-4j-spring-boot-starter`: a Spring Boot app opens in a native window when it is ready, with no code: titled after the app, its page at `/`, the API explorer found by itself (as the window, for an API with no page); `webview4j.*` overrides; quiet while tests run; `App` and `WebView4jWindow` beans
-- `Router`, `PageView`, `LayoutView`, `PageContext`: apps of several pages the way Next.js does them: pages at paths with slugs (`/users/{id}`, `/docs/{*rest}`), nested layouts, query parameters, back and forward, `load(...)` for slow data, each page's errors kept to it, "not found"; a default frame with the navigation; `pagination(...)`
-- `@WebViewApplication` (with `WebViewApplications.run`): a desktop client of a server; its `@Page` and `@Layout` beans are the main window; the `@HttpExchange` interfaces it imports (`@ImportHttpServices`, `webview4j.client-url`) are its clients, and in development a second window shows each endpoint as a form, checked with Jakarta Validation and sent for real
-- The build reuses a native library already built from the current Rust sources instead of running cargo again (`-PrebuildNative` forces it)
-
-## 0.1.0 — 2026-10-21
-
-- First public release on Maven Central: `io.joshuasalcedo:webview-4j-core`, `-processor` and `-devtools`
-- A native webview (WebView2 on Windows, WebKit on macOS and Linux) driven from Java 25 over FFM, no JNI
-- The native library is inside the jar for Windows x64, Linux x64, macOS x64 and Apple silicon
-- Java and the native side speak a NATS-style protocol (PROTOCOL.md), with conformance fixtures
-- The page calls Java and Java pushes to the page: `invoke`, `listen`, `emit`, over the webview4j custom protocol
-- `@WebViewController` routes with an annotation processor and a typed TypeScript client, no reflection
-- `HttpApi`: the same routes as a local HTTP API, with a bearer token and allowed origins
-- `WindowOptions.app(...)`: the app's own page from the class path, and a window icon
-- `App.playSound`: MP3, WAV, Ogg Vorbis and FLAC, played natively
-- Captured console logs, clicks, fetches and WebSockets as events
-- Devtools: a Swing window beside the app with its log and live metrics
+- swaswa-ffi: the window, the page and its typed HTML and CSS (`HtmlElement`, `CssProperty`, `Style`), components
+  (`Component`, `Container`, `Control`) and their roles (`ButtonBase`, `TextInput`, `Toggle`, `Choice`, `ListView`,
+  `DialogBase`...), `SwaApplication` (one class: a desktop window or a web page), app state (`swaswa.state`: `Store`,
+  `LocalState`, `Lifetime`), development and production modes (`AppMode`), SVG for images.
+- swaswa-webview, swaswa-dom: the webview and the page's document from Java, in batches.
+- swaswa-tailwind: Tailwind classes, typed, with each page's CSS made in Java.
+- swaswa-react: real React components from Java (`ReactElement`): props (records, dates, bytes, files, styles, other
+  components), two-way binds, events; adapters (`ReactAdapter`: the component calls Java, Java answers and pushes
+  events), handles (Java calls a component's actions) and menus made in Java (`MenuItem`); the Java generator
+  (`java-gen.ts`).
+- swaswa-shadcn: every shadcn/ui component, one package per family, `Shadcn*`.
+- swaswa-ui: native-looking components (`Ui*`): buttons, fields, lists, tables, toolbars, status bars, code editor,
+  documents (PDF, Word, Excel), file views and the chat (`UiChatWindow` with a typed `ChatService`).
+- swaswa-cli: the `swaswa` command: `swaswa new <app>`, `swaswa run [--watch]`, `swaswa build [--type ...]`
+  (the jar, its libraries and a jpackage installer).
+- Published to swaswa's Nexus: `https://repository.swaswa.cloud/repository/maven-releases/`, group
+  `io.joshuasalcedo.swaswa`.

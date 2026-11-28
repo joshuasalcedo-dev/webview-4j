@@ -1,0 +1,18 @@
+package io.joshuasalcedo.swaswa.ffi;
+
+/**
+ * Something the native side reported. Subscribe to one kind with
+ * {@link App#subscribe(Class, Subscriber)}, or to all with {@code WebViewEvent.class}.
+ *
+ * <p>Page reports ({@link ApiCall}, {@link Click}, {@link DomEvent}, {@link WebSocketFrame}, and
+ * page {@link LogRecord}s) arrive only while switched on for their view: see {@link Capture}.
+ */
+public sealed interface WebViewEvent permits Ready, Closed, CloseRequested,
+        Resized, Moved, Focused, FileDrop, PageLoad, TitleChanged, DevToolsEvent, ApiCall, Click, DomEvent, WebSocketFrame, NetworkEvent, LogRecord, PageCall,
+        WindowState, ScaleChanged, SystemThemeChanged, Shortcut, NewWindowRequested, Download, MemoryPressure, ProcessOutput, ProcessExited, WorkerProgress, WorkerFinished, EngineProcessFailed, WindowMove, ViewReparented {
+
+    /** The view the event happened in, or null when it is not about one view. */
+    default String view() {
+        return null;
+    }
+}

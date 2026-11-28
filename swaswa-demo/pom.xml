@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  swaswa-demo: demos of swaswa's modules, as an app would write them. Not a library: never installed or deployed.
+    just tailwind-demo    a page styled the Tailwind way (typed classes, a CSS file of its own), showing its own code
+    just tailwind-docs    every Tailwind class, as Tailwind's docs show them: its Java name, its CSS, a preview
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.joshuasalcedo.swaswa</groupId>
+        <artifactId>swaswa-parent</artifactId>
+        <version>0.1.1</version>
+    </parent>
+
+    <artifactId>swaswa-demo</artifactId>
+    <name>swaswa-demo</name>
+    <description>Demos of swaswa's modules. Not deployed.</description>
+
+    <properties>
+        <!-- demos: built and run, never published -->
+        <maven.install.skip>true</maven.install.skip>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-tailwind</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-dom</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-shadcn</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-ui</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- a demo shows its own code: the sources, beside the classes -->
+            <resource>
+                <directory>src/main/java</directory>
+                <includes>
+                    <include>**/*.java</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>tailwind-demo</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-Xmx512m</argument>
+                                <!-- the JVM's own JIT, not GraalVM's: it needs much less memory -->
+                                <argument>-XX:-UseJVMCICompiler</argument>
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/demo</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.demo.TaildWindDemo</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>shadcn-demo</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-Xmx512m</argument>
+                                <!-- the JVM's own JIT, not GraalVM's: it needs much less memory -->
+                                <argument>-XX:-UseJVMCICompiler</argument>
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/demo</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.demo.ShadcnDemo</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>ui-demo</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-Xmx512m</argument>
+                                <!-- the JVM's own JIT, not GraalVM's: it needs much less memory -->
+                                <argument>-XX:-UseJVMCICompiler</argument>
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/demo</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.demo.UiDemo</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>chat-demo</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-Xmx512m</argument>
+                                <!-- the JVM's own JIT, not GraalVM's: it needs much less memory -->
+                                <argument>-XX:-UseJVMCICompiler</argument>
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/demo</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.demo.ChatDemo</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>tailwind-docs</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-Xmx512m</argument>
+                                <!-- the JVM's own JIT, not GraalVM's: it needs much less memory -->
+                                <argument>-XX:-UseJVMCICompiler</argument>
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/demo</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.demo.TailwindDocs</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>tailwind-pages</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>--enable-native-access=ALL-UNNAMED</argument>
+                                <argument>-Xmx512m</argument>
+                                <!-- the JVM's own JIT, not GraalVM's: it needs much less memory -->
+                                <argument>-XX:-UseJVMCICompiler</argument>
+                                <argument>-Dswaswa.webview.data=${project.build.directory}/webview-profile/demo</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>io.joshuasalcedo.swaswa.demo.DocsPages</argument>
+                                <argument>${project.build.directory}/docs-pages</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

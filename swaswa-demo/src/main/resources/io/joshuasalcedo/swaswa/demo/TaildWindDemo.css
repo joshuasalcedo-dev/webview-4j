@@ -1,0 +1,16 @@
+/*
+  The demo's style sheet: loaded by itself, as it is named as its class (TaildWindDemo.css, beside it).
+  Tailwind's way: the basics, a token of the app's own, and its own classes made of Tailwind's.
+*/
+@import "tailwindcss";
+@import "tailwind/basics.css";
+
+@theme {
+  --color-brand: #4f46e5;
+}
+
+.hero       { @apply rounded-xl p-8 mb-8 bg-brand text-white; }
+.hero-title { @apply text-3xl font-bold; }
+.hero-text  { @apply mt-2 text-indigo-100; }
+
+.code       { @apply mt-4 rounded-xl p-4 bg-slate-900 text-slate-100 text-xs font-mono overflow-auto max-h-96 whitespace-pre; }

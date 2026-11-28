@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  swaswa-ui: desktop controls that look like the system's own (Windows 11 on Windows, macOS on a Mac, light or dark),
+  and the bigger components (code editor, rich text, PDF and Office viewers, charts, chat, data tables), from Java: a
+  class per component, generated from its TypeScript props, drawn by React in the page (swaswa-react). Made by
+  src/build (bun build.ts) and committed: the components are served from the jar as files, loaded when needed.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.joshuasalcedo.swaswa</groupId>
+        <artifactId>swaswa-parent</artifactId>
+        <version>0.1.1</version>
+    </parent>
+
+    <artifactId>swaswa-ui</artifactId>
+    <name>swaswa-ui</name>
+    <description>Desktop controls that look like the system's own (Windows 11, macOS), from Java: React components, typed.</description>
+
+    <properties>
+        <swaswa.ui.skipWeb>false</swaswa.ui.skipWeb>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.joshuasalcedo.swaswa</groupId>
+            <artifactId>swaswa-react</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- the components' served files, built by bun below (about 90 MB: never committed) -->
+            <resource>
+                <directory>${project.build.directory}/generated-resources/swaswa-ui</directory>
+            </resource>
+        </resources>
+        <plugins>
+            <!-- the components' files for the jar: bun install, then bun build.ts web (skipped when nothing changed);
+                 -Dswaswa.ui.skipWeb to leave them as they are -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>ui-install</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${swaswa.ui.skipWeb}</skip>
+                            <executable>bun</executable>
+                            <workingDirectory>${project.basedir}/src/build/ui</workingDirectory>
+                            <arguments>
+                                <argument>install</argument>
+                                <argument>--frozen-lockfile</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>ui-web</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${swaswa.ui.skipWeb}</skip>
+                            <executable>bun</executable>
+                            <workingDirectory>${project.basedir}/src/build</workingDirectory>
+                            <arguments>
+                                <argument>build.ts</argument>
+                                <argument>--web</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                    <environmentVariables>
+                        <SWASWA_BROWSER>off</SWASWA_BROWSER>
+                    </environmentVariables>
+                    <systemPropertyVariables>
+                        <swaswa.webview.data>${project.build.directory}/webview-profile/tests</swaswa.webview.data>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,18 @@
+{
+  "name": "swaswa-react-runtime",
+  "private": true,
+  "description": "Makes src/main/resources/io/joshuasalcedo/swaswa/react/react-runtime.js (React, ReactDOM, the bridge to Java): bun install && bun run build. java-gen.ts: typed Java for a component library (bun java-gen.ts <config.json>)",
+  "type": "module",
+  "scripts": {
+    "build": "bun build.ts"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "6.0.3"
+  }
+}

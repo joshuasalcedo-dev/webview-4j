@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  swaswa: native desktop windows driven from Java, with a typed, Swing-style UI.
+
+    swaswa-ffi         the bridge: Java <-> the native library (Rust: Tao, Wry): windows and their pages, events,
+                       storage, dialogs, serving files; a page's requests to Java go to one handler
+    swaswa-webview     the webview feature: an app that brings its own web page (WebViewApplication, controllers,
+                       routes, HTTP), with the annotation processor hidden in it
+
+  mvn verify          build and test everything (cargo builds the native library first; it needs Rust)
+  mvn verify -Dcargo.profile=dev     a faster, unoptimised native library while working
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.joshuasalcedo.swaswa</groupId>
+    <artifactId>swaswa-parent</artifactId>
+    <version>0.1.1</version>
+    <packaging>pom</packaging>
+
+    <name>swaswa</name>
+    <description>Native desktop windows driven from Java, with a typed, Swing-style UI.</description>
+    <url>https://github.com/joshuasalcedo-dev/swaswa</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>joshuasalcedo-dev</id>
+            <name>Joshua Salcedo</name>
+            <url>https://github.com/joshuasalcedo-dev</url>
+        </developer>
+    </developers>
+    <scm>
+        <url>https://github.com/joshuasalcedo-dev/swaswa</url>
+        <connection>scm:git:https://github.com/joshuasalcedo-dev/swaswa.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/joshuasalcedo-dev/swaswa.git</developerConnection>
+    </scm>
+
+    <!-- releases and snapshots: swaswa's Nexus (credentials: server swaswa-nexus in settings.xml) -->
+    <distributionManagement>
+        <repository>
+            <id>swaswa-nexus</id>
+            <url>https://repository.swaswa.cloud/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>swaswa-nexus</id>
+            <url>https://repository.swaswa.cloud/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <modules>
+        <module>swaswa-ffi</module>
+        <module>swaswa-webview</module>
+        <module>swaswa-tailwind</module>
+        <module>swaswa-dom</module>
+        <module>swaswa-react</module>
+        <module>swaswa-shadcn</module>
+        <module>swaswa-ui</module>
+        <module>swaswa-core</module>
+        <module>swaswa-cli</module>
+        <module>swaswa-demo</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <junit.version>6.0.1</junit.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.joshuasalcedo.swaswa</groupId>
+                <artifactId>swaswa-ffi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.joshuasalcedo.swaswa</groupId>
+                <artifactId>swaswa-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.14.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.3</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.4.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>3.1.4</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <!-- each module's sources beside its jar: an IDE shows them, and their docs -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

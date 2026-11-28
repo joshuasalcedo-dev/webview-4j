@@ -1,0 +1,121 @@
+// Made by ../build.ts: every component, registered with the page's React (swaswa-react's runtime).
+import * as React from 'react';
+import './html-controls.css';
+import { NativeContext, NativeProvider } from './components/provider';
+import * as m0 from './components/authentication/account-menu';
+import * as m1 from './components/authentication/code-field';
+import * as m2 from './components/authentication/password-strength';
+import * as m3 from './components/authentication/session-expired';
+import * as m4 from './components/authentication/sign-in-form';
+import * as m5 from './components/autoupdate/changelog';
+import * as m6 from './components/autoupdate/update-prompt';
+import * as m7 from './components/avatar';
+import * as m8 from './components/breadcrumb';
+import * as m9 from './components/button';
+import * as m10 from './components/carousel';
+import * as m11 from './components/chart';
+import * as m12 from './components/chat/capabilities';
+import * as m13 from './components/chat/chat-composer';
+import * as m14 from './components/chat/chat-details';
+import * as m15 from './components/chat/chat-header';
+import * as m16 from './components/chat/chat-provider';
+import * as m17 from './components/chat/chat-window';
+import * as m18 from './components/chat/config';
+import * as m19 from './components/chat/conversation-list';
+import * as m20 from './components/chat/icons';
+import * as m21 from './components/chat/message-bubble';
+import * as m22 from './components/chat/message-list';
+import * as m23 from './components/chat/sample-config';
+import * as m24 from './components/chat/sample-messages';
+import * as m25 from './components/checkbox';
+import * as m26 from './components/code-editor';
+import * as m27 from './components/collection/data-grid';
+import * as m28 from './components/collection/data-list';
+import * as m29 from './components/collection/data-map';
+import * as m30 from './components/collection/data-table';
+import * as m31 from './components/collection/data-tree';
+import * as m32 from './components/collection/states';
+import * as m33 from './components/composer-toolbar';
+import * as m34 from './components/composer';
+import * as m35 from './components/content';
+import * as m36 from './components/context-menu';
+import * as m37 from './components/controls';
+import * as m38 from './components/dev-logger';
+import * as m39 from './components/dialog';
+import * as m40 from './components/document/docx/document-viewer-sidebar';
+import * as m41 from './components/document/docx/docx-annotation-card';
+import * as m42 from './components/document/docx/docx-editor';
+import * as m43 from './components/document/docx/docx-layout-blocks';
+import * as m44 from './components/document/docx/docx-viewer';
+import * as m45 from './components/document/docx/icons';
+import * as m46 from './components/document/pdf/bounding-box-citations';
+import * as m47 from './components/document/pdf/document-splits';
+import * as m48 from './components/document/pdf/file-thumbnail';
+import * as m49 from './components/document/pdf/icons';
+import * as m50 from './components/document/pdf/pdf-viewer';
+import * as m51 from './components/document/xlsx/csv-viewer';
+import * as m52 from './components/document/xlsx/icons';
+import * as m53 from './components/document/xlsx/states';
+import * as m54 from './components/document/xlsx/xlsx-viewer';
+import * as m55 from './components/egui-canvas';
+import * as m56 from './components/file-menu';
+import * as m57 from './components/file-views';
+import * as m58 from './components/files';
+import * as m59 from './components/grammar-text-area';
+import * as m60 from './components/icon-picker';
+import * as m61 from './components/infinite-scroll';
+import * as m62 from './components/inspector';
+import * as m63 from './components/layout/layout';
+import * as m64 from './components/layout/more-layout';
+import * as m65 from './components/list';
+import * as m66 from './components/log-view';
+import * as m67 from './components/markdown';
+import * as m68 from './components/mdi';
+import * as m69 from './components/media-player';
+import * as m70 from './components/money';
+import * as m71 from './components/overlays';
+import * as m72 from './components/pickers';
+import * as m73 from './components/pill';
+import * as m74 from './components/progress-bar';
+import * as m75 from './components/provider';
+import * as m76 from './components/quantity';
+import * as m77 from './components/rich-text';
+import * as m78 from './components/search-field';
+import * as m79 from './components/segmented-control';
+import * as m80 from './components/select';
+import * as m81 from './components/sidebar';
+import * as m82 from './components/sound';
+import * as m83 from './components/status-bar';
+import * as m84 from './components/structure';
+import * as m85 from './components/surface';
+import * as m86 from './components/swipeable';
+import * as m87 from './components/switch';
+import * as m88 from './components/tabs';
+import * as m89 from './components/text-field';
+import * as m90 from './components/text-inputs';
+import * as m91 from './components/text';
+import * as m92 from './components/title-bar';
+import * as m93 from './components/titled-pane';
+import * as m94 from './components/toolbar';
+import * as m95 from './components/value-fields';
+
+const { register } = (window as any).__swaswaReact;
+
+/** A component in a NativeProvider: the one around it, or its own when it is the first of the page. */
+const native = (C: React.ComponentType<any>) => {
+  const Native = (props: any) =>
+    React.useContext(NativeContext) ? <C {...props} /> : <NativeProvider style={{ display: 'contents' }}><C {...props} /></NativeProvider>;
+  Native.displayName = C.displayName ?? C.name;
+  return Native;
+};
+
+const seen = new Set<string>();
+for (const m of [m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21, m22, m23, m24, m25, m26, m27, m28, m29, m30, m31, m32, m33, m34, m35, m36, m37, m38, m39, m40, m41, m42, m43, m44, m45, m46, m47, m48, m49, m50, m51, m52, m53, m54, m55, m56, m57, m58, m59, m60, m61, m62, m63, m64, m65, m66, m67, m68, m69, m70, m71, m72, m73, m74, m75, m76, m77, m78, m79, m80, m81, m82, m83, m84, m85, m86, m87, m88, m89, m90, m91, m92, m93, m94, m95] as Record<string, unknown>[]) {
+  for (const [name, value] of Object.entries(m)) {
+    if (!/^[A-Z]/.test(name) || seen.has(name) || name.endsWith('Context')) continue;
+    const component = typeof value === 'function' || (typeof value === 'object' && value !== null && '$$typeof' in value);
+    if (!component) continue;
+    seen.add(name);
+    register(name, name === 'NativeProvider' ? value : native(value as React.ComponentType<any>));
+  }
+}

@@ -1,0 +1,31 @@
+/*
+  swaswa's basic look, in Tailwind's terms: a page, text, rows and stacks, cards, buttons, fields, badges, links.
+  In Java, typed: Basic.CARD, Basic.BTN_PRIMARY... (each brings its own CSS). In a CSS file of the app's:
+    @import "tailwindcss";              Tailwind's reset, as in a Tailwind project
+    @import "tailwind/basics.css";
+  then class="btn-primary", and change them or add to them as you like (@apply, @theme).
+*/
+
+.page        { @apply min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100; }
+.container   { @apply mx-auto max-w-5xl px-6 py-8; }
+
+.title       { @apply text-2xl font-bold tracking-tight; }
+.subtitle    { @apply text-lg font-semibold; }
+.muted       { @apply text-sm text-slate-500 dark:text-slate-400; }
+.link        { @apply text-indigo-600 underline underline-offset-2 hover:text-indigo-500 dark:text-indigo-400; }
+
+.row         { @apply flex items-center gap-3; }
+.stack       { @apply flex flex-col gap-3; }
+.grid-cards  { @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6; }
+
+.card        { @apply rounded-xl p-6 bg-white shadow-sm ring-1 ring-slate-200 hover:shadow-lg dark:bg-slate-900 dark:ring-slate-800; }
+
+.btn         { @apply px-3 py-1.5 rounded-md text-sm cursor-pointer bg-white ring-1 ring-slate-300 hover:bg-slate-100
+                      dark:bg-slate-800 dark:ring-slate-700 dark:hover:bg-slate-700; }
+.btn-primary { @apply px-4 py-2 rounded-lg cursor-pointer bg-indigo-600 text-white font-medium hover:bg-indigo-500; }
+.btn-danger  { @apply px-4 py-2 rounded-lg cursor-pointer bg-red-600 text-white font-medium hover:bg-red-500; }
+
+.input       { @apply w-full rounded-lg px-3 py-2 bg-white ring-1 ring-slate-300 outline-none focus:ring-2 focus:ring-indigo-500
+                      dark:bg-slate-900 dark:ring-slate-700; }
+
+.badge       { @apply inline-flex items-center px-3 py-1 rounded-full bg-indigo-600 text-white text-sm font-medium; }
